@@ -23,7 +23,7 @@ As descrições físicas seguem os rascunhos do autor em `/home/gustavoreis/Docu
 
 Sprites e retratos têm linguagem raster de pixel art expressiva, paleta terrosa, contorno escuro e trajes de época. As imagens originais têm resolução maior que as células lógicas do jogo; não foram substituídas por vetores ou figuras provisórias. O frontend deve usar filtragem nearest-neighbor/pixelArt e a escala definida no manifesto.
 
-Oito sheets PNG RGBA foram geradas com seis poses cada: duas de idle e quatro de caminhada. As figuras ficam voltadas para a direita; espelhar horizontalmente fornece a direção esquerda. Na exploração atual os NPCs usam idle; os quatro frames de caminhada ficam disponíveis para expansão.
+Oito sheets PNG RGBA foram geradas com seis poses cada: duas de idle e quatro de caminhada. As figuras ficam voltadas para a direita; espelhar horizontalmente fornece a direção esquerda. Na exploração atual os NPCs usam uma pose fixa de repouso para evitar variações de silhueta; o jogador usa os quatro frames ao caminhar.
 
 Os retratos reutilizam a respectiva sheet como referência de identidade. Olhos dourados de Capitu, verdes de Escobar e âmbar de Florença são legíveis no retrato. Não foi criado retrato de Brás Cubas ou do jogador, pois o diálogo exibe a persona abordada.
 
@@ -35,7 +35,7 @@ Os retratos reutilizam a respectiva sheet como referência de identidade. Olhos 
 - `sourceWidth` e `sourceHeight`: dimensões reais do PNG original.
 - `frameWidth:512`, `frameHeight:724`: tamanho **virtual não recortado** do frame no atlas, não divisão aritmética do PNG.
 - `frames:6`, `frameNames:["0","1","2","3","4","5"]`, `idleFrames:["0","1"]`, `walkFrames:["2","3","4","5"]`.
-- `displayWidth:48`, `displayHeight:64`, `origin:{x:0.5,y:684/724}` e `portraitPath` para os NPCs.
+- `displayWidth:64`, `displayHeight:88`, `origin:{x:0.5,y:684/724}` e `portraitPath` para os NPCs.
 
 Carregar com `scene.load.atlas(id, path, atlasPath)` e animar os nomes de frame como strings. **Não usar `load.spritesheet` com divisão uniforme para estas imagens.**
 
@@ -46,3 +46,7 @@ A IA entregou seis poses separadas, mas centros e largura de saias/pés não obe
 Foram inspecionados visualmente os outputs e verificados dimensões, canal RGBA, transparência zero, seis regiões de personagem, retângulos contidos no PNG e em `sourceSize`, e baseline comum. Personagens possuem variação natural de braços/roupas entre poses; a animação é arte gerada, não motion capture. O ajuste fino de escala e legibilidade deve ser conferido no canvas do jogo durante integração.
 
 Nenhum pixel foi desenhado ou retocado por script; o tratamento por código se limita à inspeção e aos JSON de empacotamento/manifesto. Imagens originais ficam preservadas e cópias finais estão versionadas no repositório.
+
+## Revisão dos ambientes
+
+Os cinco fundos foram simplificados por `image_gen built-in`, preservando os marcos e a composição de cada local. A tela passa a960×360, com câmera fixa. O atlas `frontend/public/assets/ambient/scene-life.png` reúne árvore, cão, gato, pássaro e dois cidadãos figurantes. O PNG tem transparência verdadeira; `scene-life.json` contém os retângulos medidos pelo alfa, sem editar os pixels. As caixas de exibição preservam as proporções dos recortes. Os figurantes não são suspeitos ou agentes de investigação. Prompts completos, modo de geração, fontes, dimensões e hashes estão em [prompts.json](../frontend/public/assets/ambient/prompts.json). Os PNGs dos fundos estão em `frontend/public/assets/locations/`; os originais permanecem no histórico Git.

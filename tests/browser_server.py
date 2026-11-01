@@ -1,6 +1,7 @@
 """Servidor E2E isolado com Redis real e LLM determinístico. Nunca usa AWS."""
 
 import os
+import json
 import sys
 from pathlib import Path
 
@@ -24,7 +25,10 @@ def test_services(_settings):
     services = build_services(settings)
 
     async def complete(messages):
-        return LLMResponse(content="Ouvi os rumores sobre Brás Cubas, mas não vi o que aconteceu.",
+        # Reproduz o envelope que antes aparecia literalmente na interface.
+        profile = json.loads(messages[0].content.split("Ficha privada:\n", 1)[1])
+        return LLMResponse(content=json.dumps({"remetente": profile["id"],
+                           "fala": "Ouvi os rumores sobre Brás Cubas, mas não vi o que aconteceu."}),
                            model="deterministic-browser-test", input_tokens=1, output_tokens=1)
 
     services.llm.complete = complete

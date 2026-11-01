@@ -32,6 +32,8 @@ O [planejamento do projeto](docs/planejamento.md) descreve o ciclo do jogo, os m
 
 O [plano visual aprovado](docs/planejamento_visual.md) detalha a delegação. A [entrega visual](docs/entrega_visual.md) registra o resultado, decisões, execução e validação.
 
+A [revisão de exploração e diálogos](docs/revisao_exploracao_dialogos.md) registra cenários compactos, passagens entre locais, figurantes, parser de falas e guarda contra instruções maliciosas, com seus contratos e testes.
+
 Os [contratos entre as frentes](docs/contratos_agentes.md) fixam as interfaces e responsabilidades. A [integração da base](docs/base_agentes.md) descreve configuração, uso e limites atuais.
 
 ## Executar com Docker
