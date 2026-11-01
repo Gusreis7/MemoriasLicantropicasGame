@@ -43,6 +43,33 @@ class RedisTurnRepository:
             raise StorageUnavailableError("Identidade do ciclo persistido inválida.")
         return state
 
+    async def read_snapshot(
+        self, game_id: UUID,
+    ) -> tuple[GameState | None, WorldState | None, InvestigationState | None]:
+        """Lê os três documentos no mesmo instante, sem reservar o jogador.
+
+        GETs numa transação somente de leitura mantêm erros de tipo Redis. MGET
+        devolveria nil também para uma chave com tipo incorreto, confundindo
+        corrupção com ausência de agregado legado.
+        """
+        base = self._base(game_id)
+        try:
+            async with self._client.pipeline(transaction=True) as pipe:
+                pipe.get(f"{base}:state")
+                pipe.get(f"{base}:world")
+                pipe.get(f"{base}:investigation")
+                raw_game, raw_world, raw_state = await pipe.execute()
+        except RedisError:
+            raise StorageUnavailableError("Persistência do ciclo indisponível.") from None
+        game = _decode(raw_game, GameState) if raw_game is not None else None
+        world = _decode(raw_world, WorldState) if raw_world is not None else None
+        state = _decode(raw_state, InvestigationState) if raw_state is not None else None
+        if ((game is not None and game.id != game_id)
+                or (world is not None and world.game_id != game_id)
+                or (state is not None and state.game_id != game_id)):
+            raise StorageUnavailableError("Identidade do ciclo persistido inválida.")
+        return game, world, state
+
     async def commit(
         self, *, previous: InvestigationState | None, state: InvestigationState,
         previous_game: GameState, game: GameState,
