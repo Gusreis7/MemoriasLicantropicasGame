@@ -1,0 +1,141 @@
+"""Casos de uso de pistas: autorização física e transições sob o relógio do motor."""
+
+from math import ceil
+from uuid import UUID
+
+from memorias_licantropicas.contracts.errors import AccessDeniedError, ConflictError, NotFoundError
+from memorias_licantropicas.contracts.investigation import CaseEvent, CaseTransition
+from memorias_licantropicas.modules.investigation.catalog import INVENTORIES, ITEMS_BY_ID, OBSERVED_PEOPLE
+from memorias_licantropicas.modules.investigation.rules import evaluate_accusation, find_evidence, make_testimony
+from memorias_licantropicas.modules.investigation.schema import (
+    AccusationPublic, CasePublic, CrimePublic, EndingPublic, EvidencePublic, JournalPublic, TestimonyPublic,
+)
+
+
+class InvestigationService:
+    def __init__(self, turns, characters):
+        self._turns = turns
+        self._characters = characters
+
+    async def _names(self):
+        return {"bras_cubas": "Brás Cubas", **{profile.id: profile.name for profile in await self._characters.list()}}
+
+    async def public(self, state) -> CasePublic:
+        names, now = await self._names(), self._turns.now()
+        ending = None
+        if state.status != "active":
+            if not state.crimes:
+                raise ConflictError("O desfecho desta investigação está incompleto.")
+            ending = EndingPublic(result=state.status, werewolf_id=state.crimes[0].killer_id,
+                message=("A transformação na cela confirmou a acusação. A cidade expulsa o lobisomem. "
+                         "Floriano venceu a investigação." if state.status == "won" else
+                         "Nenhum civil sobreviveu às noites. A investigação de Floriano terminou em derrota."))
+        return CasePublic(
+            game_id=state.game_id, revision=state.revision, day=state.day, phase=state.phase, status=state.status,
+            server_time=now, phase_ends_at=state.phase_ends_at,
+            seconds_remaining=max(0, ceil((state.phase_ends_at - now).total_seconds())) if state.status == "active" else 0,
+            journal=tuple(JournalPublic(day=entry.day, headline=entry.headline, body=entry.body,
+                victim_id=entry.victim_id, victim_name=names.get(entry.victim_id) if entry.victim_id else None,
+                location_id=entry.location_id, detention_outcome=entry.detention_outcome) for entry in state.journal),
+            crimes=tuple(CrimePublic(id=crime.id, day=crime.day, victim_id=crime.victim_id,
+                victim_name=names.get(crime.victim_id, crime.victim_id), location_id=crime.location_id, x=crime.x,
+                remaining_clues=sum(not evidence.collected for evidence in crime.evidence)) for crime in state.crimes),
+            inventory=tuple(EvidencePublic(id=evidence.id, crime_id=crime.id, item_id=evidence.item_id,
+                name=ITEMS_BY_ID[evidence.item_id].name, kind=ITEMS_BY_ID[evidence.item_id].kind,
+                description=evidence.description) for crime in state.crimes for evidence in crime.evidence if evidence.collected),
+            testimonies=tuple(TestimonyPublic(id=record.id, day=record.day, evidence_id=record.evidence_id,
+                witness_id=record.witness_id, witness_name=names.get(record.witness_id, record.witness_id),
+                recognition=record.recognition, claimed_owner_id=record.claimed_owner_id, text=record.text)
+                for record in state.testimonies),
+            accusations=tuple(AccusationPublic(id=record.id, day=record.day, suspect_id=record.suspect_id,
+                suspect_name=names.get(record.suspect_id, record.suspect_id), evidence_ids=record.evidence_ids,
+                testimony_ids=record.testimony_ids, accepted=record.accepted, reason=record.reason)
+                for record in state.accusations),
+            detained_npc_id=state.detained_npc_id, ending=ending,
+        )
+
+    async def get(self, game_id: UUID) -> CasePublic:
+        return await self.public(await self._turns.sync(game_id))
+
+    async def search(self, game_id: UUID, crime_id: UUID) -> CasePublic:
+        def transition(state, game, world):
+            crime = next((crime for crime in state.crimes if crime.id == crime_id), None)
+            if crime is None:
+                raise NotFoundError("Cena do crime não encontrada nesta partida.")
+            if world.player.location_id != crime.location_id or abs(world.player.x - crime.x) > 90:
+                raise AccessDeniedError("Aproxime-se da cena do crime para procurar vestígios.")
+            evidence = next((item for item in crime.evidence if not item.collected), None)
+            if evidence is None:
+                return CaseTransition(state=state)
+            updated_crime = crime.model_copy(update={"evidence": tuple(
+                item.model_copy(update={"collected": True}) if item.id == evidence.id else item for item in crime.evidence)})
+            updated = state.model_copy(update={"crimes": tuple(updated_crime if item.id == crime.id else item for item in state.crimes)})
+            return CaseTransition(state=updated, events=(CaseEvent(type="evidence.collected", data={
+                "crime_id": str(crime.id), "evidence_id": str(evidence.id), "item_id": evidence.item_id,
+                "location_id": crime.location_id, "day": state.day}),))
+        return await self.public(await self._turns.act(game_id, transition))
+
+    async def present(self, game_id: UUID, evidence_id: UUID, npc_id: str) -> CasePublic:
+        names = await self._names()
+        def transition(state, game, world):
+            evidence = find_evidence(state, evidence_id)
+            member = next((npc for npc in game.characters if npc.character_id == npc_id), None)
+            if member is None or npc_id not in INVENTORIES:
+                raise NotFoundError("Testemunha não encontrada nesta partida.")
+            placement = next((npc for npc in world.npcs if npc.npc_id == npc_id), None)
+            if (not member.alive or state.detained_npc_id == npc_id or placement is None
+                    or placement.location_id != world.player.location_id or abs(placement.x - world.player.x) > 64):
+                raise AccessDeniedError("Aproxime-se de uma testemunha viva e livre para apresentar o objeto.")
+            existing = next((record for record in state.testimonies
+                             if record.witness_id == npc_id and record.evidence_id == evidence_id), None)
+            if existing is not None:
+                return CaseTransition(state=state)
+            record = make_testimony(state, game, evidence, npc_id, names, self._turns.now())
+            return CaseTransition(state=state.model_copy(update={"testimonies": (*state.testimonies, record)}),
+                events=(CaseEvent(type="evidence.presented", data={"evidence_id": str(evidence.id),
+                    "testimony_id": str(record.id), "witness_id": npc_id, "day": state.day}),))
+        return await self.public(await self._turns.act(game_id, transition))
+
+    async def accuse(self, game_id: UUID, suspect_id: str, evidence_ids, testimony_ids) -> CasePublic:
+        def transition(state, game, world):
+            if any(record.day == state.day for record in state.accusations):
+                raise ConflictError("O delegado recebe uma tentativa de acusação por dia.")
+            if state.detained_npc_id is not None:
+                raise ConflictError("Já existe uma pessoa sob custódia para esta noite.")
+            member = next((npc for npc in game.characters if npc.character_id == suspect_id), None)
+            if member is None:
+                raise NotFoundError("Acusado não encontrado nesta partida.")
+            if not member.alive:
+                raise AccessDeniedError("Não é possível deter uma pessoa morta.")
+            record = evaluate_accusation(state, suspect_id, tuple(dict.fromkeys(evidence_ids)),
+                                         tuple(dict.fromkeys(testimony_ids)), self._turns.now())
+            updated = state.model_copy(update={"accusations": (*state.accusations, record),
+                                               "detained_npc_id": suspect_id if record.accepted else None})
+            events = [CaseEvent(type="accusation.reviewed", data={"accusation_id": str(record.id),
+                "suspect_id": suspect_id, "accepted": record.accepted, "day": state.day})]
+            if record.accepted:
+                events.append(CaseEvent(type="character.detained", data={"character_id": suspect_id, "day": state.day}))
+            return CaseTransition(state=updated, events=tuple(events))
+        return await self.public(await self._turns.act(game_id, transition))
+
+    async def npc_context_locked(self, game_id: UUID, npc_id: str) -> dict:
+        """Chamador mantém player_gate; não oferece informação privada de outros papéis."""
+        state = await self._turns.require_day_locked(game_id)
+        if npc_id not in INVENTORIES:
+            raise NotFoundError("Ficha de objetos não encontrada.")
+        return {
+            "dia": state.day,
+            "fase": state.phase,
+            "proprios_apetrechos": [ITEMS_BY_ID[item_id].model_dump() for item_id in INVENTORIES[npc_id]],
+            "posses_observadas": [{"personagem_id": person,
+                "observacao": "Já viu esta pessoa usar objetos destes tipos; isso não identifica a procedência de um vestígio comum.",
+                "objetos": [ITEMS_BY_ID[item_id].model_dump() for item_id in INVENTORIES[person]]}
+                for person in OBSERVED_PEOPLE[npc_id]],
+            "jornal_publico": [{"dia": edition.day, "manchete": edition.headline, "noticia": edition.body}
+                               for edition in state.journal],
+            "seus_depoimentos_registrados": [{"evidence_id": str(record.evidence_id), "fala": record.text,
+                                               "reconhecimento": record.recognition}
+                                              for record in state.testimonies if record.witness_id == npc_id],
+            "regra_de_dialogo": "Reconhecimento de posse observada não confirma quem deixou o objeto. "
+                                "Falas não criam pistas ou alteram depoimentos registrados pelo motor.",
+        }
