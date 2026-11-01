@@ -1,0 +1,71 @@
+{
+  "version": "1",
+  "generator": "image_gen built-in",
+  "assets": [
+    {
+      "id": "praca_verde",
+      "name": "Praça Verde",
+      "path": "/assets/locations/praca_verde.png",
+      "width": 2172,
+      "height": 724,
+      "displayWidth": 1920,
+      "displayHeight": 360,
+      "groundY": 300,
+      "format": "png",
+      "sha256": "ddaed7899e6720c80609ca44b25ee41a66cd6c5aa984d1f9983a9bdc331cf271",
+      "sourceFile": "exec-5c0ba783-94c3-442a-93f7-941b689da13f.png"
+    },
+    {
+      "id": "cabana_capitu",
+      "name": "Cabana da Capitu",
+      "path": "/assets/locations/cabana_capitu.png",
+      "width": 2172,
+      "height": 724,
+      "displayWidth": 1920,
+      "displayHeight": 360,
+      "groundY": 300,
+      "format": "png",
+      "sha256": "e39f58e2c41eaefce13082e027f29dd07046ac353834b63981ef847804c1f49b",
+      "sourceFile": "exec-a036a400-e457-478e-8697-976235bb7b32.png"
+    },
+    {
+      "id": "casa_verde",
+      "name": "Casa Verde",
+      "path": "/assets/locations/casa_verde.png",
+      "width": 2172,
+      "height": 724,
+      "displayWidth": 1920,
+      "displayHeight": 360,
+      "groundY": 300,
+      "format": "png",
+      "sha256": "f5f382740ee974de46662f763c91252168b300199a317c7d86f41278348e8f15",
+      "sourceFile": "exec-ba5afe45-6c14-405e-8dec-e2b3c48bc4d7.png"
+    },
+    {
+      "id": "cafe_largo",
+      "name": "Café do Largo",
+      "path": "/assets/locations/cafe_largo.png",
+      "width": 2172,
+      "height": 724,
+      "displayWidth": 1920,
+      "displayHeight": 360,
+      "groundY": 300,
+      "format": "png",
+      "sha256": "987f1abf527573e42fea276dca7579521d4f589e027c8ecee622536b798ec42c",
+      "sourceFile": "exec-8efe1d35-0f1a-4c80-bb2a-7c676e829f73.png"
+    },
+    {
+      "id": "cais_lanternas",
+      "name": "Cais das Lanternas",
+      "path": "/assets/locations/cais_lanternas.png",
+      "width": 2172,
+      "height": 724,
+      "displayWidth": 1920,
+      "displayHeight": 360,
+      "groundY": 300,
+      "format": "png",
+      "sha256": "fce61fac065714e8d29291b781e2b6fa8d8b3f6f4dbeb354913445d0308b8c8e",
+      "sourceFile": "exec-8faa55c4-7d8d-4374-8e21-c690ce2c5bc1.png"
+    }
+  ]
+}
