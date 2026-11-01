@@ -25,7 +25,9 @@ class Settings(BaseSettings):
     @field_validator("bedrock_base_url", mode="before")
     @classmethod
     def empty_url_is_default(cls, value: str | None) -> str | None:
-        return value.strip() or None if isinstance(value, str) else value
+        if isinstance(value, str):
+            return value.strip() or None
+        return value
 
     @property
     def mantle_base_url(self) -> str:

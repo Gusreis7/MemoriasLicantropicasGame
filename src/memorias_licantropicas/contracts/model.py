@@ -1,6 +1,5 @@
 """Modelos internos v1. Nunca retornar estes objetos diretamente pela API."""
 
-from datetime import datetime
 from typing import Literal
 from uuid import UUID
 

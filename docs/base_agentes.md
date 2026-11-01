@@ -12,6 +12,16 @@ O trabalho foi dividido antes da implementação, com interfaces comuns em [cont
 
 A integração utiliza merges locais das branches de trabalho na branch de integração. Não há promoção para `develop`/`main` nem push remoto. As decisões de cada frente ficam em [personagens_sorteio.md](personagens_sorteio.md), [redis.md](redis.md) e [harness.md](harness.md).
 
+| Frente | Commit de entrega |
+| --- | --- |
+| Contratos e planejamento | `eb80090` |
+| Personagens e sorteio | `af14a9c` |
+| Redis e memórias | `cdb515f` |
+| Harness e Mantle | `ea1f8c2` |
+| Configuração e composição | `456d16a` |
+
+As três frentes foram integradas sem conflitos. O lockfile foi atualizado com uv; foram revisados estaticamente os imports e assinaturas usados na composição, as projeções públicas e as regras de visibilidade da memória. Essa revisão não substitui testes de execução.
+
 ## Configuração
 
 Copiar `.env.example` para `.env`. uv continua sendo o gerenciador de dependências; `pyproject.toml` e `uv.lock` incluem cliente Redis, httpx e configuração Pydantic. Não há dependência do SDK OpenAI: o adaptador faz Chat Completions via HTTP ao endpoint Mantle.

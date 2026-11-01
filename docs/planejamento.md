@@ -6,7 +6,7 @@ Construir um jogo web de investigação no Rio de Janeiro de 1890, inspirado na 
 
 O projeto também é um laboratório de agent harness, teoria de jogos, tool calling e orquestração. O progresso será incremental: regras verificáveis primeiro, agentes e experimentos sobre essa base depois.
 
-Hoje existem uma API FastAPI mínima, endpoints de apresentação e saúde, configuração uv, Docker/Compose e testes iniciais. Os testes e o build Docker ainda precisam de execução conclusiva: houve bloqueios no ambiente da preparação inicial. As etapas abaixo são planejamento, não funcionalidades implementadas.
+A base já avançou para catálogo público, criação/consulta de partidas com sorteio privado, repositories Redis e harness interno Mantle. A entrega está descrita em [base_agentes.md](base_agentes.md) e não foi validada em execução, conforme solicitado; testes, containers e inferência ficam pendentes. As etapas abaixo continuam como roteiro de evolução e critérios de conclusão, não como funcionalidades integralmente implementadas.
 
 ## Decisões confirmadas
 
