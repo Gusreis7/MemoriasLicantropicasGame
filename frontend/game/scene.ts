@@ -143,9 +143,9 @@ export class CityScene extends Phaser.Scene {
       if (placement.drift && !this.reducedMotion) this.wanderers.push({image, placement});
     }
     if (id === 'cais_lanternas' && this.textures.exists('capoeira')) {
-      // The atlas feet baseline is y=480 in a 512px frame. Place that baseline
-      // on the walkable pavement, at the same ground_y as every person sprite.
-      const roda = this.add.sprite(745, groundY, 'capoeira', '0').setOrigin(.5, 480 / 512).setDepth(-2);
+      // Put the roda on the forward part of the promenade, clear of the seawall.
+      // The atlas feet baseline is y=480 in each 512px frame.
+      const roda = this.add.sprite(745, groundY + 20, 'capoeira', '0').setOrigin(.5, 480 / 512).setDepth(-2);
       roda.setDisplaySize(168, 112);
       if (!this.reducedMotion) roda.play('capoeira-roda');
       this.ambient.push(roda);

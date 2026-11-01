@@ -1,5 +1,10 @@
 {
-  "source": "/home/gustavoreis/.codex/generated_images/01a18fd3-42ff-7411-9532-b4736fe976c6/exec-755d564b-c562-4d67-a2c7-cfda5fdd0dde.png",
+  "source": "/home/gustavoreis/.codex/generated_images/01a18fd3-42ff-7411-9532-b4736fe976c6/exec-4553d46b-c23d-444d-b57d-4dc3df6baf06.png",
+  "previousSource": "/home/gustavoreis/.codex/generated_images/01a18fd3-42ff-7411-9532-b4736fe976c6/exec-523eb21b-a550-46be-860b-b2ede0e4403a.png",
+  "previousSha256": "3bcf29420889f0e3846205fd09bc8650739f416b140eee5159b8ac7f67b0eec9",
+  "previousSource": "/home/gustavoreis/.codex/generated_images/01a18fd3-42ff-7411-9532-b4736fe976c6/exec-755d564b-c562-4d67-a2c7-cfda5fdd0dde.png",
+  "clothingEditSource": "/home/gustavoreis/.codex/generated_images/01a18fd3-42ff-7411-9532-b4736fe976c6/exec-437404c0-eae9-40b6-a800-f60449791146.png",
+  "previousSha256": "08f4ecb946da554f0d7f36765f624a0efe7e84e8051558d2bcf3314655c88d24",
   "prompt": "Use case: historical-scene. Asset type: transparent animated background sprite atlas for a side-view 2D pixel-art game set on a waterfront in Rio de Janeiro 1890. Create EXACTLY FOUR complete frames arranged as a TWO COLUMN by TWO ROW grid with generous transparent spacing and NO visible cell borders. Each frame is the SAME small capoeira roda group from the same fixed SIDE VIEW, with identical scale and baseline: five Black and brown adult Brazilian townspeople making a loose semicircle in the back, two playing berimbau and one playing a small hand drum, wearing modest nineteenth-century everyday trousers and light shirts. In front of the semicircle are TWO capoeiristas playing capoeira with each other, no weapons, expressive athletic movements. Frame top-left: both players low ginga guard; top-right: left player performs a controlled high arcing kick while right player ducks; bottom-left: right player does a cartwheel while left player crouches; bottom-right: both return to mirrored ginga. Preserve all identities, faces, clothes and musician positions between frames. Each full group must fit entirely in its own cell without touching another cell; feet and instruments completely visible. Clean charming 16-bit pixel art, crisp square pixel clusters, dark outlines, restrained earthy palette, warm amber highlights with deep bottle greens and copper browns, readable tiny figures at game display size about 210x110. Transparent background around the entire group in every cell, NO scenery, NO floor, NO circle drawn on ground, NO shadows or haze, NO gradients, NO captions, NO letters, NO text, NO logos or watermark. Landscape canvas 3:2 with a precise two by two grid. This is decorative game art and contains no game interface.",
   "generator": "image_gen built-in",
   "path": "/assets/ambient/capoeira.png",
@@ -9,5 +14,9 @@
   "baseline": 480,
   "frameWidth": 768,
   "frameHeight": 512,
-  "sha256": "08f4ecb946da554f0d7f36765f624a0efe7e84e8051558d2bcf3314655c88d24"
+  "clothingEditPrompt": "Edit only the two capoeiristas in front of the musicians in all four frames: remove the colored cords/sashes from both waists completely and give each a modest neckerchief around the neck, one dark blue and the other ochre, consistent across frames. Leave the five musicians, poses, instruments, frame grid and background unchanged.",
+  "alphaCleanupPrompt": "Preserve every character and instrument pixel. Remove the checkerboard from the prior clothing edit and restore genuine transparent alpha, keeping the exact 1536x1024 canvas and 2x2 grid. Do not crop, resize, redraw, recolor or add anything else.",
+  "musicianPlacementSource": "/home/gustavoreis/.codex/generated_images/01a18fd3-42ff-7411-9532-b4736fe976c6/exec-4553d46b-c23d-444d-b57d-4dc3df6baf06.png",
+  "musicianPlacementPrompt": "In all four 768x512 cells, move only the five background musicians and their instruments downward by 44 pixels within each cell. Keep their size and horizontal spacing; place them behind the two capoeiristas. Bring their shoes onto the stone promenade while retaining a small depth step behind the players. Do not alter the players, neckerchiefs, identity, grid, transparency, canvas or palette.",
+  "sha256": "ee5770a49424550cc9c4db5a3977c48d649186ffd847f34266da409a4d90bcdd"
 }
