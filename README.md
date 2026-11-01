@@ -87,6 +87,19 @@ docker compose -p ml-test-suits -f compose.test.yaml down
 
 Consulte [a suíte de testes](docs/testes.md) para cobertura, isolamento e resultados.
 
+## Smoke test real do Mantle
+
+Com o perfil `terraform` autenticado na AWS CLI:
+
+```sh
+uv sync --locked
+uv run python smoketest.py --profile terraform --region us-east-1
+```
+
+O script gera um token temporário de 15 minutos a partir do perfil local e faz uma inferência no modelo configurado (`qwen.qwen3-32b` por padrão). Imprime resposta e consumo de tokens, sem exibir ou salvar credenciais. Não precisa de Redis nem de `AWS_BEARER_TOKEN_BEDROCK` no `.env`. `--profile` usa `AWS_PROFILE` quando definido, ou `terraform`; a região também pode vir de `AWS_REGION`/`.env`.
+
+As dependências de desenvolvimento incluem `aws-bedrock-token-generator` e `botocore[crt]`, necessário para credenciais de `aws login`. Esse teste é manual, faz uma chamada real e consome a cota/créditos ou gera cobrança conforme a conta. Ele não é coletado pelo pytest.
+
 ## Convenção de branches
 
 | Branch | Finalidade |
