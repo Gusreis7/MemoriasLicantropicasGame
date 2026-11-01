@@ -30,7 +30,7 @@ test('relógio real do servidor gera crime, bloqueia a noite e retorna à banca'
     await page.screenshot({path: '../artifacts/cycle-capoeira.png', fullPage: true});
     const canvas = (await page.locator('canvas').boundingBox())!;
     const scale = canvas.width / 960;
-    const roda = {x: Math.round(canvas.x + 650 * scale), y: Math.round(canvas.y + 180 * scale),
+    const roda = {x: Math.round(canvas.x + 650 * scale), y: Math.round(canvas.y + 200 * scale),
       width: Math.round(190 * scale), height: Math.round(120 * scale)};
     const firstPose = await page.screenshot({clip: roda});
     await page.waitForTimeout(390);
