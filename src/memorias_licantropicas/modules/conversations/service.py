@@ -1,20 +1,31 @@
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
-from memorias_licantropicas.contracts.errors import AccessDeniedError, ConflictError, NotFoundError
+from memorias_licantropicas.contracts.errors import AccessDeniedError, ConflictError, LLMUnavailableError, NotFoundError
 from memorias_licantropicas.contracts.model import Conversation, ConversationMessage
 from memorias_licantropicas.contracts.repository import (
     CharacterRepository, ConversationGate, GameRepository, MemoryRepository, InteractionPolicy, PlayerActionGate,
 )
 from memorias_licantropicas.modules.agents.service import HarnessService, PLAYER_ID
+from memorias_licantropicas.modules.agents.guard import DialogueGuard, SAFE_DIALOGUE_REPLY
+from memorias_licantropicas.modules.agents.output import parse_dialogue_output
 from memorias_licantropicas.modules.conversations.schema import (
     ConversationHistory, ConversationPublic, MessagePublic, MessageReply,
 )
 
 
-def public_message(message: ConversationMessage) -> MessagePublic:
+def public_message(message: ConversationMessage, private_markers: tuple[str, ...] = ()) -> MessagePublic:
+    content = message.content
+    if message.sender_id != PLAYER_ID:
+        try:
+            content = parse_dialogue_output(content, message.sender_id)
+        except LLMUnavailableError:
+            content = SAFE_DIALOGUE_REPLY
+        decision = DialogueGuard().inspect_output(content, private_markers)
+        if not decision.allowed:
+            content = decision.reply or SAFE_DIALOGUE_REPLY
     return MessagePublic(id=message.id, speaker="player" if message.sender_id == PLAYER_ID else "npc",
-                         content=message.content, created_at=message.created_at)
+                         content=content, created_at=message.created_at)
 
 
 class ConversationService:
@@ -82,7 +93,13 @@ class ConversationService:
             return MessageReply(conversation_id=conversation_id, message=public_message(reply.message))
 
     async def history(self, game_id: UUID, conversation_id: UUID, limit: int = 50) -> ConversationHistory:
-        await self.get(game_id, conversation_id)
+        conversation = await self.get(game_id, conversation_id)
+        game = await self._games.get(game_id)
+        profile = await self._characters.get(conversation.npc_id)
+        if game is None or profile is None:
+            raise NotFoundError("Persona não encontrada nesta partida.")
+        npc = next(member for member in game.characters if member.character_id == conversation.npc_id)
+        private_markers = HarnessService._private_markers(profile, npc)
         messages = await self._memory.list_messages(game_id, conversation_id, PLAYER_ID, limit=limit)
         return ConversationHistory(conversation_id=conversation_id,
-                                   messages=tuple(public_message(message) for message in messages))
+                                   messages=tuple(public_message(message, private_markers) for message in messages))

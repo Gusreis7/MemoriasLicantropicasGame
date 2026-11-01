@@ -13,6 +13,7 @@ Direction = Literal["left", "right", "idle"]
 
 class WorldPlayer(Contract):
     location_id: LocationID = "praca_verde"
+    # Limite legado para ler partidas anteriores; bounds atuais vêm do catálogo.
     x: float = Field(default=160, ge=32, le=1888)
     facing: Literal["left", "right"] = "right"
     movement_seq: int = Field(default=0, ge=0)

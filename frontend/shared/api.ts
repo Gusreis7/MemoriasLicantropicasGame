@@ -1,8 +1,10 @@
 export type Direction = 'left' | 'right' | 'idle';
 export type LocationID = 'praca_verde' | 'cabana_capitu' | 'casa_verde' | 'cafe_largo' | 'cais_lanternas';
+export type ExitSide = 'left' | 'right';
+export interface LocationExit {side: ExitSide; target_location_id: LocationID; arrival_side: ExitSide}
 
 export interface Location {
-  id: LocationID; name: string; width: number; height: number; ground_y: number; background: string;
+  id: LocationID; name: string; width: number; height: number; ground_y: number; background: string; exits: LocationExit[];
 }
 export interface WorldSnapshot {
   game_id: string; world_version: string; revision: number; location: Location;
@@ -54,8 +56,8 @@ export const api = {
   move: (world: WorldSnapshot, direction: Direction) => request<WorldSnapshot>(`${base(world.game_id)}/movement`, {
     direction, seq: world.player.movement_seq + 1, location_id: world.player.location_id, revision: world.revision,
   }),
-  travel: (world: WorldSnapshot, target: LocationID) => request<WorldSnapshot>(`${base(world.game_id)}/travel`, {
-    target_location_id: target, revision: world.revision,
+  travel: (world: WorldSnapshot, target: LocationID, exitSide?: ExitSide) => request<WorldSnapshot>(`${base(world.game_id)}/travel`, {
+    target_location_id: target, revision: world.revision, ...(exitSide ? {exit_side: exitSide} : {}),
   }),
   approach: (id: string, npcID: string) => request<Conversation>(`${base(id)}/approaches`, {npc_id: npcID}),
   history: (id: string, conversationID: string) => request<{conversation_id: string; messages: Message[]}>(

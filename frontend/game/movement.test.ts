@@ -5,7 +5,7 @@ import {clampX, closestNPC, MovementController} from './movement';
 function snapshot(x = 160): WorldSnapshot {
   return {
     game_id: 'game', world_version: '1', revision: 0,
-    location: {id: 'praca_verde', name: 'Praça Verde', width: 1920, height: 360, ground_y: 300, background: '/scene.png'},
+    location: {id: 'praca_verde', name: 'Praça Verde', width: 960, height: 360, ground_y: 300, background: '/scene.png', exits: []},
     player: {location_id: 'praca_verde', x, facing: 'right', movement_seq: 0},
     visible_npcs: [{npc_id: 'rubiao', name: 'Rubião', x: 440, sprite_id: 'rubiao', can_approach: false}],
     travel_targets: ['cabana_capitu'],

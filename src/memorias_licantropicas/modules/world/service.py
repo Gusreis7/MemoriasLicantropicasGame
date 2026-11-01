@@ -18,6 +18,8 @@ from memorias_licantropicas.modules.world.schema import (
 WALK_SPEED = 210
 MAX_MOVEMENT_SECONDS = 0.4
 APPROACH_DISTANCE = 64
+EXIT_DISTANCE = 56
+ARRIVAL_INSET = 96
 
 
 class WorldService:
@@ -78,7 +80,8 @@ class WorldService:
             now = self._clock()
             elapsed = min(MAX_MOVEMENT_SECONDS, max(0, (now - world.player.last_updated_at).total_seconds()))
             direction = -1 if world.player.direction == "left" else 1 if world.player.direction == "right" else 0
-            x = min(1888, max(32, world.player.x + direction * WALK_SPEED * elapsed))
+            location = LOCATIONS_BY_ID[world.player.location_id]
+            x = min(location.width - 32, max(32, world.player.x + direction * WALK_SPEED * elapsed))
             player = world.player.model_copy(update={
                 "x": x, "direction": body.direction, "movement_seq": body.seq,
                 "facing": body.direction if body.direction != "idle" else world.player.facing,
@@ -94,12 +97,31 @@ class WorldService:
             game, world = await self._load(game_id)
             if body.revision != world.revision:
                 raise ConflictError("Revisão desatualizada; consulte o mundo atual.")
-            if body.target_location_id == world.player.location_id:
+            if body.target_location_id == world.player.location_id and body.exit_side is None:
                 raise ConflictError("O jogador já está neste local.")
+            arrival_side = "left"
+            spawn_x = 160
+            if body.exit_side is not None:
+                origin = LOCATIONS_BY_ID[world.player.location_id]
+                at_edge = (world.player.x <= EXIT_DISTANCE if body.exit_side == "left"
+                           else world.player.x >= origin.width - EXIT_DISTANCE)
+                if not at_edge:
+                    raise AccessDeniedError("Aproxime-se da saída para seguir por este caminho.")
+                if body.target_location_id == origin.id:
+                    arrival_side = "right" if body.exit_side == "left" else "left"
+                else:
+                    route = next((route for route in origin.exits
+                                  if route.side == body.exit_side
+                                  and route.target_location_id == body.target_location_id), None)
+                    if route is None:
+                        raise AccessDeniedError("Este destino não está ligado à saída escolhida.")
+                    arrival_side = route.arrival_side
+                target = LOCATIONS_BY_ID[body.target_location_id]
+                spawn_x = ARRIVAL_INSET if arrival_side == "left" else target.width - ARRIVAL_INSET
             now = self._clock()
             player = world.player.model_copy(update={
-                "location_id": body.target_location_id, "x": 160, "direction": "idle",
-                "facing": "right", "last_updated_at": now,
+                "location_id": body.target_location_id, "x": spawn_x, "direction": "idle",
+                "facing": "right" if arrival_side == "left" else "left", "last_updated_at": now,
             })
             updated = world.model_copy(update={"revision": world.revision + 1, "player": player})
             event = {
@@ -107,6 +129,8 @@ class WorldService:
                 "source": "world", "data": {
                     "player_id": "player", "from_location_id": world.player.location_id,
                     "to_location_id": body.target_location_id,
+                    "exit_side": body.exit_side,
+                    "arrival_side": arrival_side if body.exit_side else None,
                 },
             }
             if not await self._repository.save(updated, expected_revision=world.revision, event=event):

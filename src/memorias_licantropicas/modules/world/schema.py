@@ -9,13 +9,20 @@ from memorias_licantropicas.contracts.model import Contract
 from memorias_licantropicas.modules.world.model import Direction, LocationID
 
 
+class LocationExit(Contract):
+    side: Literal["left", "right"]
+    target_location_id: LocationID
+    arrival_side: Literal["left", "right"]
+
+
 class LocationPublic(Contract):
     id: LocationID
     name: str
-    width: int = 1920
+    width: int = 960
     height: int = 360
     ground_y: int = 300
     background: str
+    exits: tuple[LocationExit, ...] = ()
 
 
 class MoveRequest(Contract):
@@ -28,6 +35,7 @@ class MoveRequest(Contract):
 class TravelRequest(Contract):
     target_location_id: LocationID
     revision: int = Field(strict=True, ge=0)
+    exit_side: Literal["left", "right"] | None = None
 
 
 class PlayerPublic(Contract):

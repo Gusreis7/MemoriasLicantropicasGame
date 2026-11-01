@@ -1,0 +1,132 @@
+{
+  "frames": {
+    "tree": {
+      "frame": {
+        "x": 47,
+        "y": 26,
+        "w": 514,
+        "h": 429
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 514,
+        "h": 429
+      },
+      "sourceSize": {
+        "w": 514,
+        "h": 429
+      }
+    },
+    "dog": {
+      "frame": {
+        "x": 672,
+        "y": 208,
+        "w": 310,
+        "h": 241
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 310,
+        "h": 241
+      },
+      "sourceSize": {
+        "w": 310,
+        "h": 241
+      }
+    },
+    "cat": {
+      "frame": {
+        "x": 1188,
+        "y": 185,
+        "w": 222,
+        "h": 258
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 222,
+        "h": 258
+      },
+      "sourceSize": {
+        "w": 222,
+        "h": 258
+      }
+    },
+    "bird": {
+      "frame": {
+        "x": 157,
+        "y": 589,
+        "w": 298,
+        "h": 314
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 298,
+        "h": 314
+      },
+      "sourceSize": {
+        "w": 298,
+        "h": 314
+      }
+    },
+    "citizen-man": {
+      "frame": {
+        "x": 704,
+        "y": 486,
+        "w": 181,
+        "h": 519
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 181,
+        "h": 519
+      },
+      "sourceSize": {
+        "w": 181,
+        "h": 519
+      }
+    },
+    "citizen-woman": {
+      "frame": {
+        "x": 1166,
+        "y": 500,
+        "w": 227,
+        "h": 505
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 227,
+        "h": 505
+      },
+      "sourceSize": {
+        "w": 227,
+        "h": 505
+      }
+    }
+  },
+  "meta": {
+    "image": "scene-life.png",
+    "size": {
+      "w": 1536,
+      "h": 1024
+    },
+    "scale": "1"
+  }
+}

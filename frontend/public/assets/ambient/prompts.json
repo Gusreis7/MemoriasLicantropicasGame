@@ -1,0 +1,57 @@
+{
+  "version": "2",
+  "generator": "image_gen built-in",
+  "background_mode": "style-transfer",
+  "background_prompt": "Use case: style-transfer. Asset type: static background for a single-screen side-on 2D pixel-art detective game set in Rio de Janeiro, 1890. EDIT the provided background: preserve the location's landmarks, straight side view, composition, historic period, palette and mood. Simplify it substantially into clean, charming 16-bit pixel art with large deliberate square color clusters, a limited palette around 32 colours, clear building and tree silhouettes and broad calm areas. Far less micro-detail in leaves, tiles, pavement and sky; remove fine realistic textures and dense speckles. Keep the bottom one sixth a continuous empty level walking lane at the same height. Landscape approximately 8:3 aspect ratio, for display at 960x360. Static daylight or dusk as in reference. Keep architecture readable at game scale. No people, animals, UI, writing, letters, logos or watermarks. No blur, no painterly realistic detail. The image is a single final background, not a contact sheet.",
+  "ambient_prompt": "Use case: stylized-concept. Asset type: transparent sprite atlas for a 2D SIDE-VIEW pixel-art game in Rio de Janeiro 1890. Create exactly SIX separate, non-touching sprite illustrations laid out in a precise 3 COLUMN by 2 ROW GRID, each centered in its own equal cell, generous transparent padding between. Top row left: one lush small tropical broad-canopy tree with a visible trunk and full leafy crown. Top row middle: one small friendly brown stray dog standing and facing right, side view. Top row right: one small ginger cat sitting and facing right, side view. Bottom row left: one little blue grey bird in flight with open wings, side view. Bottom row middle: one anonymous male townsman standing, brown skin, straw hat, white shirt with rolled sleeves, brown trousers, suspenders, nineteenth century Brazil, side view facing right, full body including shoes. Bottom row right: one anonymous female townswoman standing, Black woman, cream blouse and rust skirt, nineteenth century Brazil, side view facing right, full body including shoes. Clean charming 16-bit pixel-art sprites with chunky deliberate square pixel clusters, crisp dark outlines, limited earthy palette, high readability at tiny scale, visually cohesive with a warm literary mystery village game. Strictly TRANSPARENT background around all six subjects, no ground strips, no shadows, no framing, no labels, no text, no watermarks. Do not repeat subjects. Render the SIX sprites at similar roughly occupied cell proportions, humans taller than dogs in later game display scaling. Landscape canvas 3:2 ratio. This atlas will be segmented by metadata, do not add row or column dividers.",
+  "assets": [
+    {
+      "id": "praca_verde",
+      "path": "/assets/locations/praca_verde.png",
+      "source": "/home/gustavoreis/.codex/generated_images/01a18fd3-42ff-7411-9532-b4736fe976c6/exec-4963d7d8-0db7-4084-91e8-8a479cc62bf5.png",
+      "width": 2048,
+      "height": 768,
+      "sha256": "26aa3e37f58c38164ed5696aaa4f987ffbd580924ab699eb8fe81437f5e661df"
+    },
+    {
+      "id": "cabana_capitu",
+      "path": "/assets/locations/cabana_capitu.png",
+      "source": "/home/gustavoreis/.codex/generated_images/01a18fd3-42ff-7411-9532-b4736fe976c6/exec-43de1a56-a24d-4dc9-94c0-d78ae5652c4e.png",
+      "width": 2048,
+      "height": 768,
+      "sha256": "d86cca455e68a7784556da3b1bac8c516c7e54f781686f663af2c71996af8e45"
+    },
+    {
+      "id": "casa_verde",
+      "path": "/assets/locations/casa_verde.png",
+      "source": "/home/gustavoreis/.codex/generated_images/01a18fd3-42ff-7411-9532-b4736fe976c6/exec-30553204-75da-4456-8fb7-3ba5815cdb95.png",
+      "width": 2048,
+      "height": 768,
+      "sha256": "d44ec9b95e6901278ef9d55fe899abdba27a88a45837313353cab28930fe53b9"
+    },
+    {
+      "id": "cafe_largo",
+      "path": "/assets/locations/cafe_largo.png",
+      "source": "/home/gustavoreis/.codex/generated_images/01a18fd3-42ff-7411-9532-b4736fe976c6/exec-a3fcbc01-334e-4632-aeca-174f27584f1c.png",
+      "width": 2048,
+      "height": 768,
+      "sha256": "4ea3181bbfbda65f4bf9e06c02bcfebfece473c8555865e972be4b13f281d932"
+    },
+    {
+      "id": "cais_lanternas",
+      "path": "/assets/locations/cais_lanternas.png",
+      "source": "/home/gustavoreis/.codex/generated_images/01a18fd3-42ff-7411-9532-b4736fe976c6/exec-3d520df8-44c3-458a-b776-4d7438e70faa.png",
+      "width": 2048,
+      "height": 768,
+      "sha256": "65896becb34ab77770294caf6b2f60b225fe618eafdf0695169b97ba80153404"
+    },
+    {
+      "id": "ambient",
+      "path": "/assets/ambient/scene-life.png",
+      "source": "/home/gustavoreis/.codex/generated_images/01a18fd3-42ff-7411-9532-b4736fe976c6/exec-c0f9eb2a-876d-45de-a1a0-27e5bf59ee55.png",
+      "width": 1536,
+      "height": 1024,
+      "sha256": "cf814a2babe4badb8cccf46ff26d907ac7bf9773c5c32928dbe5684647b717f2"
+    }
+  ]
+}
