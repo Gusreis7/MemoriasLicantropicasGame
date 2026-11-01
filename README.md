@@ -22,19 +22,26 @@ Essas são direções de estudo; as mecânicas e integrações ainda serão defi
 - **Redis** para memória das interações e **AWS Bedrock Mantle**, com Qwen 32B, para interpretar os NPCs.
 - Jogo acessível pelo navegador. A tecnologia da interface ainda está em aberto.
 
-Por enquanto, a base contém apenas uma API executável e uma verificação de saúde. Não há partidas, agentes, banco de dados ou interface de jogo implementados.
+A base contém catálogo de personagens, criação/consulta de partidas com sorteio secreto, repositories Redis e um serviço interno de harness para diálogos via Mantle. Ainda não há interface de jogo, encontros automáticos, crimes ou resolução de turnos.
+
+Esta entrega não foi testada em execução nem conectada à AWS, conforme solicitado. As credenciais serão configuradas depois; a API não chama o modelo ao iniciar.
 
 ## Planejamento
 
 O [planejamento do projeto](docs/planejamento.md) descreve o ciclo do jogo, os módulos, o harness de agentes, a memória, as etapas de desenvolvimento e as decisões ainda em aberto.
+
+Os [contratos entre as frentes](docs/contratos_agentes.md) fixam as interfaces e responsabilidades. A [integração da base](docs/base_agentes.md) descreve configuração, uso e limites atuais.
 
 ## Executar com Docker
 
 Pré-requisitos: Docker com o plugin Compose e o serviço Docker em execução.
 
 ```sh
+cp .env.example .env
 docker compose up --build
 ```
+
+O Compose prepara API e Redis com volume persistente e AOF. Os serviços são publicados apenas em localhost. A chave Bedrock pode permanecer vazia para usar o catálogo e o sorteio. `docker compose down` preserva o volume; não use `down -v` se quiser manter as partidas.
 
 - API: http://localhost:8000/
 - Documentação interativa: http://localhost:8000/docs
@@ -48,10 +55,21 @@ Instale o [uv](https://docs.astral.sh/uv/getting-started/installation/) e execut
 
 ```sh
 uv sync --locked
+cp .env.example .env
+docker compose up -d redis
 uv run uvicorn memorias_licantropicas.main:app --reload
 ```
 
 O uv usa a versão de Python indicada em `.python-version`. Para adicionar dependências, use `uv add pacote` ou `uv add --dev pacote` e versione também o `uv.lock` atualizado.
+
+## API inicial
+
+- `GET /api/v1/characters`: apresentações públicas dos sete suspeitos.
+- `GET /api/v1/characters/{character_id}`: apresentação de um suspeito.
+- `POST /api/v1/games`: cria partida e sorteia um lobisomem; corpo opcional `{}`.
+- `GET /api/v1/games/{game_id}`: estado público da partida.
+
+Papéis e objetivos privados não aparecem nas respostas. A API ainda não possui autenticação ou propriedade de partidas; esta base é para desenvolvimento local. O harness é um serviço interno, sem rota pública de diálogo nesta etapa.
 
 ## Verificação
 
@@ -82,12 +100,18 @@ Explorações em `AED/` só seguem para `develop` quando suas alterações forem
 ## Estrutura
 
 ```text
-src/memorias_licantropicas/  # API e código Python
+src/memorias_licantropicas/
+  contracts/               # Modelos internos e portas compartilhadas
+  modules/                 # Characters, games e agents
+  infrastructure/          # Redis e cliente Mantle
+  composition.py           # Construção e injeção dos serviços
+  settings.py              # Configuração por ambiente
+  main.py                  # Aplicação FastAPI
 tests/                     # Testes da API
 pyproject.toml             # Projeto e dependências
 uv.lock                    # Versões resolvidas
 Dockerfile                 # Imagem da aplicação
-compose.yaml               # Execução local em container
+compose.yaml               # API e Redis com volume persistente
 ```
 
 
