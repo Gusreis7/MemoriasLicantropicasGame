@@ -51,7 +51,17 @@ kbd{font:10px/1.2 Arial,sans-serif;min-width:21px;padding:4px 5px;border:1px sol
 .map-button{color:#e9ddbc;background:#50634233;border-color:#77876488;padding:11px 15px;gap:12px}
 .map-button>span{font-size:20px;color:#d8bd83}
 .map-button kbd{font-size:9px;min-width:19px;padding:3px}
-.scene-frame{position:relative;aspect-ratio:16/9;width:100%;border:1px solid #a29666;background:#112b26;box-shadow:0 15px 55px #071d1855;overflow:hidden}
+.scene-frame{position:relative;aspect-ratio:8/3;width:100%;border:1px solid #a29666;background:#112b26;box-shadow:0 15px 55px #071d1855;overflow:hidden}
+.exit-modal{width:min(520px,100%);padding:30px;background:var(--paper);border:1px solid #b6a477;box-shadow:0 25px 90px #061a1480;color:#294536}
+.exit-modal .modal-heading{padding:0;margin-bottom:20px}
+.exit-modal>p{font:13px/1.7 Arial,sans-serif;color:#64725a}
+.exit-destinations{display:grid;gap:12px;margin:22px 0}
+.exit-destination{display:flex;align-items:center;justify-content:space-between;gap:18px;width:100%;padding:17px;background:#faf6e8;border:1px solid #b9b58e;color:#294536;text-align:left;cursor:pointer}
+.exit-destination strong{font:20px Georgia,serif}
+.exit-destination span{font:11px/1.4 Arial,sans-serif;color:#70795b}
+.exit-destination:hover,.exit-destination:focus-visible{background:#e2e6cc;border-color:#6e8058}
+.exit-destination:disabled{opacity:.55;cursor:wait}
+.exit-modal>.button{width:100%;justify-content:center}
 .scene-frame:after{content:'';inset:5px;position:absolute;border:1px solid #c8bf8555;pointer-events:none;z-index:3}
 #game-canvas{width:100%;height:100%;overflow:hidden;outline:none}
 #game-canvas canvas{display:block;image-rendering:pixelated}
@@ -61,6 +71,9 @@ kbd{font:10px/1.2 Arial,sans-serif;min-width:21px;padding:4px 5px;border:1px sol
 .caption-dot{width:4px;height:4px;background:#e6c682;transform:rotate(45deg)}
 .approach-button{position:absolute;bottom:48px;left:50%;transform:translateX(-50%);background:#173b31ed;border:1px solid #e1c17e;color:#f2e8c9;border-radius:3px;padding:10px 16px;display:flex;align-items:center;gap:10px;font:12px Arial,sans-serif;box-shadow:0 3px 12px #09271c66;white-space:nowrap;z-index:4}
 .approach-button kbd{color:#1b3a2c;background:#e1c17e;border-color:#edcf95;font-weight:bold}
+.touch-controls{display:none;gap:10px}
+.touch-controls button{height:42px;width:48px;background:#28483a;color:#f6e7bf;border:1px solid #a18d60;font:22px Arial,sans-serif;touch-action:none;user-select:none}
+@media(pointer:coarse){.touch-controls{display:flex}}
 .scene-footer{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:17px 1px;color:#a2b49c;font:10px Arial,sans-serif}
 .control-guide{display:flex;gap:24px}
 .control-guide>span{display:flex;align-items:center;gap:5px}
