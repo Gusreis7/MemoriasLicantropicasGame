@@ -84,7 +84,7 @@ def build_services(settings: Settings) -> Services:
         ),
         world=world,
         admin_auth=AdminAuth(redis, settings.redis_prefix, settings),
-        admin=AdminService(redis, settings.redis_prefix, games, characters, world_repository),
+        admin=AdminService(redis, settings.redis_prefix, games, characters, world_repository, turns=turns),
         turns=turns,
         investigation=investigation,
     )

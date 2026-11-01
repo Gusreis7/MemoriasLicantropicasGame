@@ -9,6 +9,7 @@ Integração: `feat/ciclo_investigacao`; agentes em worktrees isoladas nas branc
 | Ciclo e Redis | `modules/turns/**`, bootstrap `RedisGameRepository.create`, status em `contracts/model.py` e `modules/games/schema.py`, testes próprios |
 | Pistas e delegado | `modules/investigation/**`, catálogo privado de itens, regras puras e projeção pública, testes próprios |
 | Interface | `frontend/game/**`, `frontend/shared/api.ts`, testes de frontend; sem alterar assets |
+| Revisão de proteção | `fix/guarda_contexto_investigacao`: guarda e testes dos novos campos de contexto, preservando perguntas sobre objetos |
 | Coordenação | `contracts/investigation.py`, composição, rotas/main, integração de mundo/conversa/harness/admin, arte da capoeira, fixtures e verificação Docker/Brave |
 
 ## Regras da primeira versão

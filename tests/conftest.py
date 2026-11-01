@@ -159,7 +159,7 @@ async def api_client(monkeypatch, catalog, storage, llm):
         ),
         world=world,
         admin_auth=AdminAuth(storage.client, storage.prefix, settings),
-        admin=AdminService(storage.client, storage.prefix, storage.games, catalog, world_repository),
+        admin=AdminService(storage.client, storage.prefix, storage.games, catalog, world_repository, turns=turns),
         turns=turns, investigation=investigation,
     )
     monkeypatch.setattr(main_module, "build_services", lambda settings: services)

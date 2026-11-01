@@ -228,6 +228,7 @@ kbd{font:10px/1.2 Arial,sans-serif;min-width:21px;padding:4px 5px;border:1px sol
 .journal-modal{width:min(650px,100%);padding:35px 42px;text-align:center;background:linear-gradient(110deg,#f4ecd6,#e9dfc2)}
 .journal-modal .modal-heading{border-bottom:3px double #9e8d63;padding-bottom:20px;text-align:left}
 .journal-modal .modal-heading h2{font-size:37px;letter-spacing:-.03em}
+.journal-modal #journal-day{display:inline;width:auto;height:auto;background:none;margin:0;white-space:nowrap;vertical-align:baseline}
 .journal-motto{font:italic 12px Georgia,serif;border-bottom:1px solid #a9946b;padding:0 0 18px;color:#827956}
 .journal-modal h3{font-size:34px;line-height:1.16;margin-top:35px}
 #journal-body{font:16px/1.85 Georgia,serif;text-align:left}

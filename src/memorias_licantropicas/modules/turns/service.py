@@ -161,6 +161,8 @@ class TurnService:
             "crimes": crimes, "journal": state.journal + (edition,), "detained_npc_id": None,
         })
         world = world.model_copy(update={"revision": world.revision + 1,
+            "npcs": tuple(placement for placement in world.npcs
+                          if status != "won" or placement.npc_id != werewolf),
             "player": world.player.model_copy(update={"location_id": "praca_verde", "x": 160,
                 "facing": "right", "direction": "idle", "last_updated_at": boundary})})
         events.extend((

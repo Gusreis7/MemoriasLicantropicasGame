@@ -30,12 +30,13 @@ def _text(value):
 
 
 class AdminService:
-    def __init__(self, client, prefix, games, characters, worldrepository):
+    def __init__(self, client, prefix, games, characters, worldrepository, turns=None):
         self._client = client
         self._prefix = prefix
         self._games = games
         self._characters = characters
         self._world = worldrepository
+        self._turns = turns
 
     def _game_prefix(self, game_id):
         return f"{self._prefix}:game:{{{game_id}}}"
@@ -77,6 +78,8 @@ class AdminService:
 
     @storage_errors
     async def state(self, game_id):
+        if self._turns is not None:
+            await self._turns.sync(game_id)
         game = await self._game(game_id)
         profiles = {profile.id: profile for profile in await self._characters.list()}
         world = await self._world.get(game_id)

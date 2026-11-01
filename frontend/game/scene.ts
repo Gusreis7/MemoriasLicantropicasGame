@@ -76,6 +76,7 @@ export class CityScene extends Phaser.Scene {
     for (const location of this.locations) this.load.image(`location-${location.id}`, location.background);
     this.load.atlas('scene-life', '/assets/ambient/scene-life.png', '/assets/ambient/scene-life.json');
     this.load.atlas('capoeira', '/assets/ambient/capoeira.png', '/assets/ambient/capoeira.json');
+    this.load.atlas('clarim', '/assets/ambient/clarim.png', '/assets/ambient/clarim.json');
     this.load.on('loaderror', () => {this.assetsFailed = true; this.hooks.failed();});
   }
 
@@ -142,9 +143,14 @@ export class CityScene extends Phaser.Scene {
     }
     if (id === 'cais_lanternas' && this.textures.exists('capoeira')) {
       const roda = this.add.sprite(440, 282, 'capoeira', '0').setOrigin(.5, 480 / 512).setDepth(-2);
-      roda.setDisplaySize(210, 140);
+      roda.setDisplaySize(168, 112);
       if (!this.reducedMotion) roda.play('capoeira-roda');
       this.ambient.push(roda);
+    }
+    if (id === 'praca_verde' && this.textures.exists('clarim')) {
+      const banca = this.add.image(160, 284, 'clarim', 'stand').setOrigin(.5, 1)
+        .setDisplaySize(136, 132).setDepth(-2);
+      this.ambient.push(banca);
     }
   }
 
@@ -156,7 +162,7 @@ export class CityScene extends Phaser.Scene {
   private drawCaseMarkers() {
     this.caseMarkers.forEach(marker => marker.destroy()); this.caseMarkers = [];
     if (this.currentLocation === 'praca_verde') {
-      this.caseMarkers.push(this.add.text(160, 192, 'O CLARIM DO RIO', {fontFamily: 'Georgia, serif', fontSize: '10px',
+      this.caseMarkers.push(this.add.text(160, 143, 'O CLARIM DO RIO', {fontFamily: 'Georgia, serif', fontSize: '10px',
         color: '#183c32', backgroundColor: '#f2e7c8ee', padding: {x: 7, y: 5}}).setOrigin(.5).setDepth(4));
     }
     const crimes = this.caseState?.crimes.filter(crime => crime.location_id === this.currentLocation && crime.remaining_clues > 0) ?? [];

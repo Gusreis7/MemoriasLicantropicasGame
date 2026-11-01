@@ -8,6 +8,7 @@ test('explorar, conversar, viajar, retomar e observar com autenticação', async
   await page.screenshot({path: '../artifacts/game-home.png', fullPage: true});
   await page.getByRole('button', {name: /Iniciar investigação/}).click();
   await expect(page.locator('#scene-loading')).toBeHidden({timeout: 30000});
+  await page.locator('#read-journal').click();
   await expect(page.locator('#location-name')).toHaveText('Praça Verde');
   await page.locator('canvas').click();
   await page.keyboard.down('ArrowRight');
@@ -41,6 +42,7 @@ test('explorar, conversar, viajar, retomar e observar com autenticação', async
   await page.reload();
   await page.getByRole('button', {name: 'Continuar meu caso'}).click();
   await expect(page.locator('#scene-loading')).toBeHidden();
+  await page.locator('#read-journal').click();
   await expect(page.locator('#location-name')).toHaveText('Praça Verde');
 
   const gameID = await page.evaluate(() => localStorage.getItem('memorias-licantropicas:game'));
@@ -80,6 +82,7 @@ test('fundo estático e escolha de caminhos nas bordas sem retorno involuntário
   await page.goto('/');
   await page.getByRole('button', {name: /Iniciar investigação/}).click();
   await expect(page.locator('#scene-loading')).toBeHidden({timeout: 30000});
+  await page.locator('#read-journal').click();
   const canvas = page.locator('canvas');
   await expect(canvas).toHaveAttribute('width', '960');
   await expect(canvas).toHaveAttribute('height', '360');
@@ -145,6 +148,7 @@ test('envelope de fala é normalizado e tentativas de revelar instruções são 
   await page.goto('/');
   await page.getByRole('button', {name: /Iniciar investigação/}).click();
   await expect(page.locator('#scene-loading')).toBeHidden({timeout: 30000});
+  await page.locator('#read-journal').click();
   await page.locator('canvas').click();
   await page.keyboard.down('ArrowRight');
   await expect(page.locator('#approach')).toBeVisible({timeout: 8000});

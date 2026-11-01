@@ -191,9 +191,10 @@ function renderState(record: GameState): void {
     const details = make('div', 'character-details');
     const title = make('h3', '', character.name);
     const role = make('span', `role-badge ${character.role === 'werewolf' ? 'wolf' : ''}`, character.role === 'werewolf' ? 'Lobisomem' : 'Civil');
-    const place = locationNames[character.location_id || ''] || 'Local não registrado';
+    const expelled = record.status === 'won' && character.character_id === record.werewolf_id;
+    const place = expelled ? 'Expulso da cidade' : locationNames[character.location_id || ''] || 'Local não registrado';
     details.append(title, role, make('p', 'character-location', place),
-      make('span', `life-status${character.alive ? '' : ' deceased'}`, character.alive ? '● Vivo' : '○ Morto'));
+      make('span', `life-status${character.alive ? '' : ' deceased'}`, expelled ? '↗ Expulso' : character.alive ? '● Vivo' : '○ Morto'));
     card.append(portrait, details); cards.append(card);
   }
   const deaths = $('deaths'); deaths.replaceChildren();
