@@ -36,6 +36,8 @@ Artefatos locais ignorados pelo Git: `artifacts/cycle-evidence.png`, `artifacts/
 
 ## Arte e execução
 
-Assets finais gerados por **image_gen built-in**: `frontend/public/assets/ambient/clarim.png` e `capoeira.png`, acompanhados de seus atlas JSON. Prompts completos e proveniência: [clarim-prompts.json](../frontend/public/assets/ambient/clarim-prompts.json) e [capoeira-prompts.json](../frontend/public/assets/ambient/capoeira-prompts.json). Somente metadados de recorte foram calculados por código; os pixels gerados não foram retocados por script.
+Assets finais gerados por **image_gen built-in**: `frontend/public/assets/ambient/clarim.png`, `capoeira.png` e `assets/press/crime-scene-snapshot.png`, acompanhados de atlas/proveniência JSON. A banca mantém a identidade verde e cobre; o Clarim agora apresenta uma página tipográfica com manchete e relato do dia, acompanhada de uma ilustração monocromática da madrugada. A imagem é uma cena de arquivo reutilizada, enquanto manchete, texto e local vêm da edição real. Os vinte apetrechos usam símbolos vetoriais com IDs iguais aos do catálogo em `assets/items/item-icons.svg`; o mesmo desenho é exibido ao recolher, apresentar e citar um vestígio. A roda de capoeira e os personagens compartilham a linha `ground_y`, e a árvore decorativa que cobria o poste esquerdo do cais foi removida.
+
+Prompts completos: [clarim-prompts.json](../frontend/public/assets/ambient/clarim-prompts.json), [capoeira-prompts.json](../frontend/public/assets/ambient/capoeira-prompts.json) e [snapshot-prompts.json](../frontend/public/assets/press/snapshot-prompts.json). O catálogo visual dos itens está em [manifest.json](../frontend/public/assets/items/manifest.json).
 
 Serviços locais: jogo em `http://localhost:7077`, admin em `http://localhost:7078`, API em `http://localhost:7079/docs`. Docker usa os dados Redis e as credenciais já configuradas. O Redis de testes é separado e não precisa permanecer ativo depois da validação.

@@ -50,3 +50,11 @@ Nenhum pixel foi desenhado ou retocado por script; o tratamento por código se l
 ## Revisão dos ambientes
 
 Os cinco fundos foram simplificados por `image_gen built-in`, preservando os marcos e a composição de cada local. A tela passa a960×360, com câmera fixa. O atlas `frontend/public/assets/ambient/scene-life.png` reúne árvore, cão, gato, pássaro e dois cidadãos figurantes. O PNG tem transparência verdadeira; `scene-life.json` contém os retângulos medidos pelo alfa, sem editar os pixels. As caixas de exibição preservam as proporções dos recortes. Os figurantes não são suspeitos ou agentes de investigação. Prompts completos, modo de geração, fontes, dimensões e hashes estão em [prompts.json](../frontend/public/assets/ambient/prompts.json). Os PNGs dos fundos estão em `frontend/public/assets/locations/`; os originais permanecem no histórico Git.
+
+## Linha de chão, jornal e vestígios
+
+Os personagens usam a origem `y=684/724` do manifesto e ficam na coordenada `ground_y` da localização. A roda de capoeira usa baseline virtual `480/512` e agora também recebe `ground_y`; na versão anterior era posicionada em y=282, acima do passeio. A árvore decorativa em x=100 foi retirada, e a árvore em primeiro plano do fundo foi removida por image_gen, deixando o poste esquerdo do cais livre. A edição está registrada em `assets/locations/cais-lanternas-edit.json`.
+
+O Clarim abre como uma página de jornal: cabeçalho do Rio, edição do dia, manchete, texto e localização. A imagem monocromática `assets/press/crime-scene-snapshot.png` representa o registro jornalístico do acontecimento sem identificar culpado ou vítima. O arquivo é uma ilustração de arquivo compartilhada entre edições, não uma fotografia dinâmica específica de cada crime; título, relato e local são os dados reais da edição. Prompt, fonte e hash ficam em `assets/press/snapshot-prompts.json`.
+
+Os vinte apetrechos do catálogo têm símbolos vetoriais próprios em `assets/items/item-icons.svg`, indexados por `item_id` no [manifesto](../frontend/public/assets/items/manifest.json). A interface mostra o mesmo objeto no caderno, ao selecionar a apresentação para um NPC, nos depoimentos e nas provas da acusação. Os traços geométricos usam contornos e cores de papel, latão, couro, vinho e verde do jogo; a distinção entre exclusivo, singular e comum também aparece na moldura do cartão.
