@@ -94,7 +94,7 @@ async def test_long_disconnect_and_negative_clock_are_bounded(world_context):
     assert snapshot.player.x == 244
 
 
-@pytest.mark.parametrize("direction,initial_x,expected", [("left", 33, 32), ("right", 1887, 1888)])
+@pytest.mark.parametrize("direction,initial_x,expected", [("left", 33, 32), ("right", 927, 928)])
 async def test_scene_boundaries(world_context, direction, initial_x, expected):
     context = world_context
     state = context.initial.model_copy(update={"revision": 1, "player": context.initial.player.model_copy(
@@ -135,6 +135,97 @@ async def test_travel_has_safe_spawn_and_atomic_real_event(world_context, storag
     with pytest.raises(ConflictError):
         await context.service.travel(context.game.id, TravelRequest(target_location_id="cafe_largo", revision=0))
     assert await storage.client.llen(f"{storage.prefix}:game:{{{context.game.id}}}:events") == 1
+
+
+async def at_edge(context, side):
+    world = await context.repository.get(context.game.id)
+    state = world.model_copy(update={"revision": world.revision + 1, "player": world.player.model_copy(
+        update={"x": 32 if side == "left" else 928, "direction": "idle"})})
+    assert await context.repository.save(state, expected_revision=world.revision)
+    return await context.service.get(context.game.id)
+
+
+async def test_exit_catalog_is_reciprocal_and_connects_all_locations(world_context):
+    by_id = {location.id: location for location in LOCATIONS}
+    visited, pending = set(), ["praca_verde"]
+    while pending:
+        current = pending.pop()
+        if current in visited:
+            continue
+        visited.add(current)
+        for route in by_id[current].exits:
+            assert any(reverse.side == route.arrival_side and reverse.target_location_id == current
+                       and reverse.arrival_side == route.side for reverse in by_id[route.target_location_id].exits)
+            pending.append(route.target_location_id)
+    assert visited == set(by_id)
+    assert all(location.width == 960 for location in LOCATIONS)
+
+
+@pytest.mark.parametrize("side,target,arrival,x,facing", [
+    ("left", "cabana_capitu", "right", 864, "left"),
+    ("left", "cafe_largo", "right", 864, "left"),
+    ("right", "casa_verde", "left", 96, "right"),
+    ("right", "cais_lanternas", "left", 96, "right"),
+])
+async def test_exit_travel_has_server_selected_arrival(world_context, storage, side, target, arrival, x, facing):
+    context = world_context
+    cast_before = context.game.characters
+    snapshot = await at_edge(context, side)
+    result = await context.service.travel(context.game.id, TravelRequest(
+        target_location_id=target, revision=snapshot.revision, exit_side=side))
+    assert result.player.x == x and result.player.facing == facing
+    assert result.player.location_id == target
+    assert result.player.movement_seq == snapshot.player.movement_seq
+    assert context.game.characters == cast_before
+    records = await storage.client.lrange(f"{storage.prefix}:game:{{{context.game.id}}}:events", 0, -1)
+    assert len(records) == 1
+    data = json.loads(records[0])["data"]
+    assert data["exit_side"] == side and data["arrival_side"] == arrival
+    reverse = await at_edge(context, arrival)
+    returned = await context.service.travel(context.game.id, TravelRequest(
+        target_location_id="praca_verde", revision=reverse.revision, exit_side=arrival))
+    assert returned.player.x == (96 if side == "left" else 864)
+
+
+async def test_exit_rejects_spoofed_edge_route_and_arrival(world_context, storage):
+    context = world_context
+    with pytest.raises(AccessDeniedError):
+        await context.service.travel(context.game.id, TravelRequest(
+            target_location_id="casa_verde", revision=0, exit_side="right"))
+    snapshot = await at_edge(context, "left")
+    with pytest.raises(AccessDeniedError):
+        await context.service.travel(context.game.id, TravelRequest(
+            target_location_id="casa_verde", revision=snapshot.revision, exit_side="left"))
+    assert (await context.service.get(context.game.id)).revision == snapshot.revision
+    assert await storage.client.llen(f"{storage.prefix}:game:{{{context.game.id}}}:events") == 0
+    with pytest.raises(ValidationError):
+        TravelRequest(target_location_id="casa_verde", revision=0, exit_side="right", arrival_side="right", x=0)
+
+
+@pytest.mark.parametrize("side,expected", [("left", 864), ("right", 96)])
+async def test_same_location_wrap_requires_edge_and_explicit_choice(world_context, side, expected):
+    context = world_context
+    with pytest.raises(ConflictError):
+        await context.service.travel(context.game.id, TravelRequest(target_location_id="praca_verde", revision=0))
+    snapshot = await at_edge(context, side)
+    result = await context.service.travel(context.game.id, TravelRequest(
+        target_location_id="praca_verde", revision=snapshot.revision, exit_side=side))
+    assert result.player.x == expected and result.location.id == "praca_verde"
+    assert result.revision == snapshot.revision + 1
+
+
+async def test_legacy_long_scene_is_projected_without_writes_or_reroll(world_context, storage):
+    context = world_context
+    old = context.initial.model_copy(update={"player": context.initial.player.model_copy(update={"x": 1700})})
+    key = f"{storage.prefix}:game:{{{context.game.id}}}:world"
+    await storage.client.set(key, old.model_dump_json())
+    snapshot = await context.service.get(context.game.id)
+    assert snapshot.player.x == 928 and snapshot.revision == 0
+    assert json.loads(await storage.client.get(key))["player"]["x"] == 1700
+    moved = await context.service.move(context.game.id, command(snapshot, "left"))
+    assert moved.player.x == 928 and moved.revision == 1
+    assert json.loads(await storage.client.get(key))["player"]["x"] == 928
+    context.games.create.assert_not_awaited()
 
 
 async def test_proximity_requires_same_location_alive_and_64_pixels(world_context):
@@ -221,7 +312,7 @@ async def test_public_router_and_command_validation(world_context):
         locations = await client.get("/api/v1/world/locations")
         assert locations.status_code == 200
         assert len(locations.json()) == 5
-        assert all(set(location) == {"id", "name", "width", "height", "ground_y", "background"}
+        assert all(set(location) == {"id", "name", "width", "height", "ground_y", "background", "exits"}
                    for location in locations.json())
         base = f"/api/v1/games/{world_context.game.id}"
         assert (await client.get(f"{base}/world")).json()["player"]["location_id"] == "praca_verde"
