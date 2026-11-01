@@ -34,21 +34,31 @@ class TurnService:
             raise ValueError("O relógio do ciclo precisa de timezone.")
         return now.astimezone(UTC)
 
-    async def _load(self, game_id: UUID) -> tuple[GameState, WorldState, InvestigationState | None]:
-        game = await self._games.get(game_id)
+    def _validate_snapshot(self, game, world, state) -> None:
         if game is None:
             raise NotFoundError("Partida não encontrada.")
         if game.content_version != self._characters.content_version:
             raise ConflictError("A partida usa uma versão anterior de personagens.")
-        world = await self._world.get(game_id)
         if world is None:
             raise ConflictError("Esta partida não possui mundo visual.")
-        state = await self._repository.get(game_id)
         if state is not None and state.status != game.status:
             raise StorageUnavailableError("Estado da partida e do ciclo inconsistentes.")
+
+    async def _load(self, game_id: UUID) -> tuple[GameState, WorldState, InvestigationState | None]:
+        game = await self._games.get(game_id)
+        world = await self._world.get(game_id)
+        state = await self._repository.get(game_id)
+        self._validate_snapshot(game, world, state)
         return game, world, state
 
     async def sync(self, game_id: UUID) -> InvestigationState:
+        game, world, state = await self._repository.read_snapshot(game_id)
+        self._validate_snapshot(game, world, state)
+        if state is not None and (state.status != "active" or state.phase == "finished"
+                                  or self.now() < state.phase_ends_at):
+            return state
+        # Só a inicialização ou uma fase vencida exigem reserva. Leituras de um
+        # dia em curso continuam disponíveis durante a inferência de uma fala.
         async with self._gate.hold(game_id):
             return await self._sync_locked(game_id)
 

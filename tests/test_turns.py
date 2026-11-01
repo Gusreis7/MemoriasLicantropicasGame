@@ -276,3 +276,44 @@ async def test_restart_during_night_resumes_same_deadline(cycle, storage, catalo
     assert morning.day == 2 and morning.phase == "day"
     assert morning.phase_ends_at == cycle.game.created_at + timedelta(seconds=608)
     assert len(await events(storage, cycle, "character.killed")) == 1
+
+
+async def test_unexpired_reads_do_not_require_player_gate(cycle, storage):
+    initial = await cycle.turns.sync(cycle.game.id)
+    before = await storage.client.get(f"{cycle.key}:investigation")
+    async with cycle.gate.hold(cycle.game.id):
+        assert await cycle.turns.sync(cycle.game.id) == initial
+        results = await asyncio.gather(*(cycle.turns.sync(cycle.game.id) for _ in range(3)))
+        assert all(result == initial for result in results)
+    assert await storage.client.get(f"{cycle.key}:investigation") == before
+    assert len(await events(storage, cycle)) == 3
+
+
+async def test_due_reads_still_require_gate_and_do_not_resolve_around_pending_action(cycle, storage):
+    cycle.clock[0] += timedelta(seconds=300)
+    async with cycle.gate.hold(cycle.game.id):
+        with pytest.raises(ConflictError):
+            await cycle.turns.sync(cycle.game.id)
+    assert not await events(storage, cycle, "night.started")
+    assert (await cycle.turns.sync(cycle.game.id)).phase == "night"
+
+
+async def test_fast_read_detects_inconsistent_status_and_wrong_key_type(cycle, storage):
+    game = cycle.game.model_copy(update={"status": "won"})
+    await storage.client.set(f"{cycle.key}:state", game.model_dump_json())
+    with pytest.raises(StorageUnavailableError):
+        await cycle.turns.sync(cycle.game.id)
+    await storage.client.set(f"{cycle.key}:state", cycle.game.model_dump_json())
+    await storage.client.delete(f"{cycle.key}:investigation")
+    await storage.client.rpush(f"{cycle.key}:investigation", "not-a-json-string")
+    with pytest.raises(StorageUnavailableError):
+        await cycle.turns.sync(cycle.game.id)
+    assert await storage.client.type(f"{cycle.key}:investigation") == "list"
+
+
+async def test_terminal_reads_do_not_require_player_gate(cycle):
+    await detain(cycle, "bentinho")
+    cycle.clock[0] += timedelta(seconds=308)
+    terminal = await cycle.turns.sync(cycle.game.id)
+    async with cycle.gate.hold(cycle.game.id):
+        assert await cycle.turns.sync(cycle.game.id) == terminal

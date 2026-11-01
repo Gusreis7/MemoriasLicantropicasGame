@@ -4,8 +4,13 @@ O relógio autoritativo fica em `modules/turns`. Cada dia dura300 segundos reais
 a noite dura8 segundos, sem ações do jogador. As durações são injetáveis somente
 na construção do serviço para testes, nunca por uma rota pública.
 
-`TurnService.sync` usa a mesma reserva Redis de movimento/conversa. Requisições
-concorrentes recebem conflito ou o estado já resolvido, sem duplicar eventos.
+`TurnService.sync` lê caso, partida e mundo em uma transação somente de leitura.
+Se a fase não venceu ou a partida terminou, retorna esse snapshot validado sem
+adquirir a reserva do jogador. Assim consultas continuam disponíveis durante uma
+inferência, e a carga inicial pode consultar mundo e investigação em paralelo.
+Somente inicialização ou vencimento usam a mesma reserva Redis de movimento e
+conversa. Requisições concorrentes de transição recebem conflito ou o estado já
+resolvido, sem duplicar eventos.
 A sincronização é lazy: não exige worker, e o navegador consulta o agregado a
 cada segundo. Na retomada, vencimentos são processados em ordem a partir dos
 deadlines persistidos, até o fim da partida. O GET que sincroniza pode escrever
