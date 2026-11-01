@@ -225,22 +225,25 @@ kbd{font:10px/1.2 Arial,sans-serif;min-width:21px;padding:4px 5px;border:1px sol
 .case-modal .button.secondary{color:var(--ink)}
 .case-modal h3{font-size:23px;font-weight:normal;margin:25px 0 16px}
 .case-note,.empty-case{font:12px/1.75 Arial,sans-serif;color:#768065}
-.journal-modal{width:min(720px,100%);padding:22px 32px 28px;text-align:center;background:repeating-linear-gradient(0deg,#efe6ce 0,#efe6ce 4px,#eee4cb 5px,#efe6ce 7px)}
-.newspaper-masthead{position:relative;color:#26251f;border-bottom:4px double #35342d;padding-bottom:9px}
-.newspaper-dateline,.newspaper-edition{display:flex;align-items:center;justify-content:space-between;font:8px/1.4 Arial,sans-serif;letter-spacing:.15em;color:#555247}
+.journal-modal{width:min(720px,100%);padding:24px 34px 29px;text-align:center;color:#292923;border:4px double #42413a;background-color:#e8e7de;background-image:radial-gradient(circle,#514f4520 .45px,transparent .8px),repeating-linear-gradient(0deg,transparent 0 5px,#514f4508 6px 7px);background-size:5px 5px,100% 7px;box-shadow:inset 0 0 0 5px #f5f3e9,0 25px 100px #031a14aa}
+.newspaper-masthead{position:relative;color:#24241f;border-bottom:4px double #35352f;padding-bottom:10px}
+.newspaper-dateline,.newspaper-edition{display:flex;align-items:center;justify-content:space-between;font:8px/1.4 Arial,sans-serif;letter-spacing:.15em;color:#4d4d46}
 .newspaper-dateline{padding-right:30px}
 .newspaper-dateline .icon-button{position:absolute;right:0;top:-10px}
-.newspaper-masthead h2{font:bold 43px/.95 Georgia,serif;letter-spacing:-.045em;margin:11px 0 8px;color:#26251f}
+.newspaper-masthead h2{font:bold 43px/.95 Georgia,serif;letter-spacing:-.045em;margin:11px 0 8px;color:#24241f;text-shadow:1px 1px #fffdf4}
+.newspaper-masthead h2:before,.newspaper-masthead h2:after{content:'✦';display:inline-block;margin:0 15px;font:12px Georgia,serif;vertical-align:middle;color:#56564e}
 .newspaper-edition span:last-child{font-weight:bold}
-.newspaper-story{padding:0 2px;text-align:left;color:#292821}
-.journal-motto{font:italic 11px Georgia,serif;text-align:center;border-bottom:1px solid #a9946b;padding:11px 0;color:#716b58;margin:0}
-.journal-modal h3{font:bold 29px/1.08 Georgia,serif;letter-spacing:-.02em;margin:18px 0 13px;text-align:left;color:#25241f}
-.journal-snapshot{float:right;width:43%;margin:1px 0 14px 18px;padding:4px;background:#faf5e8;border:1px solid #9f967d;box-shadow:2px 3px 0 #655e4e30}
+.newspaper-story{padding:0 2px;text-align:left;color:#292923}
+.journal-motto{font:italic 11px Georgia,serif;text-align:center;border-bottom:1px solid #77766d;padding:11px 0;color:#5b5a53;margin:0}
+.journal-modal h3{font:bold 29px/1.08 Georgia,serif;letter-spacing:-.02em;margin:18px 0 13px;text-align:left;color:#22221d}
+.journal-snapshot{float:right;width:43%;margin:1px 0 14px 18px;padding:4px;background:#f2f1e9;border:1px solid #716f65;box-shadow:2px 3px 0 #34342d30}
 .journal-snapshot img{display:block;width:100%;aspect-ratio:3/2;object-fit:cover;filter:grayscale(1) contrast(1.08);image-rendering:pixelated}
-.journal-snapshot figcaption{font:8px/1.5 Arial,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#625d50;padding:5px 2px 1px}
-#journal-body{font:14px/1.7 Georgia,serif;text-align:justify;margin:0 0 15px;white-space:pre-line}
-.journal-location{clear:both;font:9px/1.6 Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#716b58;text-align:left;margin:16px 0 22px;padding-top:8px;border-top:1px solid #bcb194}
+.journal-snapshot figcaption{font:8px/1.5 Arial,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#4e4e47;padding:5px 2px 1px}
+#journal-body{font:14px/1.7 Georgia,serif;text-align:justify;margin:0 0 15px;white-space:pre-line;column-rule:1px solid #77766d}
+.journal-location{clear:both;font:9px/1.6 Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#57574f;text-align:left;margin:16px 0 22px;padding-top:8px;border-top:3px double #77766d}
 .journal-modal>#read-journal{margin-top:10px}
+.journal-modal .button.primary{color:#efeee6;background:#383832;border-color:#272721;box-shadow:0 3px 0 #77766d}
+.journal-modal .button.primary:hover:not(:disabled){background:#4b4b43}
 .evidence-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .evidence-card{display:grid;grid-template-columns:68px minmax(0,1fr);gap:13px;align-items:center;padding:12px;background:#faf6e8;border:1px solid #c5ba95}
 .item-art{display:grid;place-items:center;flex:0 0 54px;width:54px;height:54px;background:#e9dfc7;border:1px solid #c2b58f;image-rendering:pixelated}
