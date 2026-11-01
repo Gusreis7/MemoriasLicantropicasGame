@@ -22,6 +22,12 @@ from memorias_licantropicas.modules.characters.service import CharacterService
 from memorias_licantropicas.modules.games.service import GameService
 from memorias_licantropicas.modules.conversations.service import ConversationService
 from memorias_licantropicas.infrastructure.conversation_gate import RedisConversationGate
+from memorias_licantropicas.modules.world.repository import RedisWorldRepository
+from memorias_licantropicas.modules.world.service import WorldService
+from memorias_licantropicas.modules.world.gate import RedisPlayerGate
+from memorias_licantropicas.modules.admin.auth import AdminAuth
+from memorias_licantropicas.modules.admin.service import AdminService
+from memorias_licantropicas.settings import Settings
 
 
 def pytest_addoption(parser):
@@ -132,6 +138,10 @@ def harness(catalog, storage, llm):
 
 @pytest.fixture
 async def api_client(monkeypatch, catalog, storage, llm):
+    settings = Settings(_env_file=None, admin_password="test-admin-password")
+    world_repository = RedisWorldRepository(storage.client, storage.prefix)
+    player_gate = RedisPlayerGate(storage.client, storage.prefix)
+    world = WorldService(storage.games, catalog, world_repository, player_gate)
     services = Services(
         characters=CharacterService(catalog), games=GameService(catalog, storage.games),
         harness=HarnessService(catalog, storage.games, storage.memory, llm), redis=storage.client, llm=llm,
@@ -139,11 +149,14 @@ async def api_client(monkeypatch, catalog, storage, llm):
             catalog, storage.games, storage.memory,
             HarnessService(catalog, storage.games, storage.memory, llm),
             RedisConversationGate(storage.client, storage.prefix),
+            world, player_gate,
         ),
+        world=world,
+        admin_auth=AdminAuth(storage.client, storage.prefix, settings),
+        admin=AdminService(storage.client, storage.prefix, storage.games, catalog, world_repository),
     )
     monkeypatch.setattr(main_module, "build_services", lambda settings: services)
-    from memorias_licantropicas.settings import Settings
-    monkeypatch.setattr(main_module, "Settings", lambda: Settings(_env_file=None))
+    monkeypatch.setattr(main_module, "Settings", lambda: settings)
     app = main_module.create_app()
     async with app.router.lifespan_context(app):
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:

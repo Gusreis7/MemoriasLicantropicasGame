@@ -44,8 +44,9 @@ O LLM do harness é um substituto determinístico. O cliente Mantle é exercitad
 
 ## Resultados desta entrega
 
-- Backend em memória: **81 passed** (55 da base inicial e 26 da conversa jogador–persona).
-- Redis real 7.4 em Docker: **81 passed**.
+- Backend em memória: **124 passed**, incluindo mundo, eventos, integração e autenticação admin.
+- Redis real 7.4 em Docker: **124 passed**.
+- Frontend: **16 testes TypeScript**, typecheck, build e fluxo de ponta a ponta no Brave.
 - Nenhuma chamada AWS realizada.
 - Build da imagem da API aprovado com as dependências de runtime, sem grupo dev.
 - O enriquecimento de personas, as rotas de conversa, a reserva Redis e os tokens por perfil estão descritos em [conversa_jogador_persona.md](conversa_jogador_persona.md).
@@ -53,3 +54,5 @@ O LLM do harness é um substituto determinístico. O cliente Mantle é exercitad
 O encerramento do container de teste preserva os serviços e volumes da aplicação. A validação não cobre distribuição estatística do sorteio, reinício do servidor, persistência em disco, carga/contenda prolongada nem comportamento real do modelo.
 
 Referências: [fakeredis](https://fakeredis.readthedocs.io/en/latest/) e [plugin de testes AnyIO](https://anyio.readthedocs.io/en/stable/testing.html).
+
+A validação visual e do build servido, incluindo uma chamada real separada ao Qwen, está descrita em [entrega_visual.md](entrega_visual.md). A suíte comum usa apenas inferência simulada.

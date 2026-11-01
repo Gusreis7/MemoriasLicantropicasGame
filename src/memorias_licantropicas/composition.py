@@ -17,6 +17,11 @@ from memorias_licantropicas.modules.characters.service import CharacterService
 from memorias_licantropicas.modules.games.service import GameService
 from memorias_licantropicas.modules.conversations.service import ConversationService
 from memorias_licantropicas.settings import Settings
+from memorias_licantropicas.modules.world.repository import RedisWorldRepository
+from memorias_licantropicas.modules.world.service import WorldService
+from memorias_licantropicas.modules.world.gate import RedisPlayerGate
+from memorias_licantropicas.modules.admin.auth import AdminAuth
+from memorias_licantropicas.modules.admin.service import AdminService
 
 
 @dataclass(frozen=True)
@@ -27,6 +32,9 @@ class Services:
     redis: Redis
     llm: BedrockMantleClient
     conversations: ConversationService
+    world: WorldService
+    admin_auth: AdminAuth
+    admin: AdminService
 
     async def aclose(self) -> None:
         try:
@@ -43,6 +51,9 @@ def build_services(settings: Settings) -> Services:
     characters = CatalogCharacterRepository()
     games = RedisGameRepository(redis, prefix=settings.redis_prefix)
     memory = RedisMemoryRepository(redis, prefix=settings.redis_prefix)
+    world_repository = RedisWorldRepository(redis, settings.redis_prefix)
+    player_gate = RedisPlayerGate(redis, settings.redis_prefix, settings.llm_timeout_seconds + 10)
+    world = WorldService(games, characters, world_repository, player_gate)
     llm = BedrockMantleClient(
         base_url=settings.mantle_base_url,
         api_key=settings.bedrock_api_key.get_secret_value() if settings.bedrock_api_key else None,
@@ -62,5 +73,9 @@ def build_services(settings: Settings) -> Services:
         conversations=ConversationService(
             characters, games, memory, harness,
             RedisConversationGate(redis, settings.redis_prefix, settings.llm_timeout_seconds + 10),
+            world, player_gate,
         ),
+        world=world,
+        admin_auth=AdminAuth(redis, settings.redis_prefix, settings),
+        admin=AdminService(redis, settings.redis_prefix, games, characters, world_repository),
     )

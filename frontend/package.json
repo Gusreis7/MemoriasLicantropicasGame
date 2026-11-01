@@ -7,13 +7,15 @@
     "dev": "vite --host 0.0.0.0 --port 7081",
     "build": "tsc --noEmit && vite build",
     "test": "vitest run",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:deployed": "node e2e/deployed.mjs"
   },
   "dependencies": {"phaser": "^4.2.1"},
   "devDependencies": {
+    "@types/node": "^24.0.0",
     "@playwright/test": "^1.56.1",
     "typescript": "^5.9.3",
     "vite": "^7.1.0",
-    "vitest": "^3.2.4"
+    "vitest": "^5.0.5"
   }
 }

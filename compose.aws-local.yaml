@@ -1,0 +1,11 @@
+# Fonte somente leitura; cópia renovável em tmpfs, nunca na imagem ou em volume persistente.
+services:
+  api:
+    environment:
+      AWS_PROFILE: ${AWS_PROFILE:-terraform}
+    volumes:
+      - ${AWS_CONFIG_DIR:-${HOME}/.aws}:/aws-source:ro
+      - ./deploy/aws-local-start.sh:/usr/local/bin/aws-local-start.sh:ro
+    tmpfs:
+      - /home/app/.aws:uid=1000,gid=1000,mode=0700,size=16m
+    command: ["sh", "/usr/local/bin/aws-local-start.sh"]

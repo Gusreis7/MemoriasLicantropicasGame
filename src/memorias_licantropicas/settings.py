@@ -22,6 +22,11 @@ class Settings(BaseSettings):
     llm_timeout_seconds: float = Field(default=30, gt=0, le=120)
     llm_max_tokens: int = Field(default=512, ge=1, le=2048)
     llm_history_limit: int = Field(default=20, ge=1, le=100)
+    admin_username: str = "admin"
+    admin_password: SecretStr | None = None
+    admin_session_seconds: int = Field(default=28800, ge=60, le=86400)
+    admin_cookie_secure: bool = False
+    admin_allowed_origins: str = "http://localhost:7078,http://127.0.0.1:7078"
 
     @field_validator("bedrock_base_url", mode="before")
     @classmethod

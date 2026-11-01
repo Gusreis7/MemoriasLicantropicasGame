@@ -9,6 +9,7 @@ from memorias_licantropicas.modules.conversations.schema import (
 from memorias_licantropicas.modules.conversations.service import ConversationService
 
 router = APIRouter(prefix="/api/v1/games/{game_id}/conversations", tags=["conversations"])
+approach_router = APIRouter(prefix="/api/v1/games/{game_id}", tags=["world"])
 
 
 async def get_conversation_service(request: Request) -> ConversationService:
@@ -16,6 +17,11 @@ async def get_conversation_service(request: Request) -> ConversationService:
 
 
 Service = Annotated[ConversationService, Depends(get_conversation_service)]
+
+
+@approach_router.post("/approaches", response_model=ConversationPublic)
+async def approach(game_id: UUID, body: CreateConversation, service: Service):
+    return await service.create(game_id, body.npc_id)
 
 
 @router.post("", response_model=ConversationPublic, status_code=201)

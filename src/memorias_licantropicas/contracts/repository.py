@@ -29,6 +29,8 @@ class GameRepository(Protocol):
 
 
 class MemoryRepository(Protocol):
+    async def get_player_conversation(self, game_id: UUID, npc_id: str) -> Conversation | None: ...
+
     async def create_conversation(self, conversation: Conversation) -> bool: ...
 
     async def get_conversation(self, game_id: UUID, conversation_id: UUID) -> Conversation | None: ...
@@ -52,3 +54,11 @@ class MemoryRepository(Protocol):
 
 class ConversationGate(Protocol):
     def hold(self, game_id: UUID, conversation_id: UUID) -> AbstractAsyncContextManager[None]: ...
+
+
+class InteractionPolicy(Protocol):
+    async def assert_can_talk(self, game_id: UUID, npc_id: str) -> None: ...
+
+
+class PlayerActionGate(Protocol):
+    def hold(self, game_id: UUID) -> AbstractAsyncContextManager[None]: ...

@@ -29,7 +29,7 @@ class ProfileTokenProvider:
             return provide_token(region=self._region,
                                  aws_credentials_provider=_ProfileCredentials(self._profile),
                                  expiry=timedelta(minutes=15))
-        except (BotoCoreError, ClientError, RuntimeError, ValueError):
+        except (BotoCoreError, ClientError, RuntimeError, ValueError, OSError):
             raise LLMUnavailableError("Não foi possível obter credenciais do perfil AWS.") from None
 
     async def get_token(self) -> str:

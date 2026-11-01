@@ -33,7 +33,7 @@ async def test_profile_and_region_reach_token_generator_without_aws(monkeypatch)
     assert seen["profile"] == "terraform"
 
 
-@pytest.mark.parametrize("failure", [ProfileNotFound(profile="private-profile"), RuntimeError("private-profile")])
+@pytest.mark.parametrize("failure", [ProfileNotFound(profile="private-profile"), RuntimeError("private-profile"), OSError("private-cache")])
 async def test_missing_profile_is_sanitized(monkeypatch, failure):
     def fail(**kwargs):
         raise failure
