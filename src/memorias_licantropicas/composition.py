@@ -22,6 +22,8 @@ from memorias_licantropicas.modules.world.service import WorldService
 from memorias_licantropicas.modules.world.gate import RedisPlayerGate
 from memorias_licantropicas.modules.admin.auth import AdminAuth
 from memorias_licantropicas.modules.admin.service import AdminService
+from memorias_licantropicas.modules.turns.service import TurnService
+from memorias_licantropicas.modules.investigation.service import InvestigationService
 
 
 @dataclass(frozen=True)
@@ -35,6 +37,8 @@ class Services:
     world: WorldService
     admin_auth: AdminAuth
     admin: AdminService
+    turns: TurnService
+    investigation: InvestigationService
 
     async def aclose(self) -> None:
         try:
@@ -53,7 +57,9 @@ def build_services(settings: Settings) -> Services:
     memory = RedisMemoryRepository(redis, prefix=settings.redis_prefix)
     world_repository = RedisWorldRepository(redis, settings.redis_prefix)
     player_gate = RedisPlayerGate(redis, settings.redis_prefix, settings.llm_timeout_seconds + 10)
-    world = WorldService(games, characters, world_repository, player_gate)
+    turns = TurnService(redis, settings.redis_prefix, games, characters, world_repository, player_gate)
+    world = WorldService(games, characters, world_repository, player_gate, day_policy=turns)
+    investigation = InvestigationService(turns, characters)
     llm = BedrockMantleClient(
         base_url=settings.mantle_base_url,
         api_key=settings.bedrock_api_key.get_secret_value() if settings.bedrock_api_key else None,
@@ -63,10 +69,11 @@ def build_services(settings: Settings) -> Services:
         token_provider=(ProfileTokenProvider(settings.aws_profile, settings.aws_region)
                         if settings.aws_profile else None),
     )
-    harness = HarnessService(characters, games, memory, llm, history_limit=settings.llm_history_limit)
+    harness = HarnessService(characters, games, memory, llm, history_limit=settings.llm_history_limit,
+                             day_policy=turns, context_provider=investigation.npc_context_locked)
     return Services(
         characters=CharacterService(characters),
-        games=GameService(characters, games),
+        games=GameService(characters, games, day_policy=turns),
         harness=harness,
         redis=redis,
         llm=llm,
@@ -78,4 +85,6 @@ def build_services(settings: Settings) -> Services:
         world=world,
         admin_auth=AdminAuth(redis, settings.redis_prefix, settings),
         admin=AdminService(redis, settings.redis_prefix, games, characters, world_repository),
+        turns=turns,
+        investigation=investigation,
     )

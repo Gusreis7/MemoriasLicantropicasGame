@@ -8,6 +8,7 @@ from redis.exceptions import RedisError
 
 from memorias_licantropicas.contracts.errors import NotFoundError, StorageUnavailableError
 from memorias_licantropicas.contracts.model import Conversation, ConversationMessage
+from memorias_licantropicas.contracts.investigation import InvestigationState
 from memorias_licantropicas.modules.admin.schema import (
     AdminCharacter, AdminConversation, AdminMessage, AdminState, EventPublic, GameListItem,
     InteractionEdge, InteractionNode, Interactions, KnownDeath, Page,
@@ -82,6 +83,10 @@ class AdminService:
         positions = {npc.npc_id: npc for npc in world.npcs} if world else {}
         names = {identifier: profile.name for identifier, profile in profiles.items()}
         names["bras_cubas"] = "Brás Cubas"
+        raw_case = await self._client.get(f"{self._game_prefix(game_id)}:investigation")
+        case = InvestigationState.model_validate_json(raw_case) if raw_case is not None else None
+        if case is not None and case.game_id != game_id:
+            raise StorageUnavailableError("Identidade administrativa inválida.")
         deaths = {"bras_cubas": KnownDeath(victim_id="bras_cubas", victim_name="Brás Cubas",
                                            killer_id=None, killer_name=None, attribution="unknown", source="scenario")}
         # Uma alegação em mensagem nunca é promovida a morte. Só fatos do futuro motor de regras.
@@ -111,6 +116,7 @@ class AdminService:
             ) for character in game.characters],
             player=world.player.model_dump(mode="json") if world else None,
             known_deaths=list(deaths.values()), world_version=world.world_version if world else None,
+            investigation=case.model_dump(mode="json") if case else None,
         )
 
     @storage_errors
