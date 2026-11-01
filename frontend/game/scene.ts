@@ -119,7 +119,9 @@ export class CityScene extends Phaser.Scene {
     this.textures.get('scene-life').setFilter(Phaser.Textures.FilterMode.NEAREST);
     for (const placement of AMBIENT[id]) {
       const image = this.add.image(placement.x, placement.y, 'scene-life', placement.frame)
-        .setOrigin(.5, 1).setDisplaySize(placement.width, placement.height).setDepth(placement.frame === 'tree' ? -3 : -1);
+        .setOrigin(.5, 1).setDepth(placement.frame === 'tree' ? -3 : -1);
+      // Fit each atlas cutout inside its box without stretching its natural silhouette.
+      image.setScale(Math.min(placement.width / image.width, placement.height / image.height));
       this.ambient.push(image);
       if (placement.drift && !this.reducedMotion) this.wanderers.push({image, placement});
     }
