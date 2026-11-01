@@ -29,14 +29,19 @@ async def run(settings: Settings) -> None:
         max_tokens=settings.llm_max_tokens,
     )
     try:
-        response = await client.complete((
+        messages = (
             ChatMessage(
                 role="user",
-                content="Responda brevemente em português: conexão estabelecida.",
+                content=(
+                    "Você conhece Machado de Assis? Responda brevemente em português, "
+                    "citando duas obras e algumas características de sua escrita."
+                ),
             ),
-        ))
+        )
+        print("Enviado (user):", messages[0].content, flush=True)
+        response = await client.complete(messages)
         print("Modelo:", response.model)
-        print("Resposta:", response.content)
+        print("Recebido (assistant):", response.content)
         print("Tokens de entrada:", response.input_tokens)
         print("Tokens de saída:", response.output_tokens)
     finally:
