@@ -8,6 +8,8 @@ O projeto também é um laboratório de agent harness, teoria de jogos, tool cal
 
 A base já avançou para catálogo público, criação/consulta de partidas com sorteio privado, repositories Redis e harness interno Mantle. A entrega está descrita em [base_agentes.md](base_agentes.md), com suíte executada contra Redis em memória e Redis real em Docker, conforme [testes.md](testes.md). Build da imagem da API e inferência real ficam pendentes. As etapas abaixo continuam como roteiro de evolução e critérios de conclusão, não como funcionalidades integralmente implementadas.
 
+Evolução na branch `feat/conversa_jogador_persona`: diálogo pela API, estratégias narrativas dos sete NPCs, reserva Redis e autenticação por perfil AWS, conforme [conversa_jogador_persona.md](conversa_jogador_persona.md). Nessa evolução, o build da API e 81 testes em cada backend de armazenamento foram aprovados; inferência real da nova rota segue fora da suíte.
+
 ## Decisões confirmadas
 
 - API REST em FastAPI, Python e dependências gerenciadas por uv.

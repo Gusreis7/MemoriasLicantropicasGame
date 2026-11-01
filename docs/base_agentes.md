@@ -1,5 +1,7 @@
 # Integração da base de agentes
 
+Este documento registra a base inicial. A evolução para conversa HTTP, catálogo versão 2, reserva Redis e autenticação pelo perfil local está descrita em [conversa_jogador_persona.md](conversa_jogador_persona.md), que substitui os limites iniciais correspondentes abaixo.
+
 ## Entrega e branches
 
 O trabalho foi dividido antes da implementação, com interfaces comuns em [contratos_agentes.md](contratos_agentes.md). Cada agente implementa e registra sua frente em uma branch/worktree separada:

@@ -1,5 +1,7 @@
 # Personagens e sorteio — base v1
 
+Registro da base v1. O catálogo atual é versão 2, com estratégias narrativas e rejeição de partidas antigas, conforme [conversa_jogador_persona.md](conversa_jogador_persona.md).
+
 Branch: `feat/personagens_sorteio`.
 
 ## Plano executado

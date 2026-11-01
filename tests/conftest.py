@@ -20,6 +20,8 @@ from memorias_licantropicas.modules.agents.service import HarnessService
 from memorias_licantropicas.modules.characters.repository import CatalogCharacterRepository
 from memorias_licantropicas.modules.characters.service import CharacterService
 from memorias_licantropicas.modules.games.service import GameService
+from memorias_licantropicas.modules.conversations.service import ConversationService
+from memorias_licantropicas.infrastructure.conversation_gate import RedisConversationGate
 
 
 def pytest_addoption(parser):
@@ -83,7 +85,7 @@ def game():
         GameCharacter(character_id="bentinho", role="werewolf"),
         GameCharacter(character_id="capitu", role="civil"),
         GameCharacter(character_id="escobar", role="civil"),
-    ))
+    ), content_version="2")
 
 
 @pytest.fixture
@@ -133,6 +135,11 @@ async def api_client(monkeypatch, catalog, storage, llm):
     services = Services(
         characters=CharacterService(catalog), games=GameService(catalog, storage.games),
         harness=HarnessService(catalog, storage.games, storage.memory, llm), redis=storage.client, llm=llm,
+        conversations=ConversationService(
+            catalog, storage.games, storage.memory,
+            HarnessService(catalog, storage.games, storage.memory, llm),
+            RedisConversationGate(storage.client, storage.prefix),
+        ),
     )
     monkeypatch.setattr(main_module, "build_services", lambda settings: services)
     from memorias_licantropicas.settings import Settings

@@ -1,10 +1,12 @@
 """Implementação local do catálogo versionado, sem I/O externo."""
 
 from memorias_licantropicas.contracts.model import CharacterProfile
-from memorias_licantropicas.modules.characters.catalog import CHARACTERS
+from memorias_licantropicas.modules.characters.catalog import CHARACTERS, CONTENT_VERSION
 
 
 class CatalogCharacterRepository:
+    content_version = CONTENT_VERSION
+
     async def list(self) -> tuple[CharacterProfile, ...]:
         return CHARACTERS
 
