@@ -1,0 +1,128 @@
+"""Regras da exploração: o cliente envia intenção, o servidor calcula deslocamento."""
+
+from collections.abc import Callable
+from datetime import UTC, datetime
+from uuid import UUID, uuid4
+
+from memorias_licantropicas.contracts.errors import AccessDeniedError, ConflictError, NotFoundError
+from memorias_licantropicas.contracts.model import GameState
+from memorias_licantropicas.contracts.repository import CharacterRepository, GameRepository
+from memorias_licantropicas.modules.world.catalog import LOCATIONS, LOCATIONS_BY_ID
+from memorias_licantropicas.modules.world.gate import RedisPlayerGate
+from memorias_licantropicas.modules.world.model import WorldState
+from memorias_licantropicas.modules.world.repository import RedisWorldRepository
+from memorias_licantropicas.modules.world.schema import (
+    MoveRequest, PlayerPublic, TravelRequest, VisibleNPC, WorldSnapshot,
+)
+
+WALK_SPEED = 210
+MAX_MOVEMENT_SECONDS = 0.4
+APPROACH_DISTANCE = 64
+
+
+class WorldService:
+    def __init__(self, games: GameRepository, characters: CharacterRepository,
+                 repository: RedisWorldRepository, gate: RedisPlayerGate,
+                 clock: Callable[[], datetime] | None = None):
+        self._games = games
+        self._characters = characters
+        self._repository = repository
+        self._gate = gate
+        self._clock = clock or (lambda: datetime.now(UTC))
+
+    async def _load(self, game_id: UUID) -> tuple[GameState, WorldState]:
+        game = await self._games.get(game_id)
+        if game is None:
+            raise NotFoundError("Partida não encontrada.")
+        if game.content_version != self._characters.content_version:
+            raise ConflictError("A partida usa uma versão anterior de personagens.")
+        world = await self._repository.get(game_id)
+        if world is None:
+            raise ConflictError("Esta partida não possui mundo visual; crie uma nova partida.")
+        return game, world
+
+    async def _snapshot(self, game: GameState, world: WorldState) -> WorldSnapshot:
+        cast = {character.character_id: character for character in game.characters}
+        visible = []
+        for placement in world.npcs:
+            member = cast.get(placement.npc_id)
+            if placement.location_id != world.player.location_id or member is None or not member.alive:
+                continue
+            profile = await self._characters.get(placement.npc_id)
+            if profile is None:
+                raise ConflictError("Ficha do personagem indisponível.")
+            visible.append(VisibleNPC(
+                npc_id=profile.id, name=profile.name, x=placement.x, sprite_id=profile.id,
+                can_approach=abs(placement.x - world.player.x) <= APPROACH_DISTANCE,
+            ))
+        return WorldSnapshot(
+            game_id=world.game_id, world_version=world.world_version, revision=world.revision,
+            location=LOCATIONS_BY_ID[world.player.location_id],
+            player=PlayerPublic(location_id=world.player.location_id, x=world.player.x,
+                                facing=world.player.facing, movement_seq=world.player.movement_seq),
+            visible_npcs=tuple(visible),
+            travel_targets=tuple(location.id for location in LOCATIONS if location.id != world.player.location_id),
+        )
+
+    async def get(self, game_id: UUID) -> WorldSnapshot:
+        game, world = await self._load(game_id)
+        return await self._snapshot(game, world)
+
+    async def move(self, game_id: UUID, body: MoveRequest) -> WorldSnapshot:
+        async with self._gate.hold(game_id):
+            game, world = await self._load(game_id)
+            if body.revision != world.revision or body.location_id != world.player.location_id:
+                raise ConflictError("Local ou revisão desatualizado; consulte o mundo atual.")
+            if body.seq <= world.player.movement_seq:
+                raise ConflictError("Sequência de movimento já processada ou desatualizada.")
+            now = self._clock()
+            elapsed = min(MAX_MOVEMENT_SECONDS, max(0, (now - world.player.last_updated_at).total_seconds()))
+            direction = -1 if world.player.direction == "left" else 1 if world.player.direction == "right" else 0
+            x = min(1888, max(32, world.player.x + direction * WALK_SPEED * elapsed))
+            player = world.player.model_copy(update={
+                "x": x, "direction": body.direction, "movement_seq": body.seq,
+                "facing": body.direction if body.direction != "idle" else world.player.facing,
+                "last_updated_at": now,
+            })
+            updated = world.model_copy(update={"revision": world.revision + 1, "player": player})
+            if not await self._repository.save(updated, expected_revision=world.revision):
+                raise ConflictError("O mundo mudou; consulte a revisão atual.")
+            return await self._snapshot(game, updated)
+
+    async def travel(self, game_id: UUID, body: TravelRequest) -> WorldSnapshot:
+        async with self._gate.hold(game_id):
+            game, world = await self._load(game_id)
+            if body.revision != world.revision:
+                raise ConflictError("Revisão desatualizada; consulte o mundo atual.")
+            if body.target_location_id == world.player.location_id:
+                raise ConflictError("O jogador já está neste local.")
+            now = self._clock()
+            player = world.player.model_copy(update={
+                "location_id": body.target_location_id, "x": 160, "direction": "idle",
+                "facing": "right", "last_updated_at": now,
+            })
+            updated = world.model_copy(update={"revision": world.revision + 1, "player": player})
+            event = {
+                "id": str(uuid4()), "type": "player.travelled", "occurred_at": now.isoformat(),
+                "source": "world", "data": {
+                    "player_id": "player", "from_location_id": world.player.location_id,
+                    "to_location_id": body.target_location_id,
+                },
+            }
+            if not await self._repository.save(updated, expected_revision=world.revision, event=event):
+                raise ConflictError("O mundo mudou; consulte a revisão atual.")
+            return await self._snapshot(game, updated)
+
+    async def assert_can_talk(self, game_id: UUID, npc_id: str) -> None:
+        """Não adquire reserva: o chamador mantém a reserva de ação durante o diálogo."""
+        game, world = await self._load(game_id)
+        npc = next((member for member in game.characters if member.character_id == npc_id), None)
+        if npc is None:
+            raise NotFoundError("Persona não encontrada nesta partida.")
+        if not npc.alive:
+            raise AccessDeniedError("Esta persona não pode conversar.")
+        placement = next((member for member in world.npcs if member.npc_id == npc_id), None)
+        if placement is None or placement.location_id != world.player.location_id:
+            raise AccessDeniedError("A persona está em outro local.")
+        if abs(placement.x - world.player.x) > APPROACH_DISTANCE:
+            raise AccessDeniedError("Aproxime-se da persona para conversar.")
