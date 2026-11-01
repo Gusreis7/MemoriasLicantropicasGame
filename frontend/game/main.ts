@@ -1,5 +1,6 @@
-import {api, ApiError, type CharacterManifest, type Conversation, type Location, type LocationID, type Message, type WorldSnapshot} from '../shared/api';
+import {api, ApiError, type CharacterManifest, type Conversation, type ExitSide, type Location, type LocationID, type Message, type WorldSnapshot} from '../shared/api';
 import {closestNPC, MovementController} from './movement';
+import {ExitBoundary} from './exits';
 import {CityScene, makeGame} from './scene';
 import './style.css';
 
@@ -21,7 +22,7 @@ app.innerHTML = `
       <section id="investigation" class="investigation" aria-label="Sua investigação" hidden>
         <div class="scene-heading"><div><p class="eyebrow">OS CAMINHOS DA INVESTIGAÇÃO</p><h1 id="location-name">Praça Verde</h1></div><button id="open-map" class="button map-button" type="button"><span aria-hidden="true">⌘</span> Mapa da cidade <kbd>M</kbd></button></div>
         <div class="scene-frame"><div class="frame-corner top-left"></div><div class="frame-corner top-right"></div><div id="game-canvas" aria-label="Cenário lateral. Use as setas para andar e E para conversar." tabindex="0"></div><div class="scene-vignette" aria-hidden="true"></div><div id="scene-loading" class="scene-loading" role="status">Preparando a cidade…</div><div class="world-caption"><span class="caption-dot"></span><span id="world-caption">O bairro guarda suas histórias.</span></div><button id="approach" class="approach-button" type="button" hidden><kbd>E</kbd><span></span></button></div>
-        <div class="scene-footer"><div class="control-guide"><span><kbd>←</kbd><kbd>→</kbd> Caminhar</span><span><kbd>E</kbd> Conversar</span><span><kbd>M</kbd> Viajar</span></div><span class="connection-label" id="connection-label"><i></i> Caso em andamento</span></div>
+        <div class="scene-footer"><div class="touch-controls" aria-label="Caminhar pela cidade"><button id="walk-left" type="button" aria-label="Caminhar para a esquerda">←</button><button id="walk-right" type="button" aria-label="Caminhar para a direita">→</button></div><div class="control-guide"><span><kbd>←</kbd><kbd>→</kbd> Caminhar</span><span><kbd>E</kbd> Conversar</span><span><kbd>M</kbd> Viajar</span></div><span class="connection-label" id="connection-label"><i></i> Caso em andamento</span></div>
         <div class="notebook"><div class="notebook-number">01</div><div><p class="eyebrow">O CADERNO DE FLORIANO</p><h2>Uma boa pergunta abre portas.</h2><p>Aproxime-se de um morador para ouvir sua versão. Às vezes, o que alguém evita dizer é tão revelador quanto o que conta.</p></div><span class="notebook-ornament" aria-hidden="true">✦</span></div>
       </section>
     </main>
@@ -29,6 +30,8 @@ app.innerHTML = `
   </div>
 
   <div id="map-overlay" class="overlay" hidden><section class="map-modal" role="dialog" aria-modal="true" aria-labelledby="map-title"><header class="modal-heading"><div><p class="eyebrow">ESCOLHA SEU PRÓXIMO DESTINO</p><h2 id="map-title">Os caminhos da cidade</h2></div><button class="icon-button" id="close-map" aria-label="Fechar mapa" type="button">×</button></header><div class="city-map"><img src="/assets/map/city.png" alt="Mapa ilustrado do bairro, entre a praça, a cabana, a Casa Verde, o café e o cais."/><div id="map-destinations"></div></div><p class="map-caption">Cada encontro pode mudar o rumo desta história.</p><p id="map-status" class="status" role="status" aria-live="polite"></p></section></div>
+
+  <div id="exit-overlay" class="overlay" hidden><section class="exit-modal" role="dialog" aria-modal="true" aria-labelledby="exit-title" aria-describedby="exit-description"><header class="modal-heading"><div><p class="eyebrow">NO FIM DESTA RUA</p><h2 id="exit-title">Por onde seguimos?</h2></div><button class="icon-button" id="close-exit" aria-label="Ficar neste local" type="button">×</button></header><p id="exit-description">Escolha um caminho para continuar a investigação.</p><div id="exit-destinations" class="exit-destinations"></div><p id="exit-status" class="status" role="status" aria-live="polite"></p><button id="stay-here" class="button secondary" type="button">Ficar neste local</button></section></div>
 
   <div id="dialogue-overlay" class="overlay dialogue-overlay" hidden><section class="dialogue-modal" role="dialog" aria-modal="true" aria-labelledby="dialogue-name"><aside class="persona-panel"><div class="persona-frame"><img id="persona-portrait" src="" alt=""/></div><p class="eyebrow">DEPOIMENTO</p><h2 id="dialogue-name"></h2><span class="persona-flourish" aria-hidden="true">— ✦ —</span><p>Nem toda verdade vem à primeira pergunta.</p></aside><div class="conversation-panel"><header class="conversation-heading"><div><span class="conversation-dot"></span><span>Conversa com Floriano</span></div><button id="close-dialogue" class="icon-button" type="button" aria-label="Encerrar conversa">×</button></header><div id="messages" class="messages" role="log" aria-live="polite"></div><div id="dialogue-status" class="status dialogue-status" role="status" aria-live="polite"></div><form id="message-form" class="message-form"><label class="sr-only" for="message-input">Sua pergunta</label><textarea id="message-input" rows="2" maxlength="8000" placeholder="O que você gostaria de perguntar?" required></textarea><button id="send-message" class="button primary" type="submit" aria-label="Enviar pergunta">Enviar <span aria-hidden="true">→</span></button></form><p class="form-hint">Enter para enviar · Shift + Enter para uma nova linha</p></div></section></div>
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
@@ -57,7 +60,9 @@ let manifest: CharacterManifest;
 let controller: MovementController | null = null;
 let scene: CityScene | null = null;
 let game: ReturnType<typeof makeGame> | null = null;
-let modal: 'map' | 'dialogue' | null = null;
+let modal: 'map' | 'dialogue' | 'exit' | null = null;
+let exitSide: ExitSide | null = null;
+let exitBoundary = new ExitBoundary();
 let busy = false;
 let starting = false;
 let conversation: Conversation | null = null;
@@ -85,6 +90,7 @@ function setModal(next: typeof modal) {
   modal = next;
   $('#map-overlay').hidden = next !== 'map';
   $('#dialogue-overlay').hidden = next !== 'dialogue';
+  $('#exit-overlay').hidden = next !== 'exit';
   scene?.setInputEnabled(next === null);
   $('#approach').hidden = true;
   lastNearest = '';
@@ -115,12 +121,17 @@ async function launch(resume: boolean) {
     const [snapshot, places, characters] = await Promise.all([api.world(id), api.locations(), api.manifest()]);
     locations = places; manifest = characters;
     controller?.dispose(); game?.destroy(true);
+    exitBoundary = new ExitBoundary();
     controller = new MovementController(snapshot, api.move, () => api.world(id), applySnapshot, error => toast(explain(error)));
     scene = new CityScene(manifest, locations, snapshot, {
       blocked: () => Boolean(modal || busy || starting || document.hidden || $('#investigation').hidden),
       frame: (delta, direction) => {
         controller?.update(delta, direction);
         if (controller && world) {
+          if (!modal && !busy && !starting) {
+            const boundary = exitBoundary.observe(controller.world, controller.x, direction);
+            if (boundary) void openExit(boundary);
+          }
           const nearest = !modal && !busy ? closestNPC(world, controller.x) : undefined;
           if ((nearest?.npc_id ?? '') !== lastNearest) {
             lastNearest = nearest?.npc_id ?? '';
@@ -176,18 +187,54 @@ function renderMap() {
   }
 }
 
-async function travel(target: LocationID) {
+async function openExit(side: ExitSide) {
+  if (!world || !controller || busy || modal) return;
+  busy = true;
+  await settleMovement();
+  exitSide = side;
+  setModal('exit');
+  $('#exit-description').textContent = `Na saída à ${side === 'left' ? 'esquerda' : 'direita'} de ${world.location.name}, estes caminhos levam a outros encontros.`;
+  status('#exit-status', '');
+  renderExits();
+  $('#exit-destinations button')?.focus();
+}
+
+function renderExits() {
+  const container = $('#exit-destinations'); container.replaceChildren();
+  if (!world || !exitSide) return;
+  for (const exit of world.location.exits.filter(exit => exit.side === exitSide)) {
+    const destination = locations.find(location => location.id === exit.target_location_id);
+    if (!destination) continue;
+    const button = document.createElement('button'); button.type = 'button'; button.className = 'exit-destination';
+    button.disabled = busy; button.dataset.destination = destination.id;
+    const name = document.createElement('strong'); name.textContent = destination.name;
+    const caption = document.createElement('span'); caption.textContent = `Chegar pela ${exit.arrival_side === 'left' ? 'esquerda' : 'direita'} →`;
+    button.append(name, caption);
+    button.addEventListener('click', () => {if (exitSide) void travel(destination.id, exitSide);});
+    container.append(button);
+  }
+  const otherEnd = document.createElement('button'); otherEnd.type = 'button'; otherEnd.className = 'exit-destination';
+  otherEnd.disabled = busy; otherEnd.dataset.destination = world.location.id;
+  otherEnd.textContent = 'Ir para a outra ponta deste local';
+  otherEnd.addEventListener('click', () => {if (world && exitSide) void travel(world.location.id, exitSide);});
+  container.append(otherEnd);
+  $('#close-exit').toggleAttribute('disabled', busy);
+  $('#stay-here').toggleAttribute('disabled', busy);
+}
+
+async function travel(target: LocationID, side?: ExitSide) {
   if (!world || !controller || busy) return;
-  busy = true; renderMap(); status('#map-status', 'Seguindo por outro caminho…');
+  const statusSelector = side ? '#exit-status' : '#map-status';
+  busy = true; renderMap(); renderExits(); status(statusSelector, 'Seguindo por outro caminho…');
   try {
-    const snapshot = await api.travel(controller.world, target);
+    const snapshot = await api.travel(controller.world, target, side);
     controller.accept(snapshot); setModal(null); toast(`Você chegou: ${snapshot.location.name}.`);
   } catch (error) {
-    status('#map-status', explain(error), true);
+    status(statusSelector, explain(error), true);
     if (error instanceof ApiError && error.status === 409) {
       try {controller.accept(await api.world(world.game_id));} catch { /* mantém erro visível */ }
     }
-  } finally {busy = false; renderMap(); lastNearest = '';}
+  } finally {busy = false; renderMap(); renderExits(); lastNearest = '';}
 }
 
 async function approach() {
@@ -263,7 +310,18 @@ $('#new-case').addEventListener('click', async () => {
 });
 $('#open-map').addEventListener('click', () => {void openMap();});
 $('#close-map').addEventListener('click', () => {if (!busy) setModal(null);});
+$('#close-exit').addEventListener('click', () => {if (!busy) setModal(null);});
+$('#stay-here').addEventListener('click', () => {if (!busy) setModal(null);});
 $('#approach').addEventListener('click', () => {void approach();});
+for (const [id, direction] of [['walk-left', 'left'], ['walk-right', 'right']] as const) {
+  const button = $(`#${id}`);
+  button.addEventListener('pointerdown', event => {
+    if (modal || busy) return;
+    event.preventDefault(); button.setPointerCapture(event.pointerId); scene?.setTouchDirection(direction);
+  });
+  for (const event of ['pointerup', 'pointercancel', 'lostpointercapture']) button.addEventListener(event, () => scene?.setTouchDirection('idle'));
+}
+
 $('#close-dialogue').addEventListener('click', () => {if (!busy) setModal(null);});
 $('#message-form').addEventListener('submit', event => {void sendMessage(event);});
 $('#message-input').addEventListener('keydown', event => {
@@ -272,7 +330,7 @@ $('#message-input').addEventListener('keydown', event => {
 document.addEventListener('keydown', event => {
   if (event.key === 'Escape' && modal && !busy) {event.preventDefault(); setModal(null);}
   if (event.key === 'Tab' && modal) {
-    const overlay = modal === 'map' ? $('#map-overlay') : $('#dialogue-overlay');
+    const overlay = $(`#${modal}-overlay`);
     const focusable = [...overlay.querySelectorAll<HTMLElement>('button:not([disabled]),textarea:not([disabled])')];
     if (!focusable.length) return;
     const first = focusable[0], last = focusable[focusable.length - 1];
