@@ -64,6 +64,8 @@ class RedisGameRepository(_RedisRepository):
     """Partidas insert-only; o sorteio existente jamais é sobrescrito."""
 
     async def create(self, game: GameState) -> bool:
+        from memorias_licantropicas.modules.investigation.rules import make_initial_investigation
+
         key = self._game_key(game.id)
         base = f"{self._prefix}:game:{{{game.id}}}"
         index = f"{self._prefix}:games"
@@ -71,7 +73,7 @@ class RedisGameRepository(_RedisRepository):
             for _ in range(_MAX_TRANSACTION_ATTEMPTS):
                 try:
                     async with self._client.pipeline() as pipe:
-                        await pipe.watch(key, index, f"{base}:events", f"{base}:world")
+                        await pipe.watch(key, index, f"{base}:events", f"{base}:world", f"{base}:investigation")
                         if await pipe.exists(key):
                             return False
                         await pipe.zcard(index)
@@ -79,6 +81,7 @@ class RedisGameRepository(_RedisRepository):
                         pipe.multi()
                         pipe.set(key, game.model_dump_json())
                         pipe.set(f"{base}:world", make_initial_world(game.id).model_dump_json())
+                        pipe.set(f"{base}:investigation", make_initial_investigation(game, game.created_at).model_dump_json())
                         pipe.zadd(index, {str(game.id): game.created_at.timestamp()})
                         pipe.rpush(f"{base}:events",
                                    event_json("game.created", {"game_id": str(game.id)}),

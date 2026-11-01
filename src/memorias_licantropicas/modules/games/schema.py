@@ -26,5 +26,5 @@ class GamePublic(BaseModel):
     id: UUID
     created_at: datetime
     content_version: str
-    status: Literal["active"]
+    status: Literal["active", "won", "lost"]
     characters: tuple[GameCharacterPublic, ...]
