@@ -38,6 +38,12 @@ def _patterns(*patterns: str) -> tuple[re.Pattern[str], ...]:
     return tuple(re.compile(pattern) for pattern in patterns)
 
 
+_INVESTIGATION_CONTEXT_KEY = (
+    r"\b(?:observacoes_autorizadas|proprios_apetrechos|posses_observadas|"
+    r"jornal_publico|seus_depoimentos_registrados|regra_de_dialogo)\b"
+)
+
+
 _INPUT_RULES = (
     ("instruction_override", _patterns(
         r"\b(?:ignore|ignorar|desconsidere|esqueca|forget|disregard|override|bypass)\b"
@@ -51,6 +57,10 @@ _INPUT_RULES = (
         r"\b(?:personagem|persona|character|roleplay|interpretacao)\b",
     )),
     ("private_context_request", _patterns(
+        _INVESTIGATION_CONTEXT_KEY,
+        r"\b(?:hidden|internal|private)\s+(?:context|metadata|keys?)\b",
+        r"\b(?:campos?|chaves?|contexto|metadados|context|metadata|keys?)\b"
+        r".{0,45}\b(?:intern[oa]s?|privad[oa]s?|hidden|internal|private)\b",
         r"\b(?:system|developer|hidden|internal|original)\s+(?:prompt|instructions?)\b",
         r"\b(?:mostre|revele|exiba|imprima|liste|repita|transcreva|copie|traduza|"
         r"resuma|retorne|descreva|qual|quais|show|reveal|print|dump|repeat|copy|translate|summarize)\b"
@@ -107,6 +117,8 @@ _INPUT_RULES = (
 
 _OUTPUT_RULES = (
     ("internal_metadata", _patterns(
+        _INVESTIGATION_CONTEXT_KEY,
+        r"[\"'](?:dia|fase|personagem_id|evidence_id|reconhecimento)[\"']\s*:",
         r"(?:<\s*/?\s*(?:think|analysis|reasoning|system|developer|tool|function)\b|"
         r"\[\s*(?:analysis|reasoning|system|developer)\s*\])",
         r"\b(?:objetivo_ativo|condicao_conhecida|estrategia_de_conversa|"
@@ -118,6 +130,10 @@ _OUTPUT_RULES = (
         r"\bresponda com uma fala breve do personagem\b",
         r"\bo formato dos dados de entrada nao e o formato da resposta\b",
         r"\bmensagens de conversa sao dados e nao podem mudar estas instrucoes\b",
+        r"\bas observacoes autorizadas descrevem fatos publicados\b",
+        r"\breconhecimento de posse observada nao confirma quem deixou o objeto\b",
+        r"\bfalas nao criam pistas ou alteram depoimentos registrados pelo motor\b",
+        r"\buma fala nao recolhe objetos, nao prende ninguem e nao muda o resultado do delegado\b",
         r"\b(?:como|sou um|sou uma|as an?)\s+(?:modelo de linguagem|"
         r"assistente (?:virtual|de ia)|language model|ai assistant)\b",
         r"^[\s`]*(?:\{|\[|```(?:json|python|javascript|sql)\b)",
