@@ -30,6 +30,8 @@ A suíte automatizada usa Redis em memória e Redis real em Docker, com inferên
 
 O [planejamento do projeto](docs/planejamento.md) descreve o ciclo do jogo, os módulos, o harness de agentes, a memória, as etapas de desenvolvimento e as decisões ainda em aberto.
 
+A [proposta da etapa visual](docs/planejamento_visual.md) detalha pixel art, cinco locais, exploração lateral, mapa, painel admin e delegação. Aguarda aprovação antes da implementação.
+
 Os [contratos entre as frentes](docs/contratos_agentes.md) fixam as interfaces e responsabilidades. A [integração da base](docs/base_agentes.md) descreve configuração, uso e limites atuais.
 
 ## Executar com Docker
