@@ -17,10 +17,16 @@ Essas são direções de estudo; as mecânicas e integrações ainda serão defi
 
 - Python 3.13 e **uv** para dependências e ambiente virtual.
 - **FastAPI** como API do jogo.
+- API REST em **monólito modular**, com routers, schemas, services e repositories organizados por domínio.
 - **Docker** e Docker Compose para executar a aplicação.
+- **Redis** para memória das interações e **AWS Bedrock Mantle**, com Qwen 32B, para interpretar os NPCs.
 - Jogo acessível pelo navegador. A tecnologia da interface ainda está em aberto.
 
 Por enquanto, a base contém apenas uma API executável e uma verificação de saúde. Não há partidas, agentes, banco de dados ou interface de jogo implementados.
+
+## Planejamento
+
+O [planejamento do projeto](docs/planejamento.md) descreve o ciclo do jogo, os módulos, o harness de agentes, a memória, as etapas de desenvolvimento e as decisões ainda em aberto.
 
 ## Executar com Docker
 
@@ -52,6 +58,26 @@ O uv usa a versão de Python indicada em `.python-version`. Para adicionar depen
 ```sh
 uv run pytest
 ```
+
+## Convenção de branches
+
+| Branch | Finalidade |
+| --- | --- |
+| `feat/feature_nova` | Desenvolvimento de funcionalidades e services. |
+| `fix/descricao_correcao` | Correções maiores de código. |
+| `AED/aed_objetivo` | Explorações e experimentos com um objetivo definido. |
+| `develop` | Integração e staging; acompanha a base de `main` e recebe alterações aprovadas antes da promoção para produção. |
+| `main` | Futura branch de produção. |
+
+As branches de trabalho partem de `develop`. Após aprovação, as alterações são integradas em `develop`; depois de validadas em staging e aprovadas para produção, seguem de `develop` para `main`.
+
+```text
+feat/feature_nova ────┐
+fix/descricao_correcao ├── aprovação → develop (staging) → aprovação → main (produção)
+AED/aed_objetivo ─────┘
+```
+
+Explorações em `AED/` só seguem para `develop` quando suas alterações forem aprovadas para integração.
 
 ## Estrutura
 
