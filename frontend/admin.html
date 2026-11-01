@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#172e28" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Arquivo reservado · Memórias Licantropicas</title>
+    <script type="module" src="/admin/main.ts"></script>
+  </head>
+  <body>
+    <div id="boot-state" class="boot-state" role="status">Consultando acesso ao arquivo…</div>
+    <noscript>Ative o JavaScript para abrir o painel do observador.</noscript>
+    <main id="login-view" class="login-view" hidden>
+      <div class="login-art" aria-hidden="true"><span class="moon"></span><span class="art-line"></span><span class="art-line second"></span><span class="art-label">RIO DE JANEIRO · 1890</span></div>
+      <section class="login-card" aria-labelledby="login-title">
+        <span class="eyebrow">MEMÓRIAS LICANTROPICAS</span>
+        <p class="folio">Arquivo reservado / acesso do investigador</p>
+        <h1 id="login-title">Há coisas que a cidade<br />ainda não sabe.</h1>
+        <p class="login-intro">Entre para acompanhar a verdade da partida, seus encontros e os relatos deixados pelo caminho.</p>
+        <form id="login-form">
+          <label for="username">Usuário</label>
+          <input id="username" name="username" autocomplete="username" required maxlength="128" value="admin" />
+          <label for="password">Senha</label>
+          <input id="password" name="password" type="password" autocomplete="current-password" required maxlength="1024" />
+          <p id="login-error" class="form-error" role="alert"></p>
+          <button id="login-button" class="button primary" type="submit">Abrir o arquivo <span aria-hidden="true">→</span></button>
+        </form>
+        <p class="login-note">Área de observação. Suas ações aqui não alteram o destino dos personagens.</p>
+      </section>
+    </main>
+
+    <div id="dashboard" class="dashboard" hidden>
+      <aside class="sidebar">
+        <a id="game-link" class="brand" href="http://localhost:7077"><span class="brand-mark" aria-hidden="true">M</span><span>Memórias<br /><strong>Licantropicas</strong></span></a>
+        <div class="sidebar-rule"></div>
+        <span class="eyebrow light">ARQUIVO DE PARTIDAS</span>
+        <div class="sidebar-heading"><h2>Sessões</h2><span id="games-count" class="count-badge">0</span></div>
+        <div id="games-list" class="games-list" aria-label="Partidas disponíveis"></div>
+        <div id="games-pagination" class="pagination dark"></div>
+        <div class="sidebar-foot">
+          <p><span id="health-dot" class="health-dot"></span><span id="health-label">Verificando Redis</span></p>
+          <span class="sidebar-small">Painel observador · somente leitura</span>
+          <div class="session-row"><span id="session-user"></span><button id="logout" type="button">Sair</button></div>
+        </div>
+      </aside>
+
+      <main class="workspace">
+        <header class="topbar"><div><span class="eyebrow">CADERNO DO OBSERVADOR</span><p id="selected-folio">Selecione uma partida no arquivo</p></div><button id="refresh" class="button subtle" type="button"><span aria-hidden="true">↻</span> Atualizar</button></header>
+        <div id="status" class="status" role="status" aria-live="polite"></div>
+        <section id="empty-state" class="empty-state"><span class="empty-ornament" aria-hidden="true">⌘</span><span class="eyebrow">O ARQUIVO AGUARDA</span><h1>Nenhuma história selecionada.</h1><p>Escolha uma sessão à esquerda. Se o arquivo estiver vazio, crie uma partida no jogo para começar a observar.</p><a id="start-game-link" class="button primary" href="http://localhost:7077">Ir para o jogo <span aria-hidden="true">↗</span></a></section>
+        <div id="game-content" hidden>
+          <section class="case-heading"><div><span class="eyebrow">OS FATOS POR TRÁS DOS RELATOS</span><h1>Uma cidade de segredos.</h1><p id="case-meta"></p></div><span class="read-only-stamp">SOMENTE<br /><strong>OBSERVAÇÃO</strong></span></section>
+          <section id="stats" class="stats" aria-label="Resumo verdadeiro da partida"></section>
+          <nav class="tabs" role="tablist" aria-label="Seções do arquivo"><button type="button" role="tab" data-tab="overview" aria-selected="true">Visão geral</button><button type="button" role="tab" data-tab="conversations" aria-selected="false">Conversas</button><button type="button" role="tab" data-tab="events" aria-selected="false">Cronologia</button></nav>
+
+          <section id="overview-panel" class="tab-panel">
+            <div class="section-heading"><div><span class="eyebrow">ELENCO</span><h2>Rostos conhecidos, intenções ocultas.</h2></div><p>Os papéis abaixo são a verdade do sistema.</p></div>
+            <div id="characters" class="characters"></div>
+            <div class="overview-bottom">
+              <section class="paper-panel"><div class="panel-heading"><div><span class="eyebrow">ENCONTROS REGISTRADOS</span><h2>Fios de uma conversa.</h2></div></div><p class="panel-description">Cada ligação representa mensagens reais. Selecione uma linha para ler o encontro.</p><div id="graph" class="graph"></div><div id="graph-legend" class="graph-legend"></div></section>
+              <section class="paper-panel deaths-panel"><span class="eyebrow">REGISTRO DE MORTES</span><h2>O que se sabe.</h2><div id="deaths"></div><p class="panel-description bottom-note">Um relato não é uma prova. A autoria só aparece quando está registrada como fato.</p></section>
+            </div>
+          </section>
+
+          <section id="conversations-panel" class="tab-panel" hidden>
+            <div class="section-heading"><div><span class="eyebrow">TRANSCRIÇÕES PRIVADAS</span><h2>As palavras que ficaram.</h2></div><p>Player–NPC e NPC–NPC, quando houver encontros.</p></div>
+            <div class="conversation-layout"><section class="paper-panel conversations-panel"><label class="filter-label" for="participant-filter">Filtrar participante nesta página</label><input id="participant-filter" placeholder="Nome ou identificador" type="search" /><div id="conversations-list" class="conversations-list"></div><div id="conversations-pagination" class="pagination"></div></section><section class="paper-panel transcript-panel"><div class="panel-heading"><h3 id="transcript-title">Selecione um encontro</h3><span id="messages-count" class="muted"></span></div><div id="messages" class="messages"><p class="empty-copy">A transcrição será exibida aqui.</p></div><div id="messages-pagination" class="pagination"></div></section></div>
+          </section>
+
+          <section id="events-panel" class="tab-panel" hidden><div class="section-heading"><div><span class="eyebrow">LINHA DO TEMPO</span><h2>Cada acontecimento em seu lugar.</h2></div><p>Eventos efetivados, com origem e horário.</p></div><section class="paper-panel"><div id="events" class="events-list"></div><div id="events-pagination" class="pagination"></div></section></section>
+        </div>
+        <footer class="workspace-footer"><span>MEMÓRIAS LICANTROPICAS</span><span>A verdade do sistema. As versões de cada um.</span></footer>
+      </main>
+    </div>
+  </body>
+</html>
