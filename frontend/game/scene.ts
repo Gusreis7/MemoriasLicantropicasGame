@@ -36,8 +36,8 @@ const AMBIENT: Record<LocationID, AmbientPlacement[]> = {
   ],
   cais_lanternas: [
     // Keep the gas lamp on the left readable; the backdrop already has a tree behind it.
-    {frame: 'citizen-man', x: 700, y: 293, width: 48, height: 76},
-    {frame: 'cat', x: 320, y: 306, width: 34, height: 27, drift: 8}, {frame: 'dog', x: 785, y: 307, width: 44, height: 30},
+    {frame: 'citizen-man', x: 885, y: 293, width: 48, height: 76},
+    {frame: 'cat', x: 320, y: 306, width: 34, height: 27, drift: 8}, {frame: 'dog', x: 570, y: 307, width: 44, height: 30},
     {frame: 'bird', x: 610, y: 118, width: 18, height: 16, drift: 30}, {frame: 'bird', x: 765, y: 85, width: 17, height: 15, drift: 26},
   ],
 };
@@ -145,7 +145,7 @@ export class CityScene extends Phaser.Scene {
     if (id === 'cais_lanternas' && this.textures.exists('capoeira')) {
       // The atlas feet baseline is y=480 in a 512px frame. Place that baseline
       // on the walkable pavement, at the same ground_y as every person sprite.
-      const roda = this.add.sprite(440, groundY, 'capoeira', '0').setOrigin(.5, 480 / 512).setDepth(-2);
+      const roda = this.add.sprite(745, groundY, 'capoeira', '0').setOrigin(.5, 480 / 512).setDepth(-2);
       roda.setDisplaySize(168, 112);
       if (!this.reducedMotion) roda.play('capoeira-roda');
       this.ambient.push(roda);
