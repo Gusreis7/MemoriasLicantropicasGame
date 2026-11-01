@@ -57,6 +57,15 @@ objetivo nesta cidade?”, “está escondendo um segredo de Bentinho?” e ques
 clínicas de Bacamarte. O simples uso de “segredo”, “objetivo”, “raciocínio” ou
 “regras” não é suficiente para bloquear uma conversa.
 
+O ciclo de investigação acrescenta observações autorizadas ao contexto do NPC:
+seus objetos, posses que observou, jornal público e seus depoimentos registrados.
+Os nomes técnicos `observacoes_autorizadas`, `proprios_apetrechos`,
+`posses_observadas`, `jornal_publico`, `seus_depoimentos_registrados` e
+`regra_de_dialogo` são marcadores internos e pedidos de copiá-los são recusados.
+Isso não impede perguntar “que objetos você carrega?”, “já viu este lenço?”,
+“quem usa luvas?” ou “do que o jornal trata?”. “Dia”, “fase” e “jornal público”
+continuam palavras comuns permitidas na investigação.
+
 ## Saída
 
 São recusados raciocínio marcado como `<think>`/`<analysis>`, envelopes técnicos
@@ -73,6 +82,15 @@ protegidos quando fornecidos pelo harness. Prioridades curtas e comuns, como
 Payloads base64 de saída passam pelas verificações de metadados e eco privado
 em até dois níveis, também com candidatos limitados. Instruções de estilo
 copiadas literalmente do harness têm assinaturas próprias de saída.
+
+As seis chaves técnicas das observações também são recusadas na saída, inclusive
+quando codificadas nos formatos cobertos. As instruções novas sobre reconhecimento
+de posse, motor de depoimentos e limites de ações possuem assinaturas para
+impedir seu eco literal. Campos comuns como `dia`, `fase`, `personagem_id`,
+`evidence_id` e `reconhecimento` são reconhecidos como metadados quando aparecem
+como chaves serializadas com aspas e dois-pontos; perguntas ou falas naturais
+sobre datas e objetos permanecem válidas. Explicar em suas próprias palavras
+que posse não comprova autoria continua permitido e faz parte da investigação.
 
 Acusações retomadas como perguntas e negações de declarações não equivalem a
 confissão: “por que pensa que eu sou o lobisomem?” e “eu não disse que sou o
@@ -93,6 +111,6 @@ Redis por partida/conversa, projeção privada por NPC e ausência de ferramenta
 executáveis no adaptador LLM. O texto produzido pelo modelo não recebe
 autoridade para mudar funções, prompts, papéis, sorteio, mortes ou posições.
 
-Validação local: `tests/test_dialogue_guard.py` contém **117 casos aprovados**,
+Validação local: `tests/test_dialogue_guard.py` contém **152 casos aprovados**,
 incluindo ataques PT/EN, Unicode, codificação, dados privados e controles
 narrativos. Nenhuma chamada à AWS é necessária.

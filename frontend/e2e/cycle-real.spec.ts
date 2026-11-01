@@ -1,0 +1,70 @@
+import {test, expect} from '@playwright/test';
+
+test('relógio real do servidor gera crime, bloqueia a noite e retorna à banca', async ({page}) => {
+  await page.request.post('/api/__test__/clock', {data: {seconds: 0, reset: true}});
+  try {
+    await page.goto('/');
+    await page.locator('#start').click();
+    await expect(page.locator('#scene-loading')).toBeHidden({timeout: 30000});
+    await expect(page.locator('#journal-overlay')).toBeVisible();
+    await expect(page.locator('#journal-title')).toHaveText('O Clarim do Rio');
+    await expect(page.locator('#journal-headline')).toContainText('Brás Cubas');
+    await page.locator('#read-journal').click();
+    const gameID = await page.evaluate(() => localStorage.getItem('memorias-licantropicas:game'));
+    const base = `/api/v1/games/${gameID}`;
+    await page.locator('canvas').click();
+    await page.keyboard.down('ArrowRight');
+    await expect(page.locator('#inspect-crime')).toBeVisible({timeout: 8000});
+    await page.keyboard.up('ArrowRight');
+    await page.locator('#inspect-crime').click();
+    await expect(page.locator('#evidence-count')).toHaveText('1 pista');
+    await page.locator('#inspect-crime').click();
+    await expect(page.locator('#evidence-count')).toHaveText('2 pistas');
+    await page.locator('#open-notebook').click();
+    await expect(page.locator('.evidence-card')).toHaveCount(2);
+    await page.screenshot({path: '../artifacts/cycle-evidence.png', fullPage: true});
+    await page.locator('#close-notebook').click();
+    await page.locator('#open-map').click();
+    await page.getByRole('button', {name: /Cais das Lanternas/}).click();
+    await expect(page.locator('#location-name')).toHaveText('Cais das Lanternas');
+    await page.screenshot({path: '../artifacts/cycle-capoeira.png', fullPage: true});
+    const canvas = (await page.locator('canvas').boundingBox())!;
+    const scale = canvas.width / 960;
+    const roda = {x: Math.round(canvas.x + 345 * scale), y: Math.round(canvas.y + 155 * scale),
+      width: Math.round(185 * scale), height: Math.round(115 * scale)};
+    const firstPose = await page.screenshot({clip: roda});
+    await page.waitForTimeout(390);
+    const nextPose = await page.screenshot({clip: roda});
+    expect(nextPose.equals(firstPose)).toBeFalsy();
+    const beforeNight = await (await page.request.get(`${base}/investigation`)).json();
+    const untilNight = (Date.parse(beforeNight.phase_ends_at) - Date.parse(beforeNight.server_time)) / 1000;
+    await page.request.post('/api/__test__/clock', {data: {seconds: Math.max(0, untilNight) + .02}});
+    await expect(page.locator('#phase-overlay')).toBeVisible({timeout: 5000});
+    await expect(page.locator('#open-map')).toBeDisabled();
+    await expect(page.locator('#open-delegate')).toBeDisabled();
+    const night = await (await page.request.get(`${base}/investigation`)).json();
+    expect(night.phase).toBe('night');
+    expect((await page.request.post(`${base}/travel`, {data: {target_location_id: 'praca_verde', revision: 0}})).status()).toBe(409);
+    const beforeDawn = await (await page.request.get(`${base}/investigation`)).json();
+    const untilDawn = (Date.parse(beforeDawn.phase_ends_at) - Date.parse(beforeDawn.server_time)) / 1000;
+    await page.request.post('/api/__test__/clock', {data: {seconds: Math.max(0, untilDawn) + .02}});
+    await expect(page.locator('#journal-overlay')).toBeVisible({timeout: 5000});
+    await expect(page.locator('#case-day')).toHaveText('DIA 2');
+    await expect(page.locator('#location-name')).toHaveText('Praça Verde');
+    const dawn = await (await page.request.get(`${base}/investigation`)).json();
+    expect(dawn.journal.at(-1).victim_id).toBeTruthy();
+    expect(dawn.crimes).toHaveLength(2);
+    expect(dawn.inventory).toHaveLength(2);
+    const publicGame = await (await page.request.get(base)).json();
+    expect(publicGame.characters.filter((npc: {alive: boolean}) => npc.alive)).toHaveLength(6);
+    const world = await (await page.request.get(`${base}/world`)).json();
+    expect(world.player.x).toBe(160);
+    expect(world.player.location_id).toBe('praca_verde');
+    await page.screenshot({path: '../artifacts/cycle-newspaper.png', fullPage: true});
+    await page.locator('#read-journal').click();
+    await expect(page.locator('#phase-overlay')).toBeHidden();
+    await expect(page.locator('#open-map')).toBeEnabled();
+  } finally {
+    await page.request.post('/api/__test__/clock', {data: {seconds: 0, reset: true}});
+  }
+});

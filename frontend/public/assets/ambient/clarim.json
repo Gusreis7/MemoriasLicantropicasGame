@@ -1,0 +1,32 @@
+{
+  "frames": {
+    "stand": {
+      "frame": {
+        "x": 26,
+        "y": 5,
+        "w": 1226,
+        "h": 1191
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 1226,
+        "h": 1191
+      },
+      "sourceSize": {
+        "w": 1226,
+        "h": 1191
+      }
+    }
+  },
+  "meta": {
+    "image": "clarim.png",
+    "size": {
+      "w": 1278,
+      "h": 1230
+    },
+    "scale": "1"
+  }
+}

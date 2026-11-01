@@ -6,7 +6,7 @@ Construir um jogo web de investigação no Rio de Janeiro de 1890, inspirado na 
 
 O projeto também é um laboratório de agent harness, teoria de jogos, tool calling e orquestração. O progresso será incremental: regras verificáveis primeiro, agentes e experimentos sobre essa base depois.
 
-A base já avançou para catálogo público, criação/consulta de partidas com sorteio privado, repositories Redis e harness interno Mantle. A entrega está descrita em [base_agentes.md](base_agentes.md), com suíte executada contra Redis em memória e Redis real em Docker, conforme [testes.md](testes.md). Build da imagem da API e inferência real ficam pendentes. As etapas abaixo continuam como roteiro de evolução e critérios de conclusão, não como funcionalidades integralmente implementadas.
+A base inclui catálogo público, sorteio privado, repositories Redis, harness Mantle, exploração visual, admin autenticado e o ciclo de investigação com dias, crimes, provas e prisão. Builds Docker e acesso real ao modelo foram validados nas etapas anteriores; a suíte continua sem chamadas AWS. A evolução atual está em [plano_investigacao.md](plano_investigacao.md) e [contratos_ciclo_investigacao.md](contratos_ciclo_investigacao.md). As etapas abaixo também registram propostas futuras e não significam que toda a orquestração NPC–NPC já foi implementada.
 
 Evolução na branch `feat/conversa_jogador_persona`: diálogo pela API, estratégias narrativas dos sete NPCs, reserva Redis e autenticação por perfil AWS, conforme [conversa_jogador_persona.md](conversa_jogador_persona.md). Nessa evolução, o build da API e 81 testes em cada backend de armazenamento foram aprovados; inferência real da nova rota segue fora da suíte.
 

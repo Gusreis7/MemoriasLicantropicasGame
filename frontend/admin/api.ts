@@ -6,6 +6,7 @@ export interface GameState {
   game_id: string; created_at: string; content_version: string; status: string;
   werewolf_id: string; characters: CharacterState[]; player?: { location_id?: string; x?: number } | null;
   known_deaths: KnownDeath[]; world_version?: string | null;
+  investigation?: {day: number; phase: string; status: string; phase_ends_at: string; detained_npc_id: string | null; [key: string]: unknown} | null;
 }
 export interface EventRecord { id: string; type: string; occurred_at: string; source: string; data: Record<string, unknown> }
 export interface Conversation { id: string; game_id: string; participant_ids: string[]; created_at: string }
@@ -68,6 +69,10 @@ export const eventLabels: Record<string, string> = {
   'game.created': 'Partida criada', 'world.initialized': 'Mundo preparado', 'player.travelled': 'O detetive viajou',
   'conversation.created': 'Conversa iniciada', 'conversation.exchange_committed': 'Diálogo registrado',
   'story.initial_death': 'Morte inicial conhecida', 'character.killed': 'Morte registrada',
+  'night.started': 'Anoiteceu', 'night.resolved': 'Noite resolvida',
+  'journal.published': 'Jornal publicado', 'evidence.collected': 'Vestígio recolhido',
+  'evidence.presented': 'Vestígio apresentado', 'accusation.decided': 'Acusação avaliada',
+  'game.won': 'Lobisomem confirmado e expulso', 'game.lost': 'Investigação encerrada',
 };
 
 export function eventDetails(event: EventRecord): string {

@@ -10,6 +10,7 @@ from memorias_licantropicas.contracts.model import (
     ConversationMessage,
     GameState,
 )
+from memorias_licantropicas.contracts.investigation import InvestigationState
 
 
 class CharacterRepository(Protocol):
@@ -62,3 +63,13 @@ class InteractionPolicy(Protocol):
 
 class PlayerActionGate(Protocol):
     def hold(self, game_id: UUID) -> AbstractAsyncContextManager[None]: ...
+
+
+class DayPolicy(Protocol):
+    async def sync(self, game_id: UUID) -> InvestigationState: ...
+
+    async def require_day_locked(self, game_id: UUID) -> InvestigationState:
+        """Chamador mantém a reserva do jogador; não adquirir outra reserva."""
+        ...
+
+    async def assert_dialogue_open(self, game_id: UUID) -> None: ...

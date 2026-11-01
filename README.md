@@ -34,6 +34,8 @@ O [plano visual aprovado](docs/planejamento_visual.md) detalha a delegação. A 
 
 A [revisão de exploração e diálogos](docs/revisao_exploracao_dialogos.md) registra cenários compactos, passagens entre locais, figurantes, parser de falas e guarda contra instruções maliciosas, com seus contratos e testes.
 
+O [plano de investigação](docs/plano_investigacao.md) descreve o ciclo de cinco minutos, jornal, vestígios, testemunhos e acusação, além das propostas para a próxima etapa. Os [contratos do ciclo](docs/contratos_ciclo_investigacao.md) fixam as interfaces das frentes.
+
 Os [contratos entre as frentes](docs/contratos_agentes.md) fixam as interfaces e responsabilidades. A [integração da base](docs/base_agentes.md) descreve configuração, uso e limites atuais.
 
 ## Executar com Docker
@@ -81,8 +83,12 @@ O uv usa a versão de Python indicada em `.python-version`. Para adicionar depen
 - `GET /api/v1/games/{game_id}/conversations/{conversation_id}`: consulta a conversa.
 - `POST /api/v1/games/{game_id}/conversations/{conversation_id}/messages`: envia `{"content": "O que sabe sobre Brás Cubas?"}` e recebe a fala da persona.
 - `GET /api/v1/games/{game_id}/conversations/{conversation_id}/messages`: recupera o histórico.
+- `GET /api/v1/games/{game_id}/investigation`: relógio, fase, jornal, vestígios recolhidos e depoimentos.
+- `POST /api/v1/games/{game_id}/crime-scenes/{crime_id}/search`: procura um vestígio próximo.
+- `POST /api/v1/games/{game_id}/evidence/{evidence_id}/present`: apresenta um objeto ao NPC próximo.
+- `POST /api/v1/games/{game_id}/accusations`: entrega objetos e depoimentos ao delegado.
 
-Papéis e objetivos privados não aparecem nos schemas públicos. Conversar exige NPC vivo, no mesmo local e ao alcance; o servidor fixa o interlocutor como jogador. O admin possui autenticação no backend; a área de jogo ainda é um protótipo local sem contas de jogadores. Veja [contratos visuais](docs/contratos_visual.md) e [mundo](docs/mundo.md).
+Papéis e objetivos ficam ocultos durante a investigação; a identidade do lobisomem é revelada ao encerrar a partida. Conversar exige dia ativo e NPC vivo, livre, no mesmo local e ao alcance; o servidor fixa o interlocutor como jogador. O admin possui autenticação no backend; a área de jogo ainda é um protótipo local sem contas de jogadores. Veja [contratos visuais](docs/contratos_visual.md) e [mundo](docs/mundo.md).
 
 ## Verificação
 
@@ -105,6 +111,8 @@ Frontend: em `frontend/`, execute `npm test` e `npm run build`. Com o Redis isol
 ## Controles e autenticação
 
 No jogo: **A/D ou setas** para andar, **E** para abordar, **M** para abrir o mapa e **Esc** para fechar janelas. O diálogo exibe o retrato e o histórico. Atualizar o navegador permite continuar o mesmo caso; iniciar outra investigação é uma ação explícita.
+
+Cada dia jogável dura cinco minutos reais. A noite dura oito segundos e bloqueia ações; pela manhã, Floriano retorna à banca **O Clarim do Rio** na Praça Verde. O relógio continua durante ausência e as noites vencidas são resolvidas ao retomar. **E** também procura vestígios perto de uma cena. O caderno guarda objetos e depoimentos; durante conversas, use o seletor de vestígios para apresentá-los. O delegado decide com corroboração registrada; a vitória exige confirmar a transformação do preso na noite seguinte. Se todos os civis morrerem, há derrota.
 
 O admin usa senha com hash scrypt, sessão Redis, cookie HTTPOnly/SameSite Strict, expiração, logout e limite de tentativas. Não há credencial padrão embutida; sem senha configurada, o login fica desabilitado. Detalhes em [autenticação/admin](docs/admin.md).
 

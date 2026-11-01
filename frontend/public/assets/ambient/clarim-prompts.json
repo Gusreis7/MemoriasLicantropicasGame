@@ -1,0 +1,10 @@
+{
+  "source": "/home/gustavoreis/.codex/generated_images/01a18fd3-42ff-7411-9532-b4736fe976c6/exec-47de7537-b9bc-4daf-a774-09e6a4258a77.png",
+  "prompt": "Use case: historical-scene. Asset type: single transparent decoration sprite for a 2D side-view pixel-art detective game in Rio de Janeiro in 1890. One small elegant wooden newspaper kiosk, dark bottle-green painted wood, pitched copper-brown roof, open front stall with neatly displayed folded newspapers and several hanging sheets, readable simple silhouette. The kiosk is viewed straight from the side/front elevation at pedestrian height, no isometric angle, no people. Cozy 16-bit pixel art with deliberate crisp square pixel clusters, restrained cream, dark green, copper and honey colours, matching a warm nineteenth-century Brazilian village game. Fully visible complete kiosk with roof and base. It will be displayed about130x130 pixels behind a detective sprite on a street. Genuine transparent background, no ground strip, no shadow or haze, no gradients, no border. Newspaper pages have small abstract ink marks only, absolutely NO readable text, words, labels, letters, logos or watermark; the game will overlay the name separately.",
+  "generator": "image_gen built-in",
+  "path": "/assets/ambient/clarim.png",
+  "atlasPath": "/assets/ambient/clarim.json",
+  "width": 1278,
+  "height": 1230,
+  "sha256": "01004748deb6301cc5e437b1716b4698e663637a5335c0d64951b8cbeaa8374c"
+}

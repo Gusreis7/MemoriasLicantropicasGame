@@ -4,16 +4,18 @@ from uuid import UUID, uuid4
 
 from memorias_licantropicas.contracts.errors import ConflictError, NotFoundError
 from memorias_licantropicas.contracts.model import GameCharacter, GameState
-from memorias_licantropicas.contracts.repository import CharacterRepository, GameRepository
+from memorias_licantropicas.contracts.repository import CharacterRepository, GameRepository, DayPolicy
 from memorias_licantropicas.modules.characters.catalog import CONTENT_VERSION
 from memorias_licantropicas.modules.characters.service import public_character
 from memorias_licantropicas.modules.games.schema import GameCharacterPublic, GamePublic
 
 
 class GameService:
-    def __init__(self, characters: CharacterRepository, games: GameRepository) -> None:
+    def __init__(self, characters: CharacterRepository, games: GameRepository,
+                 day_policy: DayPolicy | None = None) -> None:
         self._characters = characters
         self._games = games
+        self._day_policy = day_policy
 
     async def create(self) -> GamePublic:
         profiles = await self._characters.list()
@@ -37,6 +39,8 @@ class GameService:
         return await self._public(game)
 
     async def get(self, game_id: UUID) -> GamePublic:
+        if self._day_policy:
+            await self._day_policy.sync(game_id)
         game = await self._games.get(game_id)
         if game is None:
             raise NotFoundError("Partida não encontrada.")

@@ -27,6 +27,8 @@ from memorias_licantropicas.modules.world.service import WorldService
 from memorias_licantropicas.modules.world.gate import RedisPlayerGate
 from memorias_licantropicas.modules.admin.auth import AdminAuth
 from memorias_licantropicas.modules.admin.service import AdminService
+from memorias_licantropicas.modules.turns.service import TurnService
+from memorias_licantropicas.modules.investigation.service import InvestigationService
 from memorias_licantropicas.settings import Settings
 
 
@@ -141,19 +143,24 @@ async def api_client(monkeypatch, catalog, storage, llm):
     settings = Settings(_env_file=None, admin_password="test-admin-password")
     world_repository = RedisWorldRepository(storage.client, storage.prefix)
     player_gate = RedisPlayerGate(storage.client, storage.prefix)
-    world = WorldService(storage.games, catalog, world_repository, player_gate)
+    turns = TurnService(storage.client, storage.prefix, storage.games, catalog, world_repository, player_gate)
+    investigation = InvestigationService(turns, catalog)
+    world = WorldService(storage.games, catalog, world_repository, player_gate, day_policy=turns)
+    case_harness = HarnessService(catalog, storage.games, storage.memory, llm,
+                                 day_policy=turns, context_provider=investigation.npc_context_locked)
     services = Services(
-        characters=CharacterService(catalog), games=GameService(catalog, storage.games),
-        harness=HarnessService(catalog, storage.games, storage.memory, llm), redis=storage.client, llm=llm,
+        characters=CharacterService(catalog), games=GameService(catalog, storage.games, day_policy=turns),
+        harness=case_harness, redis=storage.client, llm=llm,
         conversations=ConversationService(
             catalog, storage.games, storage.memory,
-            HarnessService(catalog, storage.games, storage.memory, llm),
+            case_harness,
             RedisConversationGate(storage.client, storage.prefix),
             world, player_gate,
         ),
         world=world,
         admin_auth=AdminAuth(storage.client, storage.prefix, settings),
-        admin=AdminService(storage.client, storage.prefix, storage.games, catalog, world_repository),
+        admin=AdminService(storage.client, storage.prefix, storage.games, catalog, world_repository, turns=turns),
+        turns=turns, investigation=investigation,
     )
     monkeypatch.setattr(main_module, "build_services", lambda settings: services)
     monkeypatch.setattr(main_module, "Settings", lambda: settings)

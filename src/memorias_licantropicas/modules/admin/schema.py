@@ -60,6 +60,7 @@ class AdminState(AdminSchema):
     player: dict | None
     known_deaths: list[KnownDeath]
     world_version: str | None
+    investigation: dict | None = None
 
 
 class EventPublic(AdminSchema):

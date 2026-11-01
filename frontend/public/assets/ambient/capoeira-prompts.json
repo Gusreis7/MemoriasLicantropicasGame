@@ -1,0 +1,13 @@
+{
+  "source": "/home/gustavoreis/.codex/generated_images/01a18fd3-42ff-7411-9532-b4736fe976c6/exec-755d564b-c562-4d67-a2c7-cfda5fdd0dde.png",
+  "prompt": "Use case: historical-scene. Asset type: transparent animated background sprite atlas for a side-view 2D pixel-art game set on a waterfront in Rio de Janeiro 1890. Create EXACTLY FOUR complete frames arranged as a TWO COLUMN by TWO ROW grid with generous transparent spacing and NO visible cell borders. Each frame is the SAME small capoeira roda group from the same fixed SIDE VIEW, with identical scale and baseline: five Black and brown adult Brazilian townspeople making a loose semicircle in the back, two playing berimbau and one playing a small hand drum, wearing modest nineteenth-century everyday trousers and light shirts. In front of the semicircle are TWO capoeiristas playing capoeira with each other, no weapons, expressive athletic movements. Frame top-left: both players low ginga guard; top-right: left player performs a controlled high arcing kick while right player ducks; bottom-left: right player does a cartwheel while left player crouches; bottom-right: both return to mirrored ginga. Preserve all identities, faces, clothes and musician positions between frames. Each full group must fit entirely in its own cell without touching another cell; feet and instruments completely visible. Clean charming 16-bit pixel art, crisp square pixel clusters, dark outlines, restrained earthy palette, warm amber highlights with deep bottle greens and copper browns, readable tiny figures at game display size about 210x110. Transparent background around the entire group in every cell, NO scenery, NO floor, NO circle drawn on ground, NO shadows or haze, NO gradients, NO captions, NO letters, NO text, NO logos or watermark. Landscape canvas 3:2 with a precise two by two grid. This is decorative game art and contains no game interface.",
+  "generator": "image_gen built-in",
+  "path": "/assets/ambient/capoeira.png",
+  "atlasPath": "/assets/ambient/capoeira.json",
+  "width": 1536,
+  "height": 1024,
+  "baseline": 480,
+  "frameWidth": 768,
+  "frameHeight": 512,
+  "sha256": "08f4ecb946da554f0d7f36765f624a0efe7e84e8051558d2bcf3314655c88d24"
+}

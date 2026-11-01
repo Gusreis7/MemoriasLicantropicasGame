@@ -79,5 +79,12 @@ export class MovementController {
     this.x = this.world.player.x;
   }
 
+  /** Wait for an in-flight intention before accepting a server phase transition. */
+  async suspend() {
+    this.direction = 'idle';
+    await this.pending;
+    this.x = this.world.player.x;
+  }
+
   dispose() {this.disposed = true;}
 }

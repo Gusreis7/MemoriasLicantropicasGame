@@ -1,9 +1,10 @@
 import Phaser from 'phaser';
-import type {CharacterAsset, CharacterManifest, Direction, Location, LocationID, WorldSnapshot} from '../shared/api';
+import type {CasePublic, CharacterAsset, CharacterManifest, Direction, Location, LocationID, WorldSnapshot} from '../shared/api';
 
 interface SceneHooks {
   frame: (delta: number, direction: Direction) => {x: number; facing: 'left' | 'right'};
   approach: () => void;
+  inspect?: (crimeID: string) => void;
   map: () => void;
   blocked: () => boolean;
   loaded: () => void;
@@ -54,6 +55,9 @@ export class CityScene extends Phaser.Scene {
   private ready = false;
   private assetsFailed = false;
   private selected?: Phaser.GameObjects.Ellipse;
+  private caseState: CasePublic | null = null;
+  private caseMarkers: Phaser.GameObjects.GameObject[] = [];
+  private npcSignature = '';
   private touchDirection: Direction = 'idle';
   private reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -71,6 +75,8 @@ export class CityScene extends Phaser.Scene {
     }
     for (const location of this.locations) this.load.image(`location-${location.id}`, location.background);
     this.load.atlas('scene-life', '/assets/ambient/scene-life.png', '/assets/ambient/scene-life.json');
+    this.load.atlas('capoeira', '/assets/ambient/capoeira.png', '/assets/ambient/capoeira.json');
+    this.load.atlas('clarim', '/assets/ambient/clarim.png', '/assets/ambient/clarim.json');
     this.load.on('loaderror', () => {this.assetsFailed = true; this.hooks.failed();});
   }
 
@@ -83,11 +89,21 @@ export class CityScene extends Phaser.Scene {
     }
     this.cursors = this.input.keyboard?.createCursorKeys();
     this.keys = this.input.keyboard?.addKeys('A,D,E,M') as Record<string, Phaser.Input.Keyboard.Key>;
-    this.input.keyboard?.on('keydown-E', () => { if (!this.hooks.blocked()) this.hooks.approach(); });
+    this.input.keyboard?.on('keydown-E', () => {
+      if (this.hooks.blocked()) return;
+      const crime = this.caseState?.crimes.find(crime => crime.location_id === this.currentLocation
+        && crime.remaining_clues > 0 && this.player && Math.abs(crime.x - this.player.x) <= 90);
+      if (crime && this.hooks.inspect) this.hooks.inspect(crime.id);
+      else this.hooks.approach();
+    });
     this.input.keyboard?.on('keydown-M', () => { if (!this.hooks.blocked()) this.hooks.map(); });
     this.game.events.on(Phaser.Core.Events.BLUR, () => { this.input.keyboard?.resetKeys(); this.touchDirection = 'idle'; });
     this.cameras.main.setRoundPixels(true);
     this.cameras.main.setBackgroundColor('#163b32');
+    if (this.textures.exists('capoeira') && !this.anims.exists('capoeira-roda')) {
+      this.textures.get('capoeira').setFilter(Phaser.Textures.FilterMode.NEAREST);
+      this.anims.create({key: 'capoeira-roda', frames: ['0', '1', '2', '3'].map(frame => ({key: 'capoeira', frame})), frameRate: 3, repeat: -1});
+    }
     this.ready = true;
     this.apply(this.currentWorld);
     if (this.assetsFailed) this.hooks.failed();
@@ -125,6 +141,38 @@ export class CityScene extends Phaser.Scene {
       this.ambient.push(image);
       if (placement.drift && !this.reducedMotion) this.wanderers.push({image, placement});
     }
+    if (id === 'cais_lanternas' && this.textures.exists('capoeira')) {
+      const roda = this.add.sprite(440, 282, 'capoeira', '0').setOrigin(.5, 480 / 512).setDepth(-2);
+      roda.setDisplaySize(168, 112);
+      if (!this.reducedMotion) roda.play('capoeira-roda');
+      this.ambient.push(roda);
+    }
+    if (id === 'praca_verde' && this.textures.exists('clarim')) {
+      const banca = this.add.image(160, 284, 'clarim', 'stand').setOrigin(.5, 1)
+        .setDisplaySize(136, 132).setDepth(-2);
+      this.ambient.push(banca);
+    }
+  }
+
+  setInvestigation(state: CasePublic) {
+    this.caseState = state;
+    if (this.ready) this.drawCaseMarkers();
+  }
+
+  private drawCaseMarkers() {
+    this.caseMarkers.forEach(marker => marker.destroy()); this.caseMarkers = [];
+    if (this.currentLocation === 'praca_verde') {
+      this.caseMarkers.push(this.add.text(160, 143, 'O CLARIM DO RIO', {fontFamily: 'Georgia, serif', fontSize: '10px',
+        color: '#183c32', backgroundColor: '#f2e7c8ee', padding: {x: 7, y: 5}}).setOrigin(.5).setDepth(4));
+    }
+    const crimes = this.caseState?.crimes.filter(crime => crime.location_id === this.currentLocation && crime.remaining_clues > 0) ?? [];
+    for (const x of new Set(crimes.map(crime => crime.x))) {
+      const count = crimes.filter(crime => crime.x === x).length;
+      this.caseMarkers.push(this.add.ellipse(x, 301, 55, 12, 0xd9ba79, .18).setStrokeStyle(1, 0xe5c886).setDepth(2));
+      this.caseMarkers.push(this.add.text(x, 315, count === 1 ? 'Cena do crime' : `${count} cenas · vestígios`, {
+        fontFamily: 'Georgia, serif', fontSize: '10px', color: '#fff0c4', backgroundColor: '#1b342cdd', padding: {x: 5, y: 3},
+      }).setOrigin(.5, 0).setDepth(4));
+    }
   }
 
   apply(world: WorldSnapshot) {
@@ -137,6 +185,21 @@ export class CityScene extends Phaser.Scene {
       this.background = this.add.image(0, 0, `location-${world.location.id}`).setOrigin(0)
         .setDisplaySize(world.location.width, world.location.height).setDepth(-10).setScrollFactor(0);
       this.dressLocation(world.location.id);
+      this.npcSignature = '\0';
+      this.drawCaseMarkers();
+      if (!this.player) {
+        this.add.ellipse(world.player.x, world.location.ground_y + 1, 34, 7, 0x173e31, .3).setName('player-shadow').setDepth(2);
+        this.player = this.sprite('player', world.player.x, world.location.ground_y);
+        this.selected = this.add.ellipse(0, world.location.ground_y + 2, 43, 11).setStrokeStyle(1, 0xf9d18b, .9).setVisible(false).setDepth(2);
+      }
+      this.player?.setPosition(Math.round(world.player.x), world.location.ground_y).setDepth(3);
+      this.cameras.main.stopFollow();
+      this.cameras.main.setBounds(0, 0, world.location.width, world.location.height);
+      this.cameras.main.setScroll(0, 0);
+    }
+    const signature = world.visible_npcs.map(npc => `${npc.npc_id}:${npc.x}:${npc.name}`).join('|');
+    if (signature !== this.npcSignature) {
+      this.npcSignature = signature;
       this.npcs.forEach(npc => npc.destroy()); this.npcs = [];
       for (const npc of world.visible_npcs) {
         const shadow = this.add.ellipse(npc.x, world.location.ground_y + 1, 34, 7, 0x173e31, .3);
@@ -146,16 +209,6 @@ export class CityScene extends Phaser.Scene {
         const label = this.add.text(npc.x, world.location.ground_y - 96, npc.name, {fontFamily: 'Georgia, serif', fontSize: '11px', color: '#fff4d2', backgroundColor: '#183c33cc', padding: {x: 5, y: 3}}).setOrigin(.5, 1).setDepth(4);
         this.npcs.push(label);
       }
-      if (!this.player) {
-        this.add.ellipse(world.player.x, world.location.ground_y + 1, 34, 7, 0x173e31, .3).setName('player-shadow').setDepth(2);
-        this.player = this.sprite('player', world.player.x, world.location.ground_y);
-        this.selected = this.add.ellipse(0, world.location.ground_y + 2, 43, 11).setStrokeStyle(1, 0xf9d18b, .9).setVisible(false).setDepth(2);
-      }
-      this.player?.setPosition(Math.round(world.player.x), world.location.ground_y).setDepth(3);
-      // A full location fits on screen. No camera follow, lerp or parallax on walking.
-      this.cameras.main.stopFollow();
-      this.cameras.main.setBounds(0, 0, world.location.width, world.location.height);
-      this.cameras.main.setScroll(0, 0);
       this.addExitSigns(world);
     }
   }

@@ -6,7 +6,8 @@ from uuid import UUID, uuid4
 
 from memorias_licantropicas.contracts.errors import AccessDeniedError, ConflictError, NotFoundError
 from memorias_licantropicas.contracts.model import GameState
-from memorias_licantropicas.contracts.repository import CharacterRepository, GameRepository
+from memorias_licantropicas.contracts.repository import CharacterRepository, GameRepository, DayPolicy
+from memorias_licantropicas.contracts.investigation import InvestigationState
 from memorias_licantropicas.modules.world.catalog import LOCATIONS, LOCATIONS_BY_ID
 from memorias_licantropicas.modules.world.gate import RedisPlayerGate
 from memorias_licantropicas.modules.world.model import WorldState
@@ -25,12 +26,13 @@ ARRIVAL_INSET = 96
 class WorldService:
     def __init__(self, games: GameRepository, characters: CharacterRepository,
                  repository: RedisWorldRepository, gate: RedisPlayerGate,
-                 clock: Callable[[], datetime] | None = None):
+                 clock: Callable[[], datetime] | None = None, day_policy: DayPolicy | None = None):
         self._games = games
         self._characters = characters
         self._repository = repository
         self._gate = gate
         self._clock = clock or (lambda: datetime.now(UTC))
+        self._day_policy = day_policy
 
     async def _load(self, game_id: UUID) -> tuple[GameState, WorldState]:
         game = await self._games.get(game_id)
@@ -43,19 +45,22 @@ class WorldService:
             raise ConflictError("Esta partida não possui mundo visual; crie uma nova partida.")
         return game, world
 
-    async def _snapshot(self, game: GameState, world: WorldState) -> WorldSnapshot:
+    async def _snapshot(self, game: GameState, world: WorldState,
+                        case: InvestigationState | None = None) -> WorldSnapshot:
         cast = {character.character_id: character for character in game.characters}
         visible = []
         for placement in world.npcs:
             member = cast.get(placement.npc_id)
             if placement.location_id != world.player.location_id or member is None or not member.alive:
                 continue
+            if case is not None and placement.npc_id == case.detained_npc_id:
+                continue
             profile = await self._characters.get(placement.npc_id)
             if profile is None:
                 raise ConflictError("Ficha do personagem indisponível.")
             visible.append(VisibleNPC(
                 npc_id=profile.id, name=profile.name, x=placement.x, sprite_id=profile.id,
-                can_approach=abs(placement.x - world.player.x) <= APPROACH_DISTANCE,
+                can_approach=(case is None or case.phase == "day") and abs(placement.x - world.player.x) <= APPROACH_DISTANCE,
             ))
         return WorldSnapshot(
             game_id=world.game_id, world_version=world.world_version, revision=world.revision,
@@ -67,11 +72,13 @@ class WorldService:
         )
 
     async def get(self, game_id: UUID) -> WorldSnapshot:
+        case = await self._day_policy.sync(game_id) if self._day_policy else None
         game, world = await self._load(game_id)
-        return await self._snapshot(game, world)
+        return await self._snapshot(game, world, case)
 
     async def move(self, game_id: UUID, body: MoveRequest) -> WorldSnapshot:
         async with self._gate.hold(game_id):
+            case = await self._day_policy.require_day_locked(game_id) if self._day_policy else None
             game, world = await self._load(game_id)
             if body.revision != world.revision or body.location_id != world.player.location_id:
                 raise ConflictError("Local ou revisão desatualizado; consulte o mundo atual.")
@@ -90,10 +97,11 @@ class WorldService:
             updated = world.model_copy(update={"revision": world.revision + 1, "player": player})
             if not await self._repository.save(updated, expected_revision=world.revision):
                 raise ConflictError("O mundo mudou; consulte a revisão atual.")
-            return await self._snapshot(game, updated)
+            return await self._snapshot(game, updated, case)
 
     async def travel(self, game_id: UUID, body: TravelRequest) -> WorldSnapshot:
         async with self._gate.hold(game_id):
+            case = await self._day_policy.require_day_locked(game_id) if self._day_policy else None
             game, world = await self._load(game_id)
             if body.revision != world.revision:
                 raise ConflictError("Revisão desatualizada; consulte o mundo atual.")
@@ -135,10 +143,14 @@ class WorldService:
             }
             if not await self._repository.save(updated, expected_revision=world.revision, event=event):
                 raise ConflictError("O mundo mudou; consulte a revisão atual.")
-            return await self._snapshot(game, updated)
+            return await self._snapshot(game, updated, case)
 
     async def assert_can_talk(self, game_id: UUID, npc_id: str) -> None:
         """Não adquire reserva: o chamador mantém a reserva de ação durante o diálogo."""
+        if self._day_policy:
+            case = await self._day_policy.require_day_locked(game_id)
+            if case.detained_npc_id == npc_id:
+                raise AccessDeniedError("Este personagem está sob custódia do delegado.")
         game, world = await self._load(game_id)
         npc = next((member for member in game.characters if member.character_id == npc_id), None)
         if npc is None:

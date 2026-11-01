@@ -8,6 +8,7 @@ from redis.exceptions import RedisError
 
 from memorias_licantropicas.contracts.errors import NotFoundError, StorageUnavailableError
 from memorias_licantropicas.contracts.model import Conversation, ConversationMessage
+from memorias_licantropicas.contracts.investigation import InvestigationState
 from memorias_licantropicas.modules.admin.schema import (
     AdminCharacter, AdminConversation, AdminMessage, AdminState, EventPublic, GameListItem,
     InteractionEdge, InteractionNode, Interactions, KnownDeath, Page,
@@ -29,12 +30,13 @@ def _text(value):
 
 
 class AdminService:
-    def __init__(self, client, prefix, games, characters, worldrepository):
+    def __init__(self, client, prefix, games, characters, worldrepository, turns=None):
         self._client = client
         self._prefix = prefix
         self._games = games
         self._characters = characters
         self._world = worldrepository
+        self._turns = turns
 
     def _game_prefix(self, game_id):
         return f"{self._prefix}:game:{{{game_id}}}"
@@ -76,12 +78,18 @@ class AdminService:
 
     @storage_errors
     async def state(self, game_id):
+        if self._turns is not None:
+            await self._turns.sync(game_id)
         game = await self._game(game_id)
         profiles = {profile.id: profile for profile in await self._characters.list()}
         world = await self._world.get(game_id)
         positions = {npc.npc_id: npc for npc in world.npcs} if world else {}
         names = {identifier: profile.name for identifier, profile in profiles.items()}
         names["bras_cubas"] = "Brás Cubas"
+        raw_case = await self._client.get(f"{self._game_prefix(game_id)}:investigation")
+        case = InvestigationState.model_validate_json(raw_case) if raw_case is not None else None
+        if case is not None and case.game_id != game_id:
+            raise StorageUnavailableError("Identidade administrativa inválida.")
         deaths = {"bras_cubas": KnownDeath(victim_id="bras_cubas", victim_name="Brás Cubas",
                                            killer_id=None, killer_name=None, attribution="unknown", source="scenario")}
         # Uma alegação em mensagem nunca é promovida a morte. Só fatos do futuro motor de regras.
@@ -111,6 +119,7 @@ class AdminService:
             ) for character in game.characters],
             player=world.player.model_dump(mode="json") if world else None,
             known_deaths=list(deaths.values()), world_version=world.world_version if world else None,
+            investigation=case.model_dump(mode="json") if case else None,
         )
 
     @storage_errors

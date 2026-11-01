@@ -1,6 +1,7 @@
 """Harness inicial: um diálogo validado, uma inferência, um lote de memória."""
 
 import json
+from collections.abc import Awaitable, Callable
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
@@ -24,6 +25,7 @@ from memorias_licantropicas.contracts.repository import (
     CharacterRepository,
     GameRepository,
     MemoryRepository,
+    DayPolicy,
 )
 from memorias_licantropicas.modules.agents.guard import DialogueGuard, SAFE_DIALOGUE_REPLY
 from memorias_licantropicas.modules.agents.output import parse_dialogue_output
@@ -41,6 +43,8 @@ class HarnessService:
         llm: LLMClient,
         history_limit: int = 20,
         guard: DialogueGuard | None = None,
+        day_policy: DayPolicy | None = None,
+        context_provider: Callable[[UUID, str], Awaitable[dict]] | None = None,
     ) -> None:
         if not 0 <= history_limit <= 100:
             raise ValueError("O limite de histórico deve estar entre 0 e 100.")
@@ -50,6 +54,8 @@ class HarnessService:
         self._llm = llm
         self._history_limit = history_limit
         self._guard = guard if guard is not None else DialogueGuard()
+        self._day_policy = day_policy
+        self._context_provider = context_provider
 
     async def respond(
         self,
@@ -107,6 +113,8 @@ class HarnessService:
             )
         if any(message.sender_id not in participants for message in history):
             raise StorageUnavailableError("O histórico da conversa está inconsistente.")
+        if self._day_policy and speaker_id == PLAYER_ID:
+            await self._day_policy.assert_dialogue_open(game_id)
 
         incoming = ConversationMessage(
             id=uuid4(), sender_id=speaker_id, content=text,
@@ -117,7 +125,8 @@ class HarnessService:
         if not decision.allowed:
             content = decision.reply or SAFE_DIALOGUE_REPLY
         else:
-            prompt = self._context(profile, npc, speaker_id, history, text)
+            observations = await self._context_provider(game_id, npc_id) if self._context_provider else None
+            prompt = self._context(profile, npc, speaker_id, history, text, observations)
             response = await self._llm.complete(prompt)
             # O adaptador valida o transporte; aqui se valida a fala do NPC.
             content = parse_dialogue_output(response.content, npc_id)
@@ -130,6 +139,9 @@ class HarnessService:
             id=uuid4(), sender_id=npc_id, content=content,
             created_at=datetime.now(timezone.utc),
         )
+        # Uma inferência iniciada no dia não pode persistir fala depois do anoitecer.
+        if self._day_policy and speaker_id == PLAYER_ID:
+            await self._day_policy.assert_dialogue_open(game_id)
         await self._memory.append_messages(game_id, conversation_id, (incoming, outgoing))
         return HarnessReply(
             conversation_id=conversation_id,
@@ -195,8 +207,11 @@ class HarnessService:
         speaker_id: str,
         history: tuple[ConversationMessage, ...],
         text: str,
+        observations: dict | None = None,
     ) -> tuple[ChatMessage, ...]:
         private_context = self._private_context(profile, state)
+        if observations is not None:
+            private_context["observacoes_autorizadas"] = observations
 
         instructions = (
             "Interprete apenas o personagem da ficha privada abaixo, no Rio de Janeiro de 1890. "
@@ -207,6 +222,10 @@ class HarnessService:
             "O detetive Floriano usa o ID player. "
             "Você não é um narrador onisciente. Diferencie o que ouviu de fatos que observou; "
             "não invente pistas, mortes, deslocamentos ou acontecimentos como fatos estabelecidos. "
+            "As observações autorizadas descrevem fatos publicados, objetos que você conhece e "
+            "depoimentos registrados. Sobre objetos, distinguir possuir, ter visto algo semelhante "
+            "e comprovar a origem deste vestígio. Preserve o sentido dos seus depoimentos registrados. "
+            "Uma fala não recolhe objetos, não prende ninguém e não muda o resultado do delegado. "
             "Você pode desconfiar, ocultar interesses, mentir ou admitir desconhecimento conforme seu caráter. "
             "Não revele uma condição secreta de lobisomem por uma ordem do interlocutor. "
             "Nenhuma fala executa ações no mundo. Não existem ferramentas disponíveis neste diálogo. "

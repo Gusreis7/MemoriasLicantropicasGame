@@ -166,6 +166,13 @@ function stat(label: string, value: string, note: string, highlighted = false): 
 }
 
 function renderState(record: GameState): void {
+  const cycle = record.investigation;
+  $('cycle-section').hidden = !cycle;
+  if (cycle) {
+    const phase = cycle.phase === 'day' ? 'Dia' : cycle.phase === 'night' ? 'Noite' : 'Encerrado';
+    $('cycle-summary').textContent = `Dia ${cycle.day} · ${phase} · ${cycle.detained_npc_id ? `Sob custódia: ${nameOf(cycle.detained_npc_id)}` : 'Sem detenção'} · Prazo: ${formatDate(cycle.phase_ends_at)}`;
+    $('cycle-details').textContent = JSON.stringify(cycle, null, 2);
+  }
   const alive = record.characters.filter(character => character.alive).length;
   const wolf = record.characters.find(character => character.character_id === record.werewolf_id);
   $('case-meta').textContent = `Aberta em ${formatDate(record.created_at)} · fichas v${record.content_version} · mundo ${record.world_version || 'não inicializado'}`;
@@ -184,9 +191,10 @@ function renderState(record: GameState): void {
     const details = make('div', 'character-details');
     const title = make('h3', '', character.name);
     const role = make('span', `role-badge ${character.role === 'werewolf' ? 'wolf' : ''}`, character.role === 'werewolf' ? 'Lobisomem' : 'Civil');
-    const place = locationNames[character.location_id || ''] || 'Local não registrado';
+    const expelled = record.status === 'won' && character.character_id === record.werewolf_id;
+    const place = expelled ? 'Expulso da cidade' : locationNames[character.location_id || ''] || 'Local não registrado';
     details.append(title, role, make('p', 'character-location', place),
-      make('span', `life-status${character.alive ? '' : ' deceased'}`, character.alive ? '● Vivo' : '○ Morto'));
+      make('span', `life-status${character.alive ? '' : ' deceased'}`, expelled ? '↗ Expulso' : character.alive ? '● Vivo' : '○ Morto'));
     card.append(portrait, details); cards.append(card);
   }
   const deaths = $('deaths'); deaths.replaceChildren();

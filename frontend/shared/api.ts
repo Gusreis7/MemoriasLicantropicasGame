@@ -21,6 +21,19 @@ export interface CharacterAsset {
   displayWidth: number; displayHeight: number; origin: {x: number; y: number}; portraitPath?: string;
 }
 export interface CharacterManifest {version: string; characters: CharacterAsset[]}
+export interface GamePublic {id: string; status: 'active' | 'won' | 'lost'; characters: Array<{character: {id: string; name: string}; alive: boolean}>}
+export interface CaseCrime {id: string; day: number; victim_id: string; victim_name: string; location_id: LocationID; x: number; remaining_clues: number}
+export interface CaseEvidence {id: string; crime_id: string; item_id: string; name: string; kind: 'unique' | 'singular' | 'common'; description: string}
+export interface CaseTestimony {id: string; day: number; evidence_id: string; witness_id: string; witness_name: string; recognition: 'recognizes' | 'denies' | 'unknown'; claimed_owner_id: string | null; text: string}
+export interface CaseAccusation {id: string; day: number; suspect_id: string; suspect_name: string; evidence_ids: string[]; testimony_ids: string[]; accepted: boolean; reason: string}
+export interface JournalEdition {day: number; title: string; headline: string; body: string; victim_id: string | null; victim_name: string | null; location_id: LocationID | null; detention_outcome: 'none' | 'released' | 'transformed'}
+export interface CasePublic {
+  game_id: string; revision: number; day: number; phase: 'day' | 'night' | 'finished'; status: 'active' | 'won' | 'lost';
+  server_time: string; phase_ends_at: string; seconds_remaining: number;
+  journal: JournalEdition[]; crimes: CaseCrime[]; inventory: CaseEvidence[]; testimonies: CaseTestimony[];
+  accusations: CaseAccusation[]; detained_npc_id: string | null;
+  ending: {result: 'won' | 'lost'; message: string; werewolf_id: string} | null;
+}
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) {super(message); this.name = 'ApiError';}
@@ -50,6 +63,13 @@ export async function request<T>(path: string, body?: unknown, method?: string):
 const base = (gameID: string) => `/api/v1/games/${encodeURIComponent(gameID)}`;
 export const api = {
   createGame: () => request<{id: string}>('/api/v1/games', {}),
+  game: (id: string) => request<GamePublic>(base(id)),
+  investigation: (id: string) => request<CasePublic>(`${base(id)}/investigation`),
+  search: (id: string, crimeID: string) => request<CasePublic>(`${base(id)}/crime-scenes/${encodeURIComponent(crimeID)}/search`, {}),
+  present: (id: string, evidenceID: string, npcID: string) => request<CasePublic>(`${base(id)}/evidence/${encodeURIComponent(evidenceID)}/present`, {npc_id: npcID}),
+  accuse: (id: string, suspectID: string, evidenceIDs: string[], testimonyIDs: string[]) => request<CasePublic>(`${base(id)}/accusations`, {
+    suspect_id: suspectID, evidence_ids: evidenceIDs, testimony_ids: testimonyIDs,
+  }),
   world: (id: string) => request<WorldSnapshot>(`${base(id)}/world`),
   locations: () => request<Location[]>('/api/v1/world/locations'),
   manifest: () => request<CharacterManifest>('/assets/characters/manifest.json'),

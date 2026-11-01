@@ -15,6 +15,7 @@ try {
   await page.goto('http://localhost:7077');
   await page.locator('#start').click();
   await page.locator('#scene-loading').waitFor({state: 'hidden', timeout: 30000});
+  await page.locator('#read-journal').click();
   assert.equal(await page.locator('canvas').getAttribute('width'), '960');
   await page.locator('canvas').click();
   await page.keyboard.down('ArrowRight');
@@ -32,6 +33,12 @@ try {
     console.log('Uma resposta real da persona foi recebida e persistida.');
   }
   const gameID = await page.evaluate(() => localStorage.getItem('memorias-licantropicas:game'));
+  const publicCase = await (await page.request.get(`http://localhost:7077/api/v1/games/${gameID}/investigation`)).json();
+  assert.equal(publicCase.phase, 'day');
+  assert.equal(publicCase.journal.at(-1).title, 'O Clarim do Rio');
+  assert.equal(publicCase.crimes[0].remaining_clues, 2);
+  assert.equal(publicCase.ending, null);
+  assert.equal((await page.request.post('http://localhost:7079/api/__test__/clock', {data: {seconds: 300}})).status(), 404);
   const worldBefore = await (await page.request.get(`http://localhost:7077/api/v1/games/${gameID}/world`)).json();
   assert.equal(worldBefore.location.width, 960);
   assert.equal(worldBefore.location.exits.length, 4);
@@ -56,6 +63,8 @@ try {
   await page.locator('.character-card').first().waitFor({state: 'visible'});
   assert.equal(await page.locator('.character-card').count(), 7);
   assert.equal(await page.locator('.role-badge.wolf').count(), 1);
+  assert.equal(await page.locator('#cycle-section').isVisible(), true);
+  assert.match(await page.locator('#cycle-summary').textContent(), /Dia 1/);
   await page.screenshot({path: '../artifacts/deployed-admin.png', fullPage: true});
   await page.locator('#logout').click();
   await page.locator('#login-view').waitFor({state: 'visible'});
