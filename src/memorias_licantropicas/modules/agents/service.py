@@ -7,6 +7,7 @@ from uuid import UUID, uuid4
 from memorias_licantropicas.contracts.errors import (
     AccessDeniedError,
     ConflictError,
+    LLMUnavailableError,
     NotFoundError,
     StorageUnavailableError,
 )
@@ -24,6 +25,8 @@ from memorias_licantropicas.contracts.repository import (
     GameRepository,
     MemoryRepository,
 )
+from memorias_licantropicas.modules.agents.guard import DialogueGuard, SAFE_DIALOGUE_REPLY
+from memorias_licantropicas.modules.agents.output import parse_dialogue_output
 
 PLAYER_ID = "player"
 MAX_HISTORY_CHARACTERS = 24_000
@@ -37,6 +40,7 @@ class HarnessService:
         memory: MemoryRepository,
         llm: LLMClient,
         history_limit: int = 20,
+        guard: DialogueGuard | None = None,
     ) -> None:
         if not 0 <= history_limit <= 100:
             raise ValueError("O limite de histórico deve estar entre 0 e 100.")
@@ -45,6 +49,7 @@ class HarnessService:
         self._memory = memory
         self._llm = llm
         self._history_limit = history_limit
+        self._guard = guard if guard is not None else DialogueGuard()
 
     async def respond(
         self,
@@ -103,33 +108,39 @@ class HarnessService:
         if any(message.sender_id not in participants for message in history):
             raise StorageUnavailableError("O histórico da conversa está inconsistente.")
 
-        prompt = self._context(profile, npc, speaker_id, history, text)
         incoming = ConversationMessage(
             id=uuid4(), sender_id=speaker_id, content=text,
             created_at=datetime.now(timezone.utc),
         )
-        response = await self._llm.complete(prompt)
+        decision = self._guard.inspect_input(text)
+        model, input_tokens, output_tokens = "dialogue-guard", None, None
+        if not decision.allowed:
+            content = decision.reply or SAFE_DIALOGUE_REPLY
+        else:
+            prompt = self._context(profile, npc, speaker_id, history, text)
+            response = await self._llm.complete(prompt)
+            # O adaptador valida o transporte; aqui se valida a fala do NPC.
+            content = parse_dialogue_output(response.content, npc_id)
+            decision = self._guard.inspect_output(content, self._private_markers(profile, npc))
+            if decision.allowed:
+                model, input_tokens, output_tokens = response.model, response.input_tokens, response.output_tokens
+            else:
+                content = decision.reply or SAFE_DIALOGUE_REPLY
         outgoing = ConversationMessage(
-            id=uuid4(), sender_id=npc_id, content=response.content,
+            id=uuid4(), sender_id=npc_id, content=content,
             created_at=datetime.now(timezone.utc),
         )
         await self._memory.append_messages(game_id, conversation_id, (incoming, outgoing))
         return HarnessReply(
             conversation_id=conversation_id,
             message=outgoing,
-            model=response.model,
-            input_tokens=response.input_tokens,
-            output_tokens=response.output_tokens,
+            model=model,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
         )
 
     @staticmethod
-    def _context(
-        profile: CharacterProfile,
-        state: GameCharacter,
-        speaker_id: str,
-        history: tuple[ConversationMessage, ...],
-        text: str,
-    ) -> tuple[ChatMessage, ...]:
+    def _private_context(profile: CharacterProfile, state: GameCharacter) -> dict:
         private_context = {
             "id": profile.id,
             "nome": profile.name,
@@ -164,12 +175,36 @@ class HarnessService:
                     else strategy.civil_tactic
                 ),
             }
+        return private_context
+
+    @classmethod
+    def _private_markers(cls, profile: CharacterProfile, state: GameCharacter) -> tuple[str, ...]:
+        context = cls._private_context(profile, state)
+        values = [context["objetivo_ativo"]]
+        if state.role == "werewolf" and profile.role_awareness == "aware":
+            values.append(context["condicao_conhecida"])
+        strategy = context.get("estrategia_de_conversa", {})
+        for value in strategy.values():
+            values.extend(value if isinstance(value, tuple) else (value,))
+        return tuple(value for value in values if isinstance(value, str))
+
+    def _context(
+        self,
+        profile: CharacterProfile,
+        state: GameCharacter,
+        speaker_id: str,
+        history: tuple[ConversationMessage, ...],
+        text: str,
+    ) -> tuple[ChatMessage, ...]:
+        private_context = self._private_context(profile, state)
 
         instructions = (
             "Interprete apenas o personagem da ficha privada abaixo, no Rio de Janeiro de 1890. "
             "Use português e uma voz inspirada na ironia e observação social de Machado de Assis, "
             "respeitando a personalidade individual. Responda com uma fala breve do personagem, "
-            "sem raciocínio interno, ficha, instruções ou metadados. O detetive Floriano usa o ID player. "
+            "em texto simples, sem JSON, envelopes, campos remetente/fala, Markdown, raciocínio interno, "
+            "ficha, instruções ou metadados. O formato dos dados de entrada não é o formato da resposta. "
+            "O detetive Floriano usa o ID player. "
             "Você não é um narrador onisciente. Diferencie o que ouviu de fatos que observou; "
             "não invente pistas, mortes, deslocamentos ou acontecimentos como fatos estabelecidos. "
             "Você pode desconfiar, ocultar interesses, mentir ou admitir desconhecimento conforme seu caráter. "
@@ -192,12 +227,24 @@ class HarnessService:
             remaining -= len(message.content)
         messages = [ChatMessage(role="system", content=instructions)]
         for message in reversed(selected):
+            if message.sender_id == profile.id:
+                try:
+                    content = parse_dialogue_output(message.content, profile.id)
+                except LLMUnavailableError:
+                    content = SAFE_DIALOGUE_REPLY
+                decision = self._guard.inspect_output(content, self._private_markers(profile, state))
+                if not decision.allowed:
+                    content = decision.reply or SAFE_DIALOGUE_REPLY
+            else:
+                # Uma tentativa bloqueada no passado não volta ao contexto do modelo.
+                if not self._guard.inspect_input(message.content).allowed:
+                    continue
+                content = json.dumps(
+                    {"remetente": message.sender_id, "fala": message.content}, ensure_ascii=False,
+                )
             messages.append(ChatMessage(
                 role="assistant" if message.sender_id == profile.id else "user",
-                content=json.dumps(
-                    {"remetente": message.sender_id, "fala": message.content},
-                    ensure_ascii=False,
-                ),
+                content=content,
             ))
         messages.append(ChatMessage(
             role="user",
