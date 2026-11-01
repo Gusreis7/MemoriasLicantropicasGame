@@ -70,7 +70,14 @@ Marcadores privados longos são comparados por palavras normalizadas, ignorando
 pontuação. Objetivos letais curtos do catálogo, como “Matar Capitu.”, também são
 protegidos quando fornecidos pelo harness. Prioridades curtas e comuns, como
 “preservar autonomia”, não são consideradas prova suficiente de vazamento.
-Payloads base64 de saída passam pelas verificações de metadados e eco privado.
+Payloads base64 de saída passam pelas verificações de metadados e eco privado
+em até dois níveis, também com candidatos limitados. Instruções de estilo
+copiadas literalmente do harness têm assinaturas próprias de saída.
+
+Acusações retomadas como perguntas e negações de declarações não equivalem a
+confissão: “por que pensa que eu sou o lobisomem?” e “eu não disse que sou o
+lobisomem” continuam permitidas. Cada ocorrência é avaliada separadamente para
+que uma negação não encubra uma confissão posterior na mesma fala.
 
 ## Limitações e responsabilidades
 
@@ -86,6 +93,6 @@ Redis por partida/conversa, projeção privada por NPC e ausência de ferramenta
 executáveis no adaptador LLM. O texto produzido pelo modelo não recebe
 autoridade para mudar funções, prompts, papéis, sorteio, mortes ou posições.
 
-Validação local: `tests/test_dialogue_guard.py` contém **94 casos aprovados**,
+Validação local: `tests/test_dialogue_guard.py` contém **117 casos aprovados**,
 incluindo ataques PT/EN, Unicode, codificação, dados privados e controles
 narrativos. Nenhuma chamada à AWS é necessária.
