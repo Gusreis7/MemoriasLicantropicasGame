@@ -43,6 +43,8 @@ class GameService:
         return await self._public(game)
 
     async def _public(self, game: GameState) -> GamePublic:
+        if game.content_version != self._characters.content_version:
+            raise ConflictError("A partida usa uma versão anterior de personagens; crie uma nova partida.")
         public_cast: list[GameCharacterPublic] = []
         for character in game.characters:
             profile = await self._characters.get(character.character_id)

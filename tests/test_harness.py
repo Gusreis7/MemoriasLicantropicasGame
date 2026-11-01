@@ -43,7 +43,7 @@ async def test_private_context_does_not_include_other_npc_secrets(harness, stora
 async def test_bacamarte_denial_does_not_receive_secret_role(harness, storage, game, llm, catalog, role):
     cast = (GameCharacter(character_id="bacamarte", role=role),
             GameCharacter(character_id="capitu", role="civil" if role == "werewolf" else "werewolf"))
-    state = GameState(id=game.id, created_at=game.created_at, characters=cast)
+    state = GameState(id=game.id, created_at=game.created_at, characters=cast, content_version=game.content_version)
     await storage.games.create(state)
     await harness.respond(state.id, "bacamarte", uuid4(), "player", "O que pensa dos crimes?")
     prompt = llm.calls[0][0].content

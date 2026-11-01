@@ -10,6 +10,16 @@ class Contract(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
 
+class DialogueStrategy(Contract):
+    voice: str
+    priorities: tuple[str, ...]
+    cooperate_when: str
+    withhold_when: str
+    pressure_response: str
+    civil_tactic: str
+    werewolf_tactic: str
+
+
 class CharacterProfile(Contract):
     id: str
     name: str
@@ -18,6 +28,7 @@ class CharacterProfile(Contract):
     civil_objective: str
     werewolf_objective: str
     role_awareness: Literal["aware", "denial"] = "aware"
+    dialogue_strategy: DialogueStrategy | None = None
 
 
 class GameCharacter(Contract):

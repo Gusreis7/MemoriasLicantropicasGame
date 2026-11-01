@@ -1,6 +1,7 @@
 """Portas assíncronas de persistência. Sem imports de Redis ou FastAPI."""
 
 from typing import Protocol
+from contextlib import AbstractAsyncContextManager
 from uuid import UUID
 
 from memorias_licantropicas.contracts.model import (
@@ -12,6 +13,8 @@ from memorias_licantropicas.contracts.model import (
 
 
 class CharacterRepository(Protocol):
+    content_version: str
+
     async def list(self) -> tuple[CharacterProfile, ...]: ...
 
     async def get(self, character_id: str) -> CharacterProfile | None: ...
@@ -45,3 +48,7 @@ class MemoryRepository(Protocol):
     ) -> tuple[ConversationMessage, ...]:
         """Últimas mensagens em ordem cronológica; somente participantes podem ler."""
         ...
+
+
+class ConversationGate(Protocol):
+    def hold(self, game_id: UUID, conversation_id: UUID) -> AbstractAsyncContextManager[None]: ...

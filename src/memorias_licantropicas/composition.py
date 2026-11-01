@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from redis.asyncio import Redis
 
 from memorias_licantropicas.infrastructure.llm.bedrock_mantle import BedrockMantleClient
+from memorias_licantropicas.infrastructure.llm.aws_credentials import ProfileTokenProvider
+from memorias_licantropicas.infrastructure.conversation_gate import RedisConversationGate
 from memorias_licantropicas.infrastructure.redis_repository import (
     RedisGameRepository,
     RedisMemoryRepository,
@@ -13,6 +15,7 @@ from memorias_licantropicas.modules.agents.service import HarnessService
 from memorias_licantropicas.modules.characters.repository import CatalogCharacterRepository
 from memorias_licantropicas.modules.characters.service import CharacterService
 from memorias_licantropicas.modules.games.service import GameService
+from memorias_licantropicas.modules.conversations.service import ConversationService
 from memorias_licantropicas.settings import Settings
 
 
@@ -23,6 +26,7 @@ class Services:
     harness: HarnessService
     redis: Redis
     llm: BedrockMantleClient
+    conversations: ConversationService
 
     async def aclose(self) -> None:
         try:
@@ -45,13 +49,18 @@ def build_services(settings: Settings) -> Services:
         model=settings.bedrock_model,
         timeout_seconds=settings.llm_timeout_seconds,
         max_tokens=settings.llm_max_tokens,
+        token_provider=(ProfileTokenProvider(settings.aws_profile, settings.aws_region)
+                        if settings.aws_profile else None),
     )
+    harness = HarnessService(characters, games, memory, llm, history_limit=settings.llm_history_limit)
     return Services(
         characters=CharacterService(characters),
         games=GameService(characters, games),
-        harness=HarnessService(
-            characters, games, memory, llm, history_limit=settings.llm_history_limit,
-        ),
+        harness=harness,
         redis=redis,
         llm=llm,
+        conversations=ConversationService(
+            characters, games, memory, harness,
+            RedisConversationGate(redis, settings.redis_prefix, settings.llm_timeout_seconds + 10),
+        ),
     )

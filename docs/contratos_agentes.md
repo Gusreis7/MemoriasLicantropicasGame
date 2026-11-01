@@ -1,5 +1,7 @@
 # Contratos v1 e divisão de trabalho
 
+Este documento registra a divisão original. A extensão atual acrescenta `CharacterRepository.content_version`, `DialogueStrategy`, `TokenProvider`, `ConversationGate` e o módulo `conversations`, detalhados em [conversa_jogador_persona.md](conversa_jogador_persona.md). O contrato HTTP agora fixa o interlocutor como jogador, sem expor `speaker_id` do harness interno.
+
 ## Escopo desta entrega
 
 Base de personagens, sorteio secreto, memória Redis e harness de diálogo com Qwen3 32B via Mantle. Sem resolver turnos, crimes, pistas, votação, encontros automáticos ou outras mecânicas avançadas. Não executar testes, Docker ou inferências nesta entrega, conforme pedido do usuário. Atualizar lockfile é preparação de dependências, não validação de execução.

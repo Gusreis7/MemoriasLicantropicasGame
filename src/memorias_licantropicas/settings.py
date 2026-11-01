@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     redis_url: str = Field(default="redis://localhost:6379/0", repr=False)
     redis_prefix: str = Field(default="ml:v1", min_length=1)
     aws_region: str = Field(default="us-east-1", min_length=1)
+    aws_profile: str | None = None
     bedrock_api_key: SecretStr | None = Field(
         default=None, validation_alias="AWS_BEARER_TOKEN_BEDROCK",
     )

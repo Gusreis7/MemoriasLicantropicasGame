@@ -22,9 +22,9 @@ Essas são direções de estudo; as mecânicas e integrações ainda serão defi
 - **Redis** para memória das interações e **AWS Bedrock Mantle**, com Qwen 32B, para interpretar os NPCs.
 - Jogo acessível pelo navegador. A tecnologia da interface ainda está em aberto.
 
-A base contém catálogo de personagens, criação/consulta de partidas com sorteio secreto, repositories Redis e um serviço interno de harness para diálogos via Mantle. Ainda não há interface de jogo, encontros automáticos, crimes ou resolução de turnos.
+A base contém catálogo de personagens, criação/consulta de partidas com sorteio secreto, Redis e conversas jogador–persona pela API, usando o harness Mantle. Ainda não há interface de jogo, encontros automáticos, crimes ou resolução de turnos.
 
-A suíte automatizada foi executada com Redis em memória e com Redis real em Docker. A integração com AWS continua sem chamadas reais: o contrato Mantle é testado com transporte HTTP simulado, sem credenciais.
+A suíte automatizada usa Redis em memória e Redis real em Docker, com inferência simulada. O usuário confirmou o acesso real ao Qwen pelo teste local anterior; a nova mecânica não dispara chamadas AWS durante os testes automatizados.
 
 ## Planejamento
 
@@ -68,8 +68,12 @@ O uv usa a versão de Python indicada em `.python-version`. Para adicionar depen
 - `GET /api/v1/characters/{character_id}`: apresentação de um suspeito.
 - `POST /api/v1/games`: cria partida e sorteia um lobisomem; corpo opcional `{}`.
 - `GET /api/v1/games/{game_id}`: estado público da partida.
+- `POST /api/v1/games/{game_id}/conversations`: abre conversa com `{"npc_id": "capitu"}`.
+- `GET /api/v1/games/{game_id}/conversations/{conversation_id}`: consulta a conversa.
+- `POST /api/v1/games/{game_id}/conversations/{conversation_id}/messages`: envia `{"content": "O que sabe sobre Brás Cubas?"}` e recebe a fala da persona.
+- `GET /api/v1/games/{game_id}/conversations/{conversation_id}/messages`: recupera o histórico.
 
-Papéis e objetivos privados não aparecem nas respostas. A API ainda não possui autenticação ou propriedade de partidas; esta base é para desenvolvimento local. O harness é um serviço interno, sem rota pública de diálogo nesta etapa.
+Papéis e objetivos privados não aparecem nos schemas públicos. O servidor fixa o interlocutor como jogador; não aceita IDs de remetente no corpo. A API ainda não possui autenticação ou propriedade de partidas; esta base é para desenvolvimento local. Veja [conversa jogador–persona](docs/conversa_jogador_persona.md) para configuração e exemplos.
 
 ## Verificação
 
@@ -87,18 +91,19 @@ docker compose -p ml-test-suits -f compose.test.yaml down
 
 Consulte [a suíte de testes](docs/testes.md) para cobertura, isolamento e resultados.
 
-## Smoke test real do Mantle
+## Conversar com uma persona
 
-Com o perfil `terraform` autenticado na AWS CLI:
+Com o perfil `terraform` autenticado na AWS CLI, inicie Redis e a API no host:
 
 ```sh
 uv sync --locked
-uv run python smoketest.py --profile terraform --region us-east-1
+docker compose up -d redis
+AWS_PROFILE=terraform AWS_REGION=us-east-1 uv run uvicorn memorias_licantropicas.main:app --reload
 ```
 
-O script gera um token temporário de 15 minutos a partir do perfil local e faz uma inferência no modelo configurado (`qwen.qwen3-32b` por padrão). Imprime resposta e consumo de tokens, sem exibir ou salvar credenciais. Não precisa de Redis nem de `AWS_BEARER_TOKEN_BEDROCK` no `.env`. `--profile` usa `AWS_PROFILE` quando definido, ou `terraform`; a região também pode vir de `AWS_REGION`/`.env`.
+Em http://localhost:8000/docs, crie uma partida, abra uma conversa com o ID da partida e um NPC, e envie mensagens usando o ID da conversa retornado. Crie uma partida nova para usar o catálogo versão 2.
 
-As dependências de desenvolvimento incluem `aws-bedrock-token-generator` e `botocore[crt]`, necessário para credenciais de `aws login`. Esse teste é manual, faz uma chamada real e consome a cota/créditos ou gera cobrança conforme a conta. Ele não é coletado pelo pytest.
+O antigo `smoketest.py` foi removido. A API gera tokens temporários em memória quando `AWS_PROFILE` está configurado e não há bearer token explícito. As dependências `aws-bedrock-token-generator` e `botocore[crt]` agora fazem parte do runtime. No Docker da API, o cache de login do host não é montado automaticamente; use o bearer token configurado ou execute a API no host para usar o perfil. Cada mensagem enviada ao modelo consome a cota/créditos ou gera cobrança conforme a conta.
 
 ## Convenção de branches
 
@@ -125,7 +130,7 @@ Explorações em `AED/` só seguem para `develop` quando suas alterações forem
 ```text
 src/memorias_licantropicas/
   contracts/               # Modelos internos e portas compartilhadas
-  modules/                 # Characters, games e agents
+  modules/                 # Characters, games, agents e conversations
   infrastructure/          # Redis e cliente Mantle
   composition.py           # Construção e injeção dos serviços
   settings.py              # Configuração por ambiente

@@ -6,6 +6,7 @@ import pytest
 from memorias_licantropicas.contracts.errors import LLMUnavailableError
 from memorias_licantropicas.contracts.model import ChatMessage
 from memorias_licantropicas.infrastructure.llm.bedrock_mantle import BedrockMantleClient
+from unittest.mock import AsyncMock
 
 pytestmark = pytest.mark.anyio
 
@@ -72,3 +73,24 @@ async def test_missing_credentials_never_sends_request(mantle_factory):
     client = await mantle_factory(forbidden, api_key=None)
     with pytest.raises(LLMUnavailableError, match="Credencial"):
         await client.complete((ChatMessage(role="user", content="Olá"),))
+
+
+async def test_profile_token_is_requested_per_call(mantle_factory):
+    def handle(request):
+        assert request.headers["authorization"] == "Bearer profile-token"
+        return httpx.Response(200, json=completion())
+    client = await mantle_factory(handle, api_key=None)
+    provider = AsyncMock()
+    provider.get_token.return_value = "profile-token"
+    client._token_provider = provider
+    for _ in range(2):
+        await client.complete((ChatMessage(role="user", content="Olá"),))
+    assert provider.get_token.await_count == 2
+
+
+async def test_explicit_api_key_takes_precedence_over_profile(mantle_factory):
+    client = await mantle_factory(lambda request: httpx.Response(200, json=completion()))
+    provider = AsyncMock()
+    client._token_provider = provider
+    await client.complete((ChatMessage(role="user", content="Olá"),))
+    provider.get_token.assert_not_awaited()

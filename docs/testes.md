@@ -11,6 +11,9 @@ Implementada em `feat/test_suits`, criada a partir de `develop` após a integra�
 | `test_redis.py` | Insert/roundtrip; proibição de sobrescrita; inserts concorrentes; nova conexão; namespaces; dados corrompidos; falha de conexão; participantes elegíveis; append e deduplicação; rejeição atômica de lote conflitante; histórico limitado e privado |
 | `test_harness.py` | Par pergunta/resposta; contexto do encontro anterior; sigilo dos objetivos alheios; negação de Bacamarte; validação do interlocutor; NPC–NPC; falha de inferência sem mensagens parciais; texto inválido |
 | `test_mantle.py` | URL, bearer token, modelo e payload Chat Completions; texto e consumo retornados; status 401/429/500; saída inválida/truncada; ausência de credencial sem enviar HTTP |
+| `test_conversations.py` | Fluxo HTTP com os sete NPCs, continuidade do histórico, bloqueio de spoofing, falhas, simultaneidade e versão do catálogo |
+| `test_conversation_gate.py` | Reserva compartilhada, liberação, expiração e proteção contra liberação por proprietário antigo |
+| `test_aws_credentials.py` | Perfil e região enviados ao gerador de token; falhas sanitizadas, sem AWS real |
 
 O sorteio é controlado somente em testes parametrizados para verificar cada resultado possível de forma determinística. Não se faz uma asserção estatística sujeita a flutuações aleatórias. Na aplicação a fonte continua sendo `secrets.choice`.
 
@@ -41,11 +44,12 @@ O LLM do harness é um substituto determinístico. O cliente Mantle é exercitad
 
 ## Resultados desta entrega
 
-- Backend em memória: **55 passed**.
-- Redis real 7.4 em Docker: **55 passed**.
+- Backend em memória: **81 passed** (55 da base inicial e 26 da conversa jogador–persona).
+- Redis real 7.4 em Docker: **81 passed**.
 - Nenhuma chamada AWS realizada.
-- Nenhuma mudança no código de produção foi necessária para os casos cobertos.
+- Build da imagem da API aprovado com as dependências de runtime, sem grupo dev.
+- O enriquecimento de personas, as rotas de conversa, a reserva Redis e os tokens por perfil estão descritos em [conversa_jogador_persona.md](conversa_jogador_persona.md).
 
-O encerramento do container de teste preserva os serviços e volumes da aplicação. A validação não cobre distribuição estatística do sorteio, reinício do servidor, persistência em disco, carga/contenda prolongada, build da imagem da API nem comportamento real do modelo.
+O encerramento do container de teste preserva os serviços e volumes da aplicação. A validação não cobre distribuição estatística do sorteio, reinício do servidor, persistência em disco, carga/contenda prolongada nem comportamento real do modelo.
 
 Referências: [fakeredis](https://fakeredis.readthedocs.io/en/latest/) e [plugin de testes AnyIO](https://anyio.readthedocs.io/en/stable/testing.html).

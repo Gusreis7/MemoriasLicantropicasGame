@@ -6,6 +6,7 @@ import httpx
 from pydantic import SecretStr, ValidationError
 
 from memorias_licantropicas.contracts.errors import LLMUnavailableError
+from memorias_licantropicas.contracts.llm import TokenProvider
 from memorias_licantropicas.contracts.model import ChatMessage, LLMResponse
 
 
@@ -20,6 +21,7 @@ class BedrockMantleClient:
         model: str,
         timeout_seconds: float,
         max_tokens: int,
+        token_provider: TokenProvider | None = None,
     ) -> None:
         endpoint = urlsplit(base_url)
         if (
@@ -36,6 +38,7 @@ class BedrockMantleClient:
         self._api_key = api_key if isinstance(api_key, SecretStr) else SecretStr(api_key or "")
         self._model = model
         self._max_tokens = max_tokens
+        self._token_provider = token_provider
         self._client = httpx.AsyncClient(
             base_url=base_url.rstrip("/") + "/",
             timeout=httpx.Timeout(timeout_seconds),
@@ -44,6 +47,8 @@ class BedrockMantleClient:
 
     async def complete(self, messages: tuple[ChatMessage, ...]) -> LLMResponse:
         api_key = self._api_key.get_secret_value().strip()
+        if not api_key and self._token_provider is not None:
+            api_key = (await self._token_provider.get_token()).strip()
         if not api_key:
             raise LLMUnavailableError("Credencial Bedrock não configurada.")
         if not messages:

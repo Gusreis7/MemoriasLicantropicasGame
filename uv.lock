@@ -217,6 +217,8 @@ name = "memorias-licantropicas"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "aws-bedrock-token-generator" },
+    { name = "botocore", extra = ["crt"] },
     { name = "fastapi" },
     { name = "httpx" },
     { name = "pydantic-settings" },
@@ -226,14 +228,14 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "aws-bedrock-token-generator" },
-    { name = "botocore", extra = ["crt"] },
     { name = "fakeredis" },
     { name = "pytest" },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "aws-bedrock-token-generator", specifier = ">=1.0,<2.0" },
+    { name = "botocore", extras = ["crt"], specifier = ">=1.41,<2.0" },
     { name = "fastapi", specifier = ">=0.115,<1.0" },
     { name = "httpx", specifier = ">=0.28,<1.0" },
     { name = "pydantic-settings", specifier = ">=2.8,<3.0" },
@@ -243,8 +245,6 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "aws-bedrock-token-generator", specifier = ">=1.0,<2.0" },
-    { name = "botocore", extras = ["crt"], specifier = ">=1.41,<2.0" },
     { name = "fakeredis", specifier = ">=2.28,<3.0" },
     { name = "pytest", specifier = ">=8,<10" },
 ]

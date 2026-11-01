@@ -5,6 +5,8 @@ description = "Jogo web de investigação e dedução social inspirado em Machad
 readme = "README.md"
 requires-python = ">=3.13,<3.14"
 dependencies = [
+    "aws-bedrock-token-generator>=1.0,<2.0",
+    "botocore[crt]>=1.41,<2.0",
     "fastapi>=0.115,<1.0",
     "httpx>=0.28,<1.0",
     "pydantic-settings>=2.8,<3.0",
@@ -14,8 +16,6 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "aws-bedrock-token-generator>=1.0,<2.0",
-    "botocore[crt]>=1.41,<2.0",
     "fakeredis>=2.28,<3.0",
     "pytest>=8,<10",
 ]

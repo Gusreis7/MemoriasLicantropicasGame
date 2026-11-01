@@ -4,10 +4,11 @@ Os objetivos e segredos deste catálogo não são contratos públicos da API.
 """
 
 from memorias_licantropicas.contracts.model import CharacterProfile
+from memorias_licantropicas.modules.characters.strategies import STRATEGIES
 
-CONTENT_VERSION = "1"
+CONTENT_VERSION = "2"
 
-CHARACTERS: tuple[CharacterProfile, ...] = (
+_PROFILES: tuple[CharacterProfile, ...] = (
     CharacterProfile(
         id="bentinho",
         name="Bentinho",
@@ -37,7 +38,7 @@ CHARACTERS: tuple[CharacterProfile, ...] = (
         ),
         werewolf_objective=(
             "Matar o detetive Floriano se ele perguntar demais e ir atrás de Escobar "
-            "por raiva reprimida dos ciúmes de Bentinho. As condições exatas ainda serão definidas."
+            "por raiva reprimida dos ciúmes de Bentinho."
         ),
     ),
     CharacterProfile(
@@ -100,6 +101,10 @@ CHARACTERS: tuple[CharacterProfile, ...] = (
         ),
         role_awareness="denial",
     ),
+)
+
+CHARACTERS = tuple(
+    profile.model_copy(update={"dialogue_strategy": STRATEGIES[profile.id]}) for profile in _PROFILES
 )
 
 # Introduções públicas não incluem segredos da biografia privada do catálogo.

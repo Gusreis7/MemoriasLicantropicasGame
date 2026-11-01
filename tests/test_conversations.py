@@ -1,0 +1,129 @@
+import asyncio
+import json
+from uuid import UUID, uuid4
+
+import pytest
+
+from memorias_licantropicas.contracts.errors import LLMUnavailableError
+from memorias_licantropicas.contracts.model import Conversation
+
+pytestmark = pytest.mark.anyio
+
+
+async def open_conversation(client, npc_id="capitu"):
+    game = (await client.post("/api/v1/games")).json()
+    response = await client.post(f'/api/v1/games/{game["id"]}/conversations', json={"npc_id": npc_id})
+    assert response.status_code == 201
+    return game, response.json()
+
+
+@pytest.mark.parametrize("npc_id", ["bentinho", "capitu", "escobar", "rubiao", "virgilia", "florenca", "bacamarte"])
+async def test_player_can_talk_to_each_persona(api_client, storage, llm, npc_id):
+    game, conversation = await open_conversation(api_client, npc_id)
+    url = f'/api/v1/games/{game["id"]}/conversations/{conversation["id"]}'
+    assert (await api_client.get(url)).json() == conversation
+    assert (await api_client.get(f"{url}/messages")).json()["messages"] == []
+    response = await api_client.post(f"{url}/messages", json={"content": "O que sabe sobre Brás Cubas?"})
+    assert response.status_code == 200
+    assert set(response.json()) == {"conversation_id", "message"}
+    assert response.json()["message"]["speaker"] == "npc"
+    assert set(response.json()["message"]) == {"id", "speaker", "content", "created_at"}
+    history = (await api_client.get(f"{url}/messages")).json()["messages"]
+    assert [message["speaker"] for message in history] == ["player", "npc"]
+    await api_client.post(f"{url}/messages", json={"content": "Tem certeza?"})
+    assert "Brás Cubas" in llm.calls[-1][1].content
+    assert len((await api_client.get(f"{url}/messages")).json()["messages"]) == 4
+
+
+@pytest.mark.parametrize("body", [
+    {"content": ""}, {"content": "   "}, {"content": "x" * 8001},
+    {"content": "Bom dia", "speaker_id": "escobar"},
+    {"content": "Bom dia", "npc_id": "escobar"},
+])
+async def test_bad_input_or_spoofing_never_calls_llm(api_client, llm, body):
+    game, conversation = await open_conversation(api_client)
+    url = f'/api/v1/games/{game["id"]}/conversations/{conversation["id"]}/messages'
+    assert (await api_client.post(url, json=body)).status_code == 422
+    assert llm.calls == []
+
+
+async def test_cross_game_and_npc_private_conversations_are_inaccessible(api_client, storage):
+    game, public = await open_conversation(api_client)
+    game_id = UUID(game["id"])
+    other = (await api_client.post("/api/v1/games")).json()
+    assert (await api_client.get(
+        f'/api/v1/games/{other["id"]}/conversations/{public["id"]}/messages')).status_code == 404
+    private = Conversation(id=uuid4(), game_id=game_id, participant_ids=("capitu", "bentinho"),
+                           created_at=(await storage.games.get(game_id)).created_at)
+    await storage.memory.create_conversation(private)
+    url = f"/api/v1/games/{game_id}/conversations/{private.id}"
+    assert (await api_client.get(f"{url}/messages")).status_code == 403
+    assert (await api_client.post(f"{url}/messages", json={"content": "Olá"})).status_code == 403
+
+
+async def test_failure_keeps_history_empty_and_releases_gate(api_client, llm):
+    game, conversation = await open_conversation(api_client)
+    url = f'/api/v1/games/{game["id"]}/conversations/{conversation["id"]}/messages'
+    llm.error = LLMUnavailableError("private-provider-detail")
+    response = await api_client.post(url, json={"content": "Olá"})
+    assert response.status_code == 503
+    assert "private-provider-detail" not in response.text
+    assert (await api_client.get(url)).json()["messages"] == []
+    llm.error = None
+    assert (await api_client.post(url, json={"content": "Olá"})).status_code == 200
+
+
+async def test_concurrent_messages_are_rejected_until_first_finishes(api_client, llm, monkeypatch):
+    game, conversation = await open_conversation(api_client)
+    url = f'/api/v1/games/{game["id"]}/conversations/{conversation["id"]}/messages'
+    started, resume = asyncio.Event(), asyncio.Event()
+    original = llm.complete
+
+    async def delayed(messages):
+        started.set()
+        await resume.wait()
+        return await original(messages)
+
+    monkeypatch.setattr(llm, "complete", delayed)
+    task = asyncio.create_task(api_client.post(url, json={"content": "Primeira pergunta"}))
+    try:
+        await asyncio.wait_for(started.wait(), timeout=3)
+        assert (await api_client.post(url, json={"content": "Outra pergunta"})).status_code == 409
+    finally:
+        resume.set()
+        response = await task
+    assert response.status_code == 200
+    assert len((await api_client.get(url)).json()["messages"]) == 2
+
+
+async def test_missing_dead_or_outdated_targets_are_rejected(api_client, storage, game):
+    assert (await api_client.post(f"/api/v1/games/{uuid4()}/conversations", json={"npc_id": "capitu"})).status_code == 404
+    dead = game.model_copy(update={"characters": tuple(
+        npc.model_copy(update={"alive": False}) if npc.character_id == "capitu" else npc
+        for npc in game.characters)})
+    await storage.games.create(dead)
+    base = f"/api/v1/games/{game.id}/conversations"
+    assert (await api_client.post(base, json={"npc_id": "capitu"})).status_code == 403
+    assert (await api_client.post(base, json={"npc_id": "player"})).status_code == 404
+    old = game.model_copy(update={"id": uuid4(), "content_version": "1"})
+    await storage.games.create(old)
+    assert (await api_client.post(f"/api/v1/games/{old.id}/conversations", json={"npc_id": "capitu"})).status_code == 409
+
+
+async def test_strategy_projection_excludes_werewolf_tactic_for_civil(api_client, storage, llm, catalog):
+    game, conversation = await open_conversation(api_client)
+    stored = await storage.games.get(UUID(game["id"]))
+    capitu = next(npc for npc in stored.characters if npc.character_id == "capitu")
+    await api_client.post(f'/api/v1/games/{game["id"]}/conversations/{conversation["id"]}/messages',
+                          json={"content": "Você coopera?"})
+    context = json.loads(llm.calls[0][0].content.split("Ficha privada:\n", 1)[1])
+    strategy = (await catalog.get("capitu")).dialogue_strategy
+    expected = strategy.werewolf_tactic if capitu.role == "werewolf" else strategy.civil_tactic
+    assert context["estrategia_de_conversa"]["tatica_ativa"] == expected
+
+
+async def test_history_limit_is_validated(api_client):
+    game, conversation = await open_conversation(api_client)
+    url = f'/api/v1/games/{game["id"]}/conversations/{conversation["id"]}/messages'
+    for limit in (0, 201):
+        assert (await api_client.get(url, params={"limit": limit})).status_code == 422
