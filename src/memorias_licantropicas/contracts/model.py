@@ -42,7 +42,7 @@ class GameState(Contract):
     created_at: AwareDatetime
     characters: tuple[GameCharacter, ...]
     content_version: str = "1"
-    status: Literal["active"] = "active"
+    status: Literal["active", "won", "lost"] = "active"
 
     @model_validator(mode="after")
     def validate_cast(self) -> "GameState":
