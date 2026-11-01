@@ -35,7 +35,8 @@ const AMBIENT: Record<LocationID, AmbientPlacement[]> = {
     {frame: 'cat', x: 805, y: 307, width: 33, height: 27}, {frame: 'bird', x: 550, y: 120, width: 18, height: 16, drift: 18},
   ],
   cais_lanternas: [
-    {frame: 'tree', x: 100, y: 279, width: 115, height: 153}, {frame: 'citizen-man', x: 700, y: 293, width: 48, height: 76},
+    // Keep the gas lamp on the left readable; the backdrop already has a tree behind it.
+    {frame: 'citizen-man', x: 700, y: 293, width: 48, height: 76},
     {frame: 'cat', x: 320, y: 306, width: 34, height: 27, drift: 8}, {frame: 'dog', x: 785, y: 307, width: 44, height: 30},
     {frame: 'bird', x: 610, y: 118, width: 18, height: 16, drift: 30}, {frame: 'bird', x: 765, y: 85, width: 17, height: 15, drift: 26},
   ],
@@ -129,7 +130,7 @@ export class CityScene extends Phaser.Scene {
     else this.input.keyboard.disableGlobalCapture();
   }
 
-  private dressLocation(id: LocationID) {
+  private dressLocation(id: LocationID, groundY: number) {
     this.ambient.forEach(object => object.destroy()); this.ambient = []; this.wanderers = [];
     if (!this.textures.exists('scene-life')) return;
     this.textures.get('scene-life').setFilter(Phaser.Textures.FilterMode.NEAREST);
@@ -142,7 +143,9 @@ export class CityScene extends Phaser.Scene {
       if (placement.drift && !this.reducedMotion) this.wanderers.push({image, placement});
     }
     if (id === 'cais_lanternas' && this.textures.exists('capoeira')) {
-      const roda = this.add.sprite(440, 282, 'capoeira', '0').setOrigin(.5, 480 / 512).setDepth(-2);
+      // The atlas feet baseline is y=480 in a 512px frame. Place that baseline
+      // on the walkable pavement, at the same ground_y as every person sprite.
+      const roda = this.add.sprite(440, groundY, 'capoeira', '0').setOrigin(.5, 480 / 512).setDepth(-2);
       roda.setDisplaySize(168, 112);
       if (!this.reducedMotion) roda.play('capoeira-roda');
       this.ambient.push(roda);
@@ -184,7 +187,7 @@ export class CityScene extends Phaser.Scene {
       this.background?.destroy();
       this.background = this.add.image(0, 0, `location-${world.location.id}`).setOrigin(0)
         .setDisplaySize(world.location.width, world.location.height).setDepth(-10).setScrollFactor(0);
-      this.dressLocation(world.location.id);
+      this.dressLocation(world.location.id, world.location.ground_y);
       this.npcSignature = '\0';
       this.drawCaseMarkers();
       if (!this.player) {

@@ -35,7 +35,7 @@ app.innerHTML = `
   <div id="exit-overlay" class="overlay" hidden><section class="exit-modal" role="dialog" aria-modal="true" aria-labelledby="exit-title" aria-describedby="exit-description"><header class="modal-heading"><div><p class="eyebrow">NO FIM DESTA RUA</p><h2 id="exit-title">Por onde seguimos?</h2></div><button class="icon-button" id="close-exit" aria-label="Ficar neste local" type="button">×</button></header><p id="exit-description">Escolha um caminho para continuar a investigação.</p><div id="exit-destinations" class="exit-destinations"></div><p id="exit-status" class="status" role="status" aria-live="polite"></p><button id="stay-here" class="button secondary" type="button">Ficar neste local</button></section></div>
 
   <div id="dialogue-overlay" class="overlay dialogue-overlay" hidden><section class="dialogue-modal" role="dialog" aria-modal="true" aria-labelledby="dialogue-name"><aside class="persona-panel"><div class="persona-frame"><img id="persona-portrait" src="" alt=""/></div><p class="eyebrow">DEPOIMENTO</p><h2 id="dialogue-name"></h2><span class="persona-flourish" aria-hidden="true">— ✦ —</span><p>Nem toda verdade vem à primeira pergunta.</p></aside><div class="conversation-panel"><header class="conversation-heading"><div><span class="conversation-dot"></span><span>Conversa com Floriano</span></div><button id="close-dialogue" class="icon-button" type="button" aria-label="Encerrar conversa">×</button></header><div id="messages" class="messages" role="log" aria-live="polite"></div><div id="dialogue-status" class="status dialogue-status" role="status" aria-live="polite"></div><div id="evidence-presenter" class="evidence-presenter" hidden><label for="present-evidence">Mostrar um vestígio</label><div><select id="present-evidence"></select><button id="present-button" class="button small" type="button">Apresentar</button></div><p id="presentation-status" role="status" aria-live="polite"></p></div><form id="message-form" class="message-form"><label class="sr-only" for="message-input">Sua pergunta</label><textarea id="message-input" rows="2" maxlength="8000" placeholder="O que você gostaria de perguntar?" required></textarea><button id="send-message" class="button primary" type="submit" aria-label="Enviar pergunta">Enviar <span aria-hidden="true">→</span></button></form><p class="form-hint">Enter para enviar · Shift + Enter para uma nova linha</p></div></section></div>
-  <div id="journal-overlay" class="overlay" hidden><section class="journal-modal case-modal" role="dialog" aria-modal="true" aria-labelledby="journal-title"><header class="modal-heading"><div><p class="eyebrow">EDIÇÃO DA MANHÃ · <span id="journal-day"></span></p><h2 id="journal-title">O Clarim do Rio</h2></div><button id="close-journal" class="icon-button" type="button" aria-label="Fechar jornal">×</button></header><p class="journal-motto">Os acontecimentos da cidade, à luz do dia.</p><h3 id="journal-headline"></h3><p id="journal-body"></p><p id="journal-location" class="journal-location"></p><button id="read-journal" class="button primary" type="button">Continuar a investigação</button></section></div>
+  <div id="journal-overlay" class="overlay" hidden><section class="journal-modal case-modal" role="dialog" aria-modal="true" aria-labelledby="journal-title"><header class="newspaper-masthead"><div class="newspaper-dateline"><span>RIO DE JANEIRO</span><span>EDIÇÃO DA MANHÃ</span><button id="close-journal" class="icon-button" type="button" aria-label="Fechar jornal">×</button></div><h2 id="journal-title">O Clarim do Rio</h2><div class="newspaper-edition"><span>NOTÍCIAS DA CIDADE · 1890</span><span id="journal-day"></span></div></header><article class="newspaper-story"><p class="journal-motto">Os acontecimentos da cidade, à luz do dia.</p><h3 id="journal-headline"></h3><figure id="journal-snapshot" class="journal-snapshot" hidden><img src="/assets/press/crime-scene-snapshot.png" alt="Registro monocromático de uma rua carioca à noite, com um chapéu caído e pegadas no calçamento."/><figcaption id="journal-snapshot-caption"></figcaption></figure><p id="journal-body"></p><p id="journal-location" class="journal-location"></p></article><button id="read-journal" class="button primary" type="button">Continuar a investigação</button></section></div>
   <div id="notebook-overlay" class="overlay" hidden><section class="case-modal notebook-modal" role="dialog" aria-modal="true" aria-labelledby="notebook-title"><header class="modal-heading"><div><p class="eyebrow">O CADERNO DE FLORIANO</p><h2 id="notebook-title">Vestígios e versões</h2></div><button id="close-notebook" class="icon-button" type="button" aria-label="Fechar caderno">×</button></header><p class="case-note">Um objeto pode ter muitos donos. Um depoimento registra uma versão, não uma certeza.</p><h3>Vestígios recolhidos</h3><div id="evidence-list" class="evidence-list"></div><h3>Depoimentos sobre objetos</h3><div id="testimony-list" class="testimony-list"></div><h3>Cenas conhecidas</h3><div id="crime-list" class="crime-list"></div></section></div>
   <div id="delegate-overlay" class="overlay" hidden><section class="case-modal delegate-modal" role="dialog" aria-modal="true" aria-labelledby="delegate-title"><header class="modal-heading"><div><p class="eyebrow">UM PEDIDO DE PRISÃO</p><h2 id="delegate-title">Na presença do delegado</h2></div><button id="close-delegate" class="icon-button" type="button" aria-label="Dispensar delegado">×</button></header><p class="case-note">Apresente objetos e depoimentos que sustentem sua suspeita. Se o delegado aceitar, haverá detenção nesta noite. A transformação na cela será a prova final.</p><form id="accusation-form"><label class="field-label" for="accused-npc">Quem você acusa?</label><select id="accused-npc" required></select><fieldset><legend>Vestígios</legend><div id="accusation-evidence"></div></fieldset><fieldset><legend>Depoimentos registrados</legend><div id="accusation-testimonies"></div></fieldset><p id="accusation-status" class="status" role="status" aria-live="polite"></p><button id="submit-accusation" class="button primary" type="submit">Apresentar acusação</button></form><div id="accusation-history"></div></section></div>
   <div id="phase-overlay" class="overlay phase-overlay" hidden><section class="case-modal phase-modal" role="dialog" aria-modal="true" aria-labelledby="phase-title" aria-describedby="phase-description"><span class="phase-moon" aria-hidden="true">☾</span><p class="eyebrow" id="phase-eyebrow">A CIDADE RECOLHE-SE</p><h2 id="phase-title">A noite guarda seus segredos.</h2><p id="phase-description">Floriano aguarda a manhã. Os acontecimentos serão publicados no Clarim do Rio.</p><p id="phase-countdown" role="status" aria-live="polite"></p><button id="ending-new-case" class="button primary" type="button" hidden>Iniciar outro caso</button></section></div>
@@ -329,6 +329,13 @@ function addText(parent: HTMLElement, tag: string, text: string, className?: str
 
 function locationName(id: LocationID) {return locations.find(location => location.id === id)?.name ?? id;}
 function itemKind(evidence: CaseEvidence) {return {unique: 'Exclusivo', singular: 'Singular', common: 'Comum'}[evidence.kind];}
+function itemArt(itemId: string, kind: CaseEvidence['kind']) {
+  const wrapper = document.createElement('span'); wrapper.className = `item-art item-art-${kind}`; wrapper.setAttribute('aria-hidden', 'true');
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('viewBox', '0 0 64 64');
+  const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+  use.setAttribute('href', `/assets/items/item-icons.svg#${itemId}`); svg.append(use); wrapper.append(svg);
+  return wrapper;
+}
 
 async function applyCase(next: CasePublic, initial = false) {
   if (!world || (!initial && $('#investigation').hidden) || next.game_id !== world.game_id || (caseState && next.revision < caseState.revision)) return;
@@ -394,6 +401,10 @@ function renderJournal() {
   $('#journal-headline').textContent = edition?.headline ?? 'Uma cidade à espera de respostas';
   $('#journal-body').textContent = edition?.body ?? 'A edição desta manhã está sendo preparada.';
   $('#journal-location').textContent = edition?.location_id ? `Acontecimento registrado: ${locationName(edition.location_id)}.` : 'Nenhuma nova cena de crime foi anunciada.';
+  const snapshot = $<HTMLElement>('#journal-snapshot');
+  snapshot.hidden = !edition?.victim_id;
+  $('#journal-snapshot-caption').textContent = edition?.location_id
+    ? `Registro da madrugada · ${locationName(edition.location_id)}` : 'Registro de arquivo do Clarim do Rio';
 }
 
 function renderCase() {
@@ -413,14 +424,17 @@ function renderNotebook() {
   const inventory = $('#evidence-list'); inventory.replaceChildren();
   for (const evidence of caseState.inventory) {
     const item = document.createElement('article'); item.className = 'evidence-card'; item.dataset.evidenceId = evidence.id;
-    addText(item, 'span', itemKind(evidence), 'evidence-kind'); addText(item, 'h4', evidence.name);
-    addText(item, 'p', evidence.description); inventory.append(item);
+    item.append(itemArt(evidence.item_id, evidence.kind));
+    const details = document.createElement('div'); details.className = 'evidence-details';
+    addText(details, 'span', itemKind(evidence), 'evidence-kind'); addText(details, 'h4', evidence.name);
+    addText(details, 'p', evidence.description); item.append(details); inventory.append(item);
   }
   if (!caseState.inventory.length) addText(inventory, 'p', 'Nenhum vestígio recolhido. Procure as marcas de cena do crime no cenário.', 'empty-case');
   const testimonyList = $('#testimony-list'); testimonyList.replaceChildren();
   for (const testimony of caseState.testimonies) {
     const item = document.createElement('article'); item.className = 'testimony-card';
     const evidence = caseState.inventory.find(item => item.id === testimony.evidence_id);
+    if (evidence) item.append(itemArt(evidence.item_id, evidence.kind));
     addText(item, 'h4', `${testimony.witness_name} · dia ${testimony.day}`);
     addText(item, 'small', evidence?.name ?? 'Vestígio apresentado'); addText(item, 'p', testimony.text); testimonyList.append(item);
   }
@@ -431,11 +445,16 @@ function renderNotebook() {
 
 function renderPresentation() {
   const panel = $('#evidence-presenter'); const select = $<HTMLSelectElement>('#present-evidence');
+  let preview = $('#presented-evidence-art');
+  if (!preview) {preview = document.createElement('span'); preview.id = 'presented-evidence-art'; preview.className = 'item-art-preview'; select.before(preview);}
   const selected = select.value; select.replaceChildren();
   for (const evidence of caseState?.inventory ?? []) {
     const option = document.createElement('option'); option.value = evidence.id; option.textContent = evidence.name; select.append(option);
   }
   if ([...select.options].some(option => option.value === selected)) select.value = selected;
+  const selectedEvidence = caseState?.inventory.find(item => item.id === select.value);
+  preview.replaceChildren();
+  if (selectedEvidence) preview.append(itemArt(selectedEvidence.item_id, selectedEvidence.kind));
   panel.hidden = !caseState?.inventory.length;
   $('#present-button').toggleAttribute('disabled', busy || caseClock.blocked());
 }
@@ -447,16 +466,19 @@ function renderAccusation() {
     const option = document.createElement('option'); option.value = member.character.id; option.textContent = member.character.name; select.append(option);
   }
   if ([...select.options].some(option => option.value === selected)) select.value = selected;
-  const renderChoice = (container: HTMLElement, name: string, id: string, text: string) => {
+  const renderChoice = (container: HTMLElement, name: string, id: string, text: string, item?: CaseEvidence) => {
     const label = document.createElement('label'); label.className = 'proof-choice';
     const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.name = name; checkbox.value = id;
-    const title = document.createElement('span'); title.textContent = text; label.append(checkbox, title); container.append(label);
+    const title = document.createElement('span'); title.textContent = text; label.append(checkbox);
+    if (item) label.append(itemArt(item.item_id, item.kind));
+    label.append(title); container.append(label);
   };
   const evidence = $('#accusation-evidence'); evidence.replaceChildren();
-  caseState.inventory.forEach(item => renderChoice(evidence, 'evidence', item.id, `${item.name} · ${itemKind(item)}`));
+  caseState.inventory.forEach(item => renderChoice(evidence, 'evidence', item.id, `${item.name} · ${itemKind(item)}`, item));
   if (!caseState.inventory.length) addText(evidence, 'p', 'Você ainda não recolheu vestígios.', 'empty-case');
   const testimonies = $('#accusation-testimonies'); testimonies.replaceChildren();
-  caseState.testimonies.forEach(item => renderChoice(testimonies, 'testimony', item.id, `${item.witness_name}: ${item.text}`));
+  const inventorySnapshot = caseState.inventory;
+  caseState.testimonies.forEach(item => renderChoice(testimonies, 'testimony', item.id, `${item.witness_name}: ${item.text}`, inventorySnapshot.find(evidence => evidence.id === item.evidence_id)));
   if (!caseState.testimonies.length) addText(testimonies, 'p', 'Nenhum depoimento sobre objetos registrado.', 'empty-case');
   const attempted = caseState.accusations.some(accusation => accusation.day === caseState?.day);
   $('#submit-accusation').toggleAttribute('disabled', busy || caseClock.blocked() || attempted);
@@ -523,6 +545,7 @@ async function submitAccusation(event: Event) {
 setInterval(renderClock, 250);
 $('#inspect-crime').addEventListener('click', () => {void searchCrime();});
 $('#present-button').addEventListener('click', () => {void presentEvidence();});
+$('#present-evidence').addEventListener('change', () => renderPresentation());
 $('#accusation-form').addEventListener('submit', event => {void submitAccusation(event);});
 for (const panel of ['journal', 'notebook', 'delegate'] as const) {
   $(`#open-${panel}`).addEventListener('click', () => {void openCasePanel(panel);});

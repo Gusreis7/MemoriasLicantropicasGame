@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "generator": "SVG symbols authored for this project",
+  "path": "/assets/items/item-icons.svg",
+  "rendering": "Inline SVG use; crisp pixel-edge rendering at card size",
+  "items": [
+    {"id": "chave_santiago", "kind": "unique"},
+    {"id": "estojo_cartas", "kind": "unique"},
+    {"id": "prendedor_ancora", "kind": "unique"},
+    {"id": "relogio_quincas", "kind": "unique"},
+    {"id": "leque_vn", "kind": "unique"},
+    {"id": "broche_andorinha", "kind": "unique"},
+    {"id": "lente_hexagonal", "kind": "unique"},
+    {"id": "luvas_couro", "kind": "singular"},
+    {"id": "fita_veludo", "kind": "singular"},
+    {"id": "caderneta_verde", "kind": "singular"},
+    {"id": "lenco", "kind": "common"},
+    {"id": "botao", "kind": "common"},
+    {"id": "pena", "kind": "common"},
+    {"id": "linha", "kind": "common"},
+    {"id": "cera", "kind": "common"},
+    {"id": "cordel", "kind": "common"},
+    {"id": "moeda", "kind": "common"},
+    {"id": "fosforo", "kind": "common"},
+    {"id": "papel", "kind": "common"},
+    {"id": "remendo", "kind": "common"}
+  ]
+}

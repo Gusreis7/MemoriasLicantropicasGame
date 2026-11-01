@@ -1,0 +1,11 @@
+{
+  "generator": "image_gen built-in",
+  "useCase": "historical-scene",
+  "assetType": "in-world newspaper crime-scene snapshot",
+  "path": "/assets/press/crime-scene-snapshot.png",
+  "source": "/home/gustavoreis/.codex/generated_images/01a18fd3-42ff-7411-9532-b4736fe976c6/exec-e6e342b1-4da3-4972-adbd-08ea1587fccc.png",
+  "width": 1536,
+  "height": 1024,
+  "sha256": "b89702f88d825594163afa33aa080798876c097058ff079ed0b65402fd3cf980",
+  "prompt": "Use case: historical-scene. Asset type: small editorial crime-scene snapshot illustration for a pixel-art mystery game's in-world newspaper, Rio de Janeiro 1890. Create one wide horizontal monochrome black-and-white image that looks like a grainy old newspaper photograph, showing an empty cobblestone lane at night after a mysterious crime: a gas lantern, a fallen dark top hat, a few muddy paw-like tracks fading into shadow, and a distant colonial Rio street facade. The scene should feel like a captured aftermath, mysterious but suitable for a cozy literary detective game, no body, no gore, no visible monster, no identifiable person, no readable text or letters. Visually coherent with deliberate chunky 16-bit pixels and crisp pixel clusters, limited grayscale ink tones only, strong light-dark composition, slightly imperfect halftone newsprint texture. Landscape 3:2 composition, centered focal area, intended to sit inside a cream newspaper page as an inset snapshot. No frame, no border, no caption, no watermark."
+}

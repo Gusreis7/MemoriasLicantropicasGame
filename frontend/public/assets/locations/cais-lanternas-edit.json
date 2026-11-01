@@ -1,0 +1,12 @@
+{
+  "generator": "image_gen built-in",
+  "operation": "precise-object-edit",
+  "path": "/assets/locations/cais_lanternas.png",
+  "sourcePreviousPath": "/assets/locations/cais_lanternas.png",
+  "editedSource": "/home/gustavoreis/.codex/generated_images/01a18fd3-42ff-7411-9532-b4736fe976c6/exec-7ad1ef1f-5a29-430d-b84b-0f2a1e463217.png",
+  "previousSha256": "65896becb34ab77770294caf6b2f60b225fe618eafdf0695169b97ba80153404",
+  "sha256": "d7e2a824f96eae2f4213af92749f0b8b330e41da3d1e44d3f6ed05aab8fd32f4",
+  "width": 2048,
+  "height": 768,
+  "prompt": "Use case: precise-object-edit. Asset type: final static side-view pixel-art game background for Cais das Lanternas, Rio de Janeiro 1890. Edit Image 1, the existing cais background. Remove only the large foreground leafy tree and its trunk on the far left that overlap the left gas streetlamp. Reconstruct the small area behind it as coherent dusk sky and distant bay/shore so the entire gaslamp is clearly visible and unobstructed. Preserve the original image dimensions and all other pixels/composition as faithfully as possible: keep the gaslamp exactly in its current location, the stone quay wall and promenade, boats, water, mountains, warehouses, crates and lighting unchanged. Maintain the same crisp warm 16-bit pixel-art clusters and palette. No new objects, people, text, signage or effects."
+}
