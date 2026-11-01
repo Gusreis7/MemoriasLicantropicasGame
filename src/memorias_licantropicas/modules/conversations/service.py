@@ -4,7 +4,7 @@ from uuid import UUID, uuid4
 from memorias_licantropicas.contracts.errors import AccessDeniedError, ConflictError, NotFoundError
 from memorias_licantropicas.contracts.model import Conversation, ConversationMessage
 from memorias_licantropicas.contracts.repository import (
-    CharacterRepository, ConversationGate, GameRepository, MemoryRepository,
+    CharacterRepository, ConversationGate, GameRepository, MemoryRepository, InteractionPolicy, PlayerActionGate,
 )
 from memorias_licantropicas.modules.agents.service import HarnessService, PLAYER_ID
 from memorias_licantropicas.modules.conversations.schema import (
@@ -19,12 +19,15 @@ def public_message(message: ConversationMessage) -> MessagePublic:
 
 class ConversationService:
     def __init__(self, characters: CharacterRepository, games: GameRepository,
-                 memory: MemoryRepository, harness: HarnessService, gate: ConversationGate):
+                 memory: MemoryRepository, harness: HarnessService, gate: ConversationGate,
+                 world: InteractionPolicy, player_gate: PlayerActionGate):
         self._characters = characters
         self._games = games
         self._memory = memory
         self._harness = harness
         self._gate = gate
+        self._world = world
+        self._player_gate = player_gate
 
     async def _validate_target(self, game_id: UUID, npc_id: str) -> None:
         game = await self._games.get(game_id)
@@ -39,7 +42,15 @@ class ConversationService:
             raise AccessDeniedError("Esta persona não pode conversar.")
 
     async def create(self, game_id: UUID, npc_id: str) -> ConversationPublic:
+        async with self._player_gate.hold(game_id):
+            return await self._create(game_id, npc_id)
+
+    async def _create(self, game_id: UUID, npc_id: str) -> ConversationPublic:
         await self._validate_target(game_id, npc_id)
+        await self._world.assert_can_talk(game_id, npc_id)
+        existing = await self._memory.get_player_conversation(game_id, npc_id)
+        if existing is not None:
+            return await self.get(game_id, existing.id)
         conversation = Conversation(id=uuid4(), game_id=game_id, participant_ids=(PLAYER_ID, npc_id),
                                     created_at=datetime.now(UTC))
         if not await self._memory.create_conversation(conversation):
@@ -59,9 +70,14 @@ class ConversationService:
                                   created_at=conversation.created_at)
 
     async def send(self, game_id: UUID, conversation_id: UUID, content: str) -> MessageReply:
+        async with self._player_gate.hold(game_id):
+            return await self._send(game_id, conversation_id, content)
+
+    async def _send(self, game_id: UUID, conversation_id: UUID, content: str) -> MessageReply:
         # O par é recuperado no servidor; cliente nunca escolhe remetente ou papel.
         async with self._gate.hold(game_id, conversation_id):
             conversation = await self.get(game_id, conversation_id)
+            await self._world.assert_can_talk(game_id, conversation.npc_id)
             reply = await self._harness.respond(game_id, conversation.npc_id, conversation_id, PLAYER_ID, content)
             return MessageReply(conversation_id=conversation_id, message=public_message(reply.message))
 

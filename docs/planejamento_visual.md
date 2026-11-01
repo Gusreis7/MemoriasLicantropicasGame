@@ -1,6 +1,6 @@
 # Plano de execução — primeiro jogo visual
 
-Status: **proposta para aprovação**. Nenhum frontend, asset, cenário, rota admin ou serviço de porta 7077 será implementado/publicado antes dessa aprovação.
+Status: **aprovado e implementado**. Resultado, configuração e evidências estão em [entrega_visual.md](entrega_visual.md). O texto abaixo preserva o plano aprovado.
 
 A mecânica de conversa foi integrada em `develop` no commit `cfc7e33`. A branch local concluída foi removida; `main` e remotos não foram alterados. Este plano fica em `AED/aed_planejamento_visual`. Três subagentes fizeram análises somente de leitura sobre assets, mundo/mecânicas e admin; a delegação de implementação abaixo é a proposta para a próxima etapa.
 

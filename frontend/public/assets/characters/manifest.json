@@ -1,0 +1,293 @@
+{
+  "version": "1",
+  "characters": [
+    {
+      "id": "bacamarte",
+      "type": "atlas",
+      "path": "/assets/characters/bacamarte.png",
+      "atlasPath": "/assets/characters/bacamarte.json",
+      "sourceWidth": 2172,
+      "sourceHeight": 724,
+      "frameWidth": 512,
+      "frameHeight": 724,
+      "frames": 6,
+      "frameNames": [
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5"
+      ],
+      "idleFrames": [
+        "0",
+        "1"
+      ],
+      "walkFrames": [
+        "2",
+        "3",
+        "4",
+        "5"
+      ],
+      "displayWidth": 48,
+      "displayHeight": 64,
+      "origin": {
+        "x": 0.5,
+        "y": 0.9447513812154696
+      },
+      "portraitPath": "/assets/portraits/bacamarte.png"
+    },
+    {
+      "id": "bentinho",
+      "type": "atlas",
+      "path": "/assets/characters/bentinho.png",
+      "atlasPath": "/assets/characters/bentinho.json",
+      "sourceWidth": 2172,
+      "sourceHeight": 724,
+      "frameWidth": 512,
+      "frameHeight": 724,
+      "frames": 6,
+      "frameNames": [
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5"
+      ],
+      "idleFrames": [
+        "0",
+        "1"
+      ],
+      "walkFrames": [
+        "2",
+        "3",
+        "4",
+        "5"
+      ],
+      "displayWidth": 48,
+      "displayHeight": 64,
+      "origin": {
+        "x": 0.5,
+        "y": 0.9447513812154696
+      },
+      "portraitPath": "/assets/portraits/bentinho.png"
+    },
+    {
+      "id": "capitu",
+      "type": "atlas",
+      "path": "/assets/characters/capitu.png",
+      "atlasPath": "/assets/characters/capitu.json",
+      "sourceWidth": 2172,
+      "sourceHeight": 724,
+      "frameWidth": 512,
+      "frameHeight": 724,
+      "frames": 6,
+      "frameNames": [
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5"
+      ],
+      "idleFrames": [
+        "0",
+        "1"
+      ],
+      "walkFrames": [
+        "2",
+        "3",
+        "4",
+        "5"
+      ],
+      "displayWidth": 48,
+      "displayHeight": 64,
+      "origin": {
+        "x": 0.5,
+        "y": 0.9447513812154696
+      },
+      "portraitPath": "/assets/portraits/capitu.png"
+    },
+    {
+      "id": "escobar",
+      "type": "atlas",
+      "path": "/assets/characters/escobar.png",
+      "atlasPath": "/assets/characters/escobar.json",
+      "sourceWidth": 2172,
+      "sourceHeight": 724,
+      "frameWidth": 512,
+      "frameHeight": 724,
+      "frames": 6,
+      "frameNames": [
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5"
+      ],
+      "idleFrames": [
+        "0",
+        "1"
+      ],
+      "walkFrames": [
+        "2",
+        "3",
+        "4",
+        "5"
+      ],
+      "displayWidth": 48,
+      "displayHeight": 64,
+      "origin": {
+        "x": 0.5,
+        "y": 0.9447513812154696
+      },
+      "portraitPath": "/assets/portraits/escobar.png"
+    },
+    {
+      "id": "florenca",
+      "type": "atlas",
+      "path": "/assets/characters/florenca.png",
+      "atlasPath": "/assets/characters/florenca.json",
+      "sourceWidth": 2172,
+      "sourceHeight": 724,
+      "frameWidth": 512,
+      "frameHeight": 724,
+      "frames": 6,
+      "frameNames": [
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5"
+      ],
+      "idleFrames": [
+        "0",
+        "1"
+      ],
+      "walkFrames": [
+        "2",
+        "3",
+        "4",
+        "5"
+      ],
+      "displayWidth": 48,
+      "displayHeight": 64,
+      "origin": {
+        "x": 0.5,
+        "y": 0.9447513812154696
+      },
+      "portraitPath": "/assets/portraits/florenca.png"
+    },
+    {
+      "id": "player",
+      "type": "atlas",
+      "path": "/assets/characters/player.png",
+      "atlasPath": "/assets/characters/player.json",
+      "sourceWidth": 2172,
+      "sourceHeight": 724,
+      "frameWidth": 512,
+      "frameHeight": 724,
+      "frames": 6,
+      "frameNames": [
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5"
+      ],
+      "idleFrames": [
+        "0",
+        "1"
+      ],
+      "walkFrames": [
+        "2",
+        "3",
+        "4",
+        "5"
+      ],
+      "displayWidth": 48,
+      "displayHeight": 64,
+      "origin": {
+        "x": 0.5,
+        "y": 0.9447513812154696
+      },
+      "portraitPath": null
+    },
+    {
+      "id": "rubiao",
+      "type": "atlas",
+      "path": "/assets/characters/rubiao.png",
+      "atlasPath": "/assets/characters/rubiao.json",
+      "sourceWidth": 2172,
+      "sourceHeight": 724,
+      "frameWidth": 512,
+      "frameHeight": 724,
+      "frames": 6,
+      "frameNames": [
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5"
+      ],
+      "idleFrames": [
+        "0",
+        "1"
+      ],
+      "walkFrames": [
+        "2",
+        "3",
+        "4",
+        "5"
+      ],
+      "displayWidth": 48,
+      "displayHeight": 64,
+      "origin": {
+        "x": 0.5,
+        "y": 0.9447513812154696
+      },
+      "portraitPath": "/assets/portraits/rubiao.png"
+    },
+    {
+      "id": "virgilia",
+      "type": "atlas",
+      "path": "/assets/characters/virgilia.png",
+      "atlasPath": "/assets/characters/virgilia.json",
+      "sourceWidth": 2172,
+      "sourceHeight": 724,
+      "frameWidth": 512,
+      "frameHeight": 724,
+      "frames": 6,
+      "frameNames": [
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5"
+      ],
+      "idleFrames": [
+        "0",
+        "1"
+      ],
+      "walkFrames": [
+        "2",
+        "3",
+        "4",
+        "5"
+      ],
+      "displayWidth": 48,
+      "displayHeight": 64,
+      "origin": {
+        "x": 0.5,
+        "y": 0.9447513812154696
+      },
+      "portraitPath": "/assets/portraits/virgilia.png"
+    }
+  ]
+}

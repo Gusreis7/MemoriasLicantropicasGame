@@ -53,9 +53,9 @@ async def test_missing_and_invalid_game_ids(api_client):
 
 
 async def test_storage_failure_is_503_without_internal_details(api_client, storage, monkeypatch):
-    async def fail(*args, **kwargs):
+    def fail(*args, **kwargs):
         raise ConnectionError("redis://private:password@internal:6379")
-    monkeypatch.setattr(storage.client, "set", fail)
+    monkeypatch.setattr(storage.client, "pipeline", fail)
     response = await api_client.post("/api/v1/games", json={})
     assert response.status_code == 503
     assert response.json() == {"detail": "Persistência temporariamente indisponível."}

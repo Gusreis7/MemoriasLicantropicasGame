@@ -1,0 +1,135 @@
+{
+  "frames": {
+    "0": {
+      "frame": {
+        "x": 83,
+        "y": 70,
+        "w": 225,
+        "h": 575
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 124,
+        "y": 109,
+        "w": 225,
+        "h": 575
+      },
+      "sourceSize": {
+        "w": 512,
+        "h": 724
+      }
+    },
+    "1": {
+      "frame": {
+        "x": 424,
+        "y": 70,
+        "w": 228,
+        "h": 575
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 128,
+        "y": 109,
+        "w": 228,
+        "h": 575
+      },
+      "sourceSize": {
+        "w": 512,
+        "h": 724
+      }
+    },
+    "2": {
+      "frame": {
+        "x": 763,
+        "y": 69,
+        "w": 317,
+        "h": 576
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 94,
+        "y": 108,
+        "w": 317,
+        "h": 576
+      },
+      "sourceSize": {
+        "w": 512,
+        "h": 724
+      }
+    },
+    "3": {
+      "frame": {
+        "x": 1125,
+        "y": 72,
+        "w": 315,
+        "h": 574
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 102,
+        "y": 110,
+        "w": 315,
+        "h": 574
+      },
+      "sourceSize": {
+        "w": 512,
+        "h": 724
+      }
+    },
+    "4": {
+      "frame": {
+        "x": 1484,
+        "y": 71,
+        "w": 222,
+        "h": 574
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 114,
+        "y": 110,
+        "w": 222,
+        "h": 574
+      },
+      "sourceSize": {
+        "w": 512,
+        "h": 724
+      }
+    },
+    "5": {
+      "frame": {
+        "x": 1832,
+        "y": 71,
+        "w": 310,
+        "h": 575
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 86,
+        "y": 109,
+        "w": 310,
+        "h": 575
+      },
+      "sourceSize": {
+        "w": 512,
+        "h": 724
+      }
+    }
+  },
+  "meta": {
+    "app": "Memórias Licantropicas asset metadata",
+    "version": "1",
+    "image": "player.png",
+    "format": "RGBA8888",
+    "size": {
+      "w": 2172,
+      "h": 724
+    },
+    "scale": "1"
+  }
+}

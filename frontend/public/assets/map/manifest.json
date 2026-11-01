@@ -1,0 +1,38 @@
+{
+  "version": "1",
+  "id": "city",
+  "path": "/assets/map/city.png",
+  "width": 1536,
+  "height": 1024,
+  "format": "png",
+  "generator": "image_gen built-in",
+  "sha256": "dd34b103186944d0522d137ecc2a1bed6bfb039e478937fbbc94fb535484a10d",
+  "sourceFile": "exec-2453f9ea-1f0c-4db3-8443-8e0d1823287c.png",
+  "hotspots": [
+    {
+      "location_id": "cabana_capitu",
+      "x": 0.19,
+      "y": 0.31
+    },
+    {
+      "location_id": "casa_verde",
+      "x": 0.81,
+      "y": 0.37
+    },
+    {
+      "location_id": "praca_verde",
+      "x": 0.5,
+      "y": 0.55
+    },
+    {
+      "location_id": "cafe_largo",
+      "x": 0.19,
+      "y": 0.75
+    },
+    {
+      "location_id": "cais_lanternas",
+      "x": 0.82,
+      "y": 0.8
+    }
+  ]
+}

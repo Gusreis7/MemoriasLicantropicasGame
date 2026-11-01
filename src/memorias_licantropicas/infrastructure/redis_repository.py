@@ -6,6 +6,8 @@ from uuid import UUID
 from pydantic import ValidationError
 from redis.asyncio import Redis
 from redis.exceptions import RedisError, WatchError
+from memorias_licantropicas.infrastructure.events import event_json
+from memorias_licantropicas.modules.world.catalog import make_initial_world
 
 from memorias_licantropicas.contracts.errors import (
     AccessDeniedError,
@@ -62,12 +64,35 @@ class RedisGameRepository(_RedisRepository):
     """Partidas insert-only; o sorteio existente jamais é sobrescrito."""
 
     async def create(self, game: GameState) -> bool:
+        key = self._game_key(game.id)
+        base = f"{self._prefix}:game:{{{game.id}}}"
+        index = f"{self._prefix}:games"
         try:
-            return bool(await self._client.set(
-                self._game_key(game.id), game.model_dump_json(), nx=True,
-            ))
+            for _ in range(_MAX_TRANSACTION_ATTEMPTS):
+                try:
+                    async with self._client.pipeline() as pipe:
+                        await pipe.watch(key, index, f"{base}:events", f"{base}:world")
+                        if await pipe.exists(key):
+                            return False
+                        await pipe.zcard(index)
+                        await pipe.llen(f"{base}:events")
+                        pipe.multi()
+                        pipe.set(key, game.model_dump_json())
+                        pipe.set(f"{base}:world", make_initial_world(game.id).model_dump_json())
+                        pipe.zadd(index, {str(game.id): game.created_at.timestamp()})
+                        pipe.rpush(f"{base}:events",
+                                   event_json("game.created", {"game_id": str(game.id)}),
+                                   event_json("world.initialized", {"world_version": "1"}, "world"),
+                                   event_json("story.initial_death", {
+                                       "victim_id": "bras_cubas", "victim_name": "Brás Cubas",
+                                       "killer_id": None, "attribution": "unknown"}, "scenario"))
+                        await pipe.execute()
+                        return True
+                except WatchError:
+                    continue
         except RedisError:
             raise StorageUnavailableError("Persistência indisponível.") from None
+        raise ConflictError("A partida está sendo criada concorrentemente.")
 
     async def get(self, game_id: UUID) -> GameState | None:
         try:
@@ -85,14 +110,29 @@ class RedisGameRepository(_RedisRepository):
 class RedisMemoryRepository(_RedisRepository):
     """Conversas privadas e mensagens append-only com lotes atômicos."""
 
+    async def get_player_conversation(self, game_id: UUID, npc_id: str) -> Conversation | None:
+        try:
+            value = await self._client.get(f"{self._prefix}:game:{{{game_id}}}:player_thread:{npc_id}")
+            if value is None:
+                return None
+            return await self.get_conversation(game_id, UUID(value))
+        except RedisError:
+            raise StorageUnavailableError("Persistência indisponível.") from None
+        except ValueError:
+            raise StorageUnavailableError("Índice de conversa inválido.") from None
+
     async def create_conversation(self, conversation: Conversation) -> bool:
         game_key = self._game_key(conversation.game_id)
         key = self._conversation_key(conversation.game_id, conversation.id)
+        base = f"{self._prefix}:game:{{{conversation.game_id}}}"
+        index_key, events_key = f"{base}:conversations", f"{base}:events"
+        npc_id = next((i for i in conversation.participant_ids if i != "player"), None)
+        thread_key = f"{base}:player_thread:{npc_id}" if "player" in conversation.participant_ids else None
         try:
             for _ in range(_MAX_TRANSACTION_ATTEMPTS):
                 try:
                     async with self._client.pipeline(transaction=True) as pipe:
-                        await pipe.watch(game_key, key)
+                        await pipe.watch(game_key, key, index_key, events_key, *([thread_key] if thread_key else []))
                         if await pipe.exists(key):
                             return False
                         raw_game = await pipe.get(game_key)
@@ -106,8 +146,19 @@ class RedisMemoryRepository(_RedisRepository):
                         }
                         if not set(conversation.participant_ids) <= allowed:
                             raise AccessDeniedError("Participante indisponível nesta partida.")
+                        if thread_key and await pipe.exists(thread_key):
+                            return False
+                        await pipe.zcard(index_key)
+                        await pipe.llen(events_key)
                         pipe.multi()
                         pipe.set(key, conversation.model_dump_json(), nx=True)
+                        if thread_key:
+                            pipe.set(thread_key, str(conversation.id))
+                        pipe.zadd(index_key, {str(conversation.id): conversation.created_at.timestamp()})
+                        pipe.rpush(events_key, event_json("conversation.created", {
+                            "conversation_id": str(conversation.id),
+                            "participant_ids": conversation.participant_ids,
+                        }))
                         result = await pipe.execute()
                         return bool(result[0])
                 except WatchError:
@@ -140,11 +191,12 @@ class RedisMemoryRepository(_RedisRepository):
         key = self._conversation_key(game_id, conversation_id)
         records_key = f"{key}:messages"
         order_key = f"{key}:order"
+        events_key = f"{self._prefix}:game:{{{game_id}}}:events"
         try:
             for _ in range(_MAX_TRANSACTION_ATTEMPTS):
                 try:
                     async with self._client.pipeline(transaction=True) as pipe:
-                        await pipe.watch(key, records_key, order_key)
+                        await pipe.watch(key, records_key, order_key, events_key)
                         conversation = self._read_conversation(
                             await pipe.get(key), game_id, conversation_id,
                         )
@@ -161,6 +213,7 @@ class RedisMemoryRepository(_RedisRepository):
                         # Detecta tipo inválido antes do MULTI: Redis não faz rollback
                         # de comandos bem-sucedidos se outro comando da transação falhar.
                         await pipe.llen(order_key)
+                        await pipe.llen(events_key)
                         pending: dict[str, str] = {}
                         for (message_id, message), value in zip(batch.items(), existing, strict=True):
                             if value is None:
@@ -172,6 +225,10 @@ class RedisMemoryRepository(_RedisRepository):
                         pipe.multi()
                         pipe.hset(records_key, mapping=pending)
                         pipe.rpush(order_key, *pending)
+                        pipe.rpush(events_key, event_json("conversation.exchange_committed", {
+                            "conversation_id": str(conversation_id), "message_ids": list(pending),
+                            "participant_ids": conversation.participant_ids,
+                        }))
                         await pipe.execute()
                         return
                 except WatchError:

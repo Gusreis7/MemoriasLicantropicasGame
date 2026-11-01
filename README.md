@@ -20,17 +20,17 @@ Essas são direções de estudo; as mecânicas e integrações ainda serão defi
 - API REST em **monólito modular**, com routers, schemas, services e repositories organizados por domínio.
 - **Docker** e Docker Compose para executar a aplicação.
 - **Redis** para memória das interações e **AWS Bedrock Mantle**, com Qwen 32B, para interpretar os NPCs.
-- Jogo acessível pelo navegador. A tecnologia da interface ainda está em aberto.
+- **Phaser 4, TypeScript e Vite** para o jogo 2D no navegador; painel admin separado.
 
-A base contém catálogo de personagens, criação/consulta de partidas com sorteio secreto, Redis e conversas jogador–persona pela API, usando o harness Mantle. Ainda não há interface de jogo, encontros automáticos, crimes ou resolução de turnos.
+A primeira versão visual permite andar lateralmente, viajar entre cinco locais pelo mapa, abordar os sete NPCs e conversar com suas personas, retomando o histórico. Inclui sprites animados, retratos e cenários pixel art. O painel admin autenticado mostra a verdade da partida, transcrições, grafo e eventos.
 
-A suíte automatizada usa Redis em memória e Redis real em Docker, com inferência simulada. O usuário confirmou o acesso real ao Qwen pelo teste local anterior; a nova mecânica não dispara chamadas AWS durante os testes automatizados.
+A suíte comum usa Redis em memória/real e inferência simulada; houve também validação manual separada com Qwen real no ambiente Docker. Motor de crimes, turnos completos, encontros autônomos e condições de vitória ainda são próximas etapas.
 
 ## Planejamento
 
 O [planejamento do projeto](docs/planejamento.md) descreve o ciclo do jogo, os módulos, o harness de agentes, a memória, as etapas de desenvolvimento e as decisões ainda em aberto.
 
-A [proposta da etapa visual](docs/planejamento_visual.md) detalha pixel art, cinco locais, exploração lateral, mapa, painel admin e delegação. Aguarda aprovação antes da implementação.
+O [plano visual aprovado](docs/planejamento_visual.md) detalha a delegação. A [entrega visual](docs/entrega_visual.md) registra o resultado, decisões, execução e validação.
 
 Os [contratos entre as frentes](docs/contratos_agentes.md) fixam as interfaces e responsabilidades. A [integração da base](docs/base_agentes.md) descreve configuração, uso e limites atuais.
 
@@ -39,17 +39,17 @@ Os [contratos entre as frentes](docs/contratos_agentes.md) fixam as interfaces e
 Pré-requisitos: Docker com o plugin Compose e o serviço Docker em execução.
 
 ```sh
-cp .env.example .env
-docker compose up --build
+uv run python scripts/configure_local.py
+docker compose -f compose.yaml -f compose.aws-local.yaml up -d --build
 ```
 
-O Compose prepara API e Redis com volume persistente e AOF. Os serviços são publicados apenas em localhost. A chave Bedrock pode permanecer vazia para usar o catálogo e o sorteio. `docker compose down` preserva o volume; não use `down -v` se quiser manter as partidas.
+O comando de configuração preserva o `.env` existente e gera uma senha admin forte se ausente. O overlay AWS usa o perfil `terraform` autenticado no host, com cache temporário em memória no container; não copia credenciais para a imagem. Sem esse overlay, é possível usar `docker compose up -d --build` com API key Bedrock por ambiente.
 
-- API: http://localhost:8000/
-- Documentação interativa: http://localhost:8000/docs
-- Saúde: http://localhost:8000/health
+- **Jogo:** http://localhost:7077
+- **Admin:** http://localhost:7078 — usuário e senha em `ADMIN_USERNAME` / `ADMIN_PASSWORD` no `.env` local.
+- **API/documentação:** http://localhost:7079/docs
 
-Para encerrar: `Ctrl+C` e `docker compose down`.
+Para encerrar: `docker compose -f compose.yaml -f compose.aws-local.yaml down`. O volume Redis é preservado; não use `down -v` para reiniciar. Redis fica interno, com porta de depuração7080 disponível somente pelo override `compose.debug.yaml`.
 
 ## Desenvolvimento local
 
@@ -57,10 +57,12 @@ Instale o [uv](https://docs.astral.sh/uv/getting-started/installation/) e execut
 
 ```sh
 uv sync --locked
-cp .env.example .env
-docker compose up -d redis
-uv run uvicorn memorias_licantropicas.main:app --reload
+uv run python scripts/configure_local.py
+docker compose -f compose.yaml -f compose.debug.yaml up -d redis
+REDIS_URL=redis://localhost:7080/0 AWS_PROFILE=terraform uv run uvicorn memorias_licantropicas.main:app --port 7079 --reload
 ```
+
+Em outro terminal: `cd frontend`, `npm ci` e `npm run dev` (porta7081). Para o admin pelo Vite, inclua essa origem em `ADMIN_ALLOWED_ORIGINS` durante desenvolvimento. O modo Docker já usa as origens7078.
 
 O uv usa a versão de Python indicada em `.python-version`. Para adicionar dependências, use `uv add pacote` ou `uv add --dev pacote` e versione também o `uv.lock` atualizado.
 
@@ -70,12 +72,15 @@ O uv usa a versão de Python indicada em `.python-version`. Para adicionar depen
 - `GET /api/v1/characters/{character_id}`: apresentação de um suspeito.
 - `POST /api/v1/games`: cria partida e sorteia um lobisomem; corpo opcional `{}`.
 - `GET /api/v1/games/{game_id}`: estado público da partida.
+- `GET /api/v1/world/locations` e `GET /api/v1/games/{game_id}/world`: locais e presenças visíveis.
+- `POST /api/v1/games/{game_id}/movement` e `/travel`: comandos validados de exploração.
+- `POST /api/v1/games/{game_id}/approaches`: aborda e retoma a thread do NPC próximo.
 - `POST /api/v1/games/{game_id}/conversations`: abre conversa com `{"npc_id": "capitu"}`.
 - `GET /api/v1/games/{game_id}/conversations/{conversation_id}`: consulta a conversa.
 - `POST /api/v1/games/{game_id}/conversations/{conversation_id}/messages`: envia `{"content": "O que sabe sobre Brás Cubas?"}` e recebe a fala da persona.
 - `GET /api/v1/games/{game_id}/conversations/{conversation_id}/messages`: recupera o histórico.
 
-Papéis e objetivos privados não aparecem nos schemas públicos. O servidor fixa o interlocutor como jogador; não aceita IDs de remetente no corpo. A API ainda não possui autenticação ou propriedade de partidas; esta base é para desenvolvimento local. Veja [conversa jogador–persona](docs/conversa_jogador_persona.md) para configuração e exemplos.
+Papéis e objetivos privados não aparecem nos schemas públicos. Conversar exige NPC vivo, no mesmo local e ao alcance; o servidor fixa o interlocutor como jogador. O admin possui autenticação no backend; a área de jogo ainda é um protótipo local sem contas de jogadores. Veja [contratos visuais](docs/contratos_visual.md) e [mundo](docs/mundo.md).
 
 ## Verificação
 
@@ -93,19 +98,15 @@ docker compose -p ml-test-suits -f compose.test.yaml down
 
 Consulte [a suíte de testes](docs/testes.md) para cobertura, isolamento e resultados.
 
-## Conversar com uma persona
+Frontend: em `frontend/`, execute `npm test` e `npm run build`. Com o Redis isolado acima em execução, `npm run test:e2e` usa o **Brave instalado** em `/usr/bin/brave-browser` (ou `BRAVE_PATH`), sem baixar Chromium. O fluxo usa servidor e inferência de teste separados.
 
-Com o perfil `terraform` autenticado na AWS CLI, inicie Redis e a API no host:
+## Controles e autenticação
 
-```sh
-uv sync --locked
-docker compose up -d redis
-AWS_PROFILE=terraform AWS_REGION=us-east-1 uv run uvicorn memorias_licantropicas.main:app --reload
-```
+No jogo: **A/D ou setas** para andar, **E** para abordar, **M** para abrir o mapa e **Esc** para fechar janelas. O diálogo exibe o retrato e o histórico. Atualizar o navegador permite continuar o mesmo caso; iniciar outra investigação é uma ação explícita.
 
-Em http://localhost:8000/docs, crie uma partida, abra uma conversa com o ID da partida e um NPC, e envie mensagens usando o ID da conversa retornado. Crie uma partida nova para usar o catálogo versão 2.
+O admin usa senha com hash scrypt, sessão Redis, cookie HTTPOnly/SameSite Strict, expiração, logout e limite de tentativas. Não há credencial padrão embutida; sem senha configurada, o login fica desabilitado. Detalhes em [autenticação/admin](docs/admin.md).
 
-O antigo `smoketest.py` foi removido. A API gera tokens temporários em memória quando `AWS_PROFILE` está configurado e não há bearer token explícito. As dependências `aws-bedrock-token-generator` e `botocore[crt]` agora fazem parte do runtime. No Docker da API, o cache de login do host não é montado automaticamente; use o bearer token configurado ou execute a API no host para usar o perfil. Cada mensagem enviada ao modelo consome a cota/créditos ou gera cobrança conforme a conta.
+O antigo smoke test foi substituído pelo fluxo do jogo. A API usa bearer explícito ou gera token temporário pelo perfil AWS. Cada mensagem real ao modelo consome a cota/créditos ou gera cobrança conforme a conta. Consulte [entrega visual](docs/entrega_visual.md) para renovar a sessão e executar o teste do build servido.
 
 ## Convenção de branches
 
@@ -132,12 +133,15 @@ Explorações em `AED/` só seguem para `develop` quando suas alterações forem
 ```text
 src/memorias_licantropicas/
   contracts/               # Modelos internos e portas compartilhadas
-  modules/                 # Characters, games, agents e conversations
+  modules/                 # Characters, games, agents, conversations, world e admin
   infrastructure/          # Redis e cliente Mantle
   composition.py           # Construção e injeção dos serviços
   settings.py              # Configuração por ambiente
   main.py                  # Aplicação FastAPI
 tests/                     # Testes da API
+frontend/                  # Jogo, painel, assets reais e testes Brave
+deploy/                    # Gateways e startup local AWS
+scripts/                   # Configuração local sem imprimir segredos
 pyproject.toml             # Projeto e dependências
 uv.lock                    # Versões resolvidas
 Dockerfile                 # Imagem da aplicação

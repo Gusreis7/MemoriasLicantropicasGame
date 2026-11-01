@@ -24,7 +24,9 @@ from memorias_licantropicas.modules.games.router import (
 )
 from memorias_licantropicas.modules.characters.service import CharacterService
 from memorias_licantropicas.modules.games.service import GameService
-from memorias_licantropicas.modules.conversations.router import router as conversation_router
+from memorias_licantropicas.modules.conversations.router import router as conversation_router, approach_router
+from memorias_licantropicas.modules.world.router import router as world_router
+from memorias_licantropicas.modules.admin.router import router as admin_router
 from memorias_licantropicas.settings import Settings
 
 
@@ -58,6 +60,9 @@ def create_app() -> FastAPI:
     application.include_router(character_router)
     application.include_router(game_router)
     application.include_router(conversation_router)
+    application.include_router(approach_router)
+    application.include_router(world_router)
+    application.include_router(admin_router)
 
     async def domain_error_handler(request: Request, exc: Exception) -> JSONResponse:
         errors = {

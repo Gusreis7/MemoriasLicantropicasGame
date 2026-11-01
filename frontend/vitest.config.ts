@@ -1,0 +1,5 @@
+import { defineConfig } from 'vitest/config';
+
+export default defineConfig({
+  test: {include: ['game/**/*.test.ts', 'admin/**/*.test.ts', 'shared/**/*.test.ts']},
+});

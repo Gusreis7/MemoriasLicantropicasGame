@@ -1,0 +1,135 @@
+{
+  "frames": {
+    "0": {
+      "frame": {
+        "x": 23,
+        "y": 40,
+        "w": 246,
+        "h": 642
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 127,
+        "y": 42,
+        "w": 246,
+        "h": 642
+      },
+      "sourceSize": {
+        "w": 512,
+        "h": 724
+      }
+    },
+    "1": {
+      "frame": {
+        "x": 364,
+        "y": 46,
+        "w": 247,
+        "h": 635
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 125,
+        "y": 49,
+        "w": 247,
+        "h": 635
+      },
+      "sourceSize": {
+        "w": 512,
+        "h": 724
+      }
+    },
+    "2": {
+      "frame": {
+        "x": 687,
+        "y": 46,
+        "w": 335,
+        "h": 635
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 72,
+        "y": 49,
+        "w": 335,
+        "h": 635
+      },
+      "sourceSize": {
+        "w": 512,
+        "h": 724
+      }
+    },
+    "3": {
+      "frame": {
+        "x": 1060,
+        "y": 47,
+        "w": 354,
+        "h": 633
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 67,
+        "y": 51,
+        "w": 354,
+        "h": 633
+      },
+      "sourceSize": {
+        "w": 512,
+        "h": 724
+      }
+    },
+    "4": {
+      "frame": {
+        "x": 1436,
+        "y": 45,
+        "w": 339,
+        "h": 635
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 62,
+        "y": 49,
+        "w": 339,
+        "h": 635
+      },
+      "sourceSize": {
+        "w": 512,
+        "h": 724
+      }
+    },
+    "5": {
+      "frame": {
+        "x": 1799,
+        "y": 40,
+        "w": 350,
+        "h": 639
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 66,
+        "y": 45,
+        "w": 350,
+        "h": 639
+      },
+      "sourceSize": {
+        "w": 512,
+        "h": 724
+      }
+    }
+  },
+  "meta": {
+    "app": "Memórias Licantropicas asset metadata",
+    "version": "1",
+    "image": "capitu.png",
+    "format": "RGBA8888",
+    "size": {
+      "w": 2172,
+      "h": 724
+    },
+    "scale": "1"
+  }
+}

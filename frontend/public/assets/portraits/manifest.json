@@ -1,0 +1,61 @@
+{
+  "version": "1",
+  "portraits": [
+    {
+      "id": "bacamarte",
+      "path": "/assets/portraits/bacamarte.png",
+      "width": 1254,
+      "height": 1254,
+      "displayWidth": 96,
+      "displayHeight": 96
+    },
+    {
+      "id": "bentinho",
+      "path": "/assets/portraits/bentinho.png",
+      "width": 1254,
+      "height": 1254,
+      "displayWidth": 96,
+      "displayHeight": 96
+    },
+    {
+      "id": "capitu",
+      "path": "/assets/portraits/capitu.png",
+      "width": 1254,
+      "height": 1254,
+      "displayWidth": 96,
+      "displayHeight": 96
+    },
+    {
+      "id": "escobar",
+      "path": "/assets/portraits/escobar.png",
+      "width": 1254,
+      "height": 1254,
+      "displayWidth": 96,
+      "displayHeight": 96
+    },
+    {
+      "id": "florenca",
+      "path": "/assets/portraits/florenca.png",
+      "width": 1254,
+      "height": 1254,
+      "displayWidth": 96,
+      "displayHeight": 96
+    },
+    {
+      "id": "rubiao",
+      "path": "/assets/portraits/rubiao.png",
+      "width": 1254,
+      "height": 1254,
+      "displayWidth": 96,
+      "displayHeight": 96
+    },
+    {
+      "id": "virgilia",
+      "path": "/assets/portraits/virgilia.png",
+      "width": 1254,
+      "height": 1254,
+      "displayWidth": 96,
+      "displayHeight": 96
+    }
+  ]
+}

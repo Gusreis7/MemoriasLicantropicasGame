@@ -10,8 +10,14 @@ from memorias_licantropicas.contracts.model import Conversation
 pytestmark = pytest.mark.anyio
 
 
-async def open_conversation(client, npc_id="capitu"):
+async def open_conversation(client, storage, npc_id="capitu"):
     game = (await client.post("/api/v1/games")).json()
+    world_key = f'{storage.prefix}:game:{{{game["id"]}}}:world'
+    from memorias_licantropicas.modules.world.model import WorldState
+    world = WorldState.model_validate_json(await storage.client.get(world_key))
+    target = next(npc for npc in world.npcs if npc.npc_id == npc_id)
+    world = world.model_copy(update={"player": world.player.model_copy(update={"location_id": target.location_id, "x": target.x})})
+    await storage.client.set(world_key, world.model_dump_json())
     response = await client.post(f'/api/v1/games/{game["id"]}/conversations', json={"npc_id": npc_id})
     assert response.status_code == 201
     return game, response.json()
@@ -19,7 +25,7 @@ async def open_conversation(client, npc_id="capitu"):
 
 @pytest.mark.parametrize("npc_id", ["bentinho", "capitu", "escobar", "rubiao", "virgilia", "florenca", "bacamarte"])
 async def test_player_can_talk_to_each_persona(api_client, storage, llm, npc_id):
-    game, conversation = await open_conversation(api_client, npc_id)
+    game, conversation = await open_conversation(api_client, storage, npc_id)
     url = f'/api/v1/games/{game["id"]}/conversations/{conversation["id"]}'
     assert (await api_client.get(url)).json() == conversation
     assert (await api_client.get(f"{url}/messages")).json()["messages"] == []
@@ -40,15 +46,15 @@ async def test_player_can_talk_to_each_persona(api_client, storage, llm, npc_id)
     {"content": "Bom dia", "speaker_id": "escobar"},
     {"content": "Bom dia", "npc_id": "escobar"},
 ])
-async def test_bad_input_or_spoofing_never_calls_llm(api_client, llm, body):
-    game, conversation = await open_conversation(api_client)
+async def test_bad_input_or_spoofing_never_calls_llm(api_client, storage, llm, body):
+    game, conversation = await open_conversation(api_client, storage)
     url = f'/api/v1/games/{game["id"]}/conversations/{conversation["id"]}/messages'
     assert (await api_client.post(url, json=body)).status_code == 422
     assert llm.calls == []
 
 
 async def test_cross_game_and_npc_private_conversations_are_inaccessible(api_client, storage):
-    game, public = await open_conversation(api_client)
+    game, public = await open_conversation(api_client, storage)
     game_id = UUID(game["id"])
     other = (await api_client.post("/api/v1/games")).json()
     assert (await api_client.get(
@@ -61,8 +67,8 @@ async def test_cross_game_and_npc_private_conversations_are_inaccessible(api_cli
     assert (await api_client.post(f"{url}/messages", json={"content": "Olá"})).status_code == 403
 
 
-async def test_failure_keeps_history_empty_and_releases_gate(api_client, llm):
-    game, conversation = await open_conversation(api_client)
+async def test_failure_keeps_history_empty_and_releases_gate(api_client, storage, llm):
+    game, conversation = await open_conversation(api_client, storage)
     url = f'/api/v1/games/{game["id"]}/conversations/{conversation["id"]}/messages'
     llm.error = LLMUnavailableError("private-provider-detail")
     response = await api_client.post(url, json={"content": "Olá"})
@@ -73,8 +79,8 @@ async def test_failure_keeps_history_empty_and_releases_gate(api_client, llm):
     assert (await api_client.post(url, json={"content": "Olá"})).status_code == 200
 
 
-async def test_concurrent_messages_are_rejected_until_first_finishes(api_client, llm, monkeypatch):
-    game, conversation = await open_conversation(api_client)
+async def test_concurrent_messages_are_rejected_until_first_finishes(api_client, storage, llm, monkeypatch):
+    game, conversation = await open_conversation(api_client, storage)
     url = f'/api/v1/games/{game["id"]}/conversations/{conversation["id"]}/messages'
     started, resume = asyncio.Event(), asyncio.Event()
     original = llm.complete
@@ -111,7 +117,7 @@ async def test_missing_dead_or_outdated_targets_are_rejected(api_client, storage
 
 
 async def test_strategy_projection_excludes_werewolf_tactic_for_civil(api_client, storage, llm, catalog):
-    game, conversation = await open_conversation(api_client)
+    game, conversation = await open_conversation(api_client, storage)
     stored = await storage.games.get(UUID(game["id"]))
     capitu = next(npc for npc in stored.characters if npc.character_id == "capitu")
     await api_client.post(f'/api/v1/games/{game["id"]}/conversations/{conversation["id"]}/messages',
@@ -122,8 +128,8 @@ async def test_strategy_projection_excludes_werewolf_tactic_for_civil(api_client
     assert context["estrategia_de_conversa"]["tatica_ativa"] == expected
 
 
-async def test_history_limit_is_validated(api_client):
-    game, conversation = await open_conversation(api_client)
+async def test_history_limit_is_validated(api_client, storage):
+    game, conversation = await open_conversation(api_client, storage)
     url = f'/api/v1/games/{game["id"]}/conversations/{conversation["id"]}/messages'
     for limit in (0, 201):
         assert (await api_client.get(url, params={"limit": limit})).status_code == 422
