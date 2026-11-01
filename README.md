@@ -24,7 +24,7 @@ Essas são direções de estudo; as mecânicas e integrações ainda serão defi
 
 A base contém catálogo de personagens, criação/consulta de partidas com sorteio secreto, repositories Redis e um serviço interno de harness para diálogos via Mantle. Ainda não há interface de jogo, encontros automáticos, crimes ou resolução de turnos.
 
-Esta entrega não foi testada em execução nem conectada à AWS, conforme solicitado. As credenciais serão configuradas depois; a API não chama o modelo ao iniciar.
+A suíte automatizada foi executada com Redis em memória e com Redis real em Docker. A integração com AWS continua sem chamadas reais: o contrato Mantle é testado com transporte HTTP simulado, sem credenciais.
 
 ## Planejamento
 
@@ -76,6 +76,16 @@ Papéis e objetivos privados não aparecem nas respostas. A API ainda não possu
 ```sh
 uv run pytest
 ```
+
+Para executar a mesma suíte contra um Redis real e isolado:
+
+```sh
+docker compose -p ml-test-suits -f compose.test.yaml up -d --wait
+uv run pytest --redis-url redis://127.0.0.1:16379/0
+docker compose -p ml-test-suits -f compose.test.yaml down
+```
+
+Consulte [a suíte de testes](docs/testes.md) para cobertura, isolamento e resultados.
 
 ## Convenção de branches
 

@@ -10,7 +10,7 @@ O trabalho foi dividido antes da implementação, com interfaces comuns em [cont
 - `feat/harness_mantle`: projeção privada do NPC, diálogo e cliente Bedrock.
 - `feat/base_agentes`: composição e integração local das frentes, ambiente, dependências e Compose.
 
-A integração utiliza merges locais das branches de trabalho na branch de integração. Não há promoção para `develop`/`main` nem push remoto. As decisões de cada frente ficam em [personagens_sorteio.md](personagens_sorteio.md), [redis.md](redis.md) e [harness.md](harness.md).
+A integração inicial utilizou merges locais das branches de trabalho na branch de integração. Depois da autorização do usuário, a base foi integrada em `develop` pelo commit `2c74c24`, e as branches/worktrees concluídas foram removidas. `main` e o remoto permanecem sem alterações. As decisões de cada frente ficam em [personagens_sorteio.md](personagens_sorteio.md), [redis.md](redis.md) e [harness.md](harness.md).
 
 | Frente | Commit de entrega |
 | --- | --- |
@@ -73,11 +73,11 @@ Uma instância lógica de NPC é identificada pelo par `(game_id, npc_id)`, com 
 
 ## Limites assumidos e validação pendente
 
-- Sem testes executados, servidores iniciados, build Docker ou inferência, conforme pedido desta entrega. Foi feita revisão estática dos contratos, imports, composição e alterações.
+- A entrega inicial teve apenas revisão estática. Posteriormente, a suíte descrita em [testes.md](testes.md) foi executada com Redis em memória e Redis real em container. Build da imagem da API e inferência AWS continuam sem validação.
 - API local sem autenticação, autorização por jogador ou rate limiting. Não é um serviço multiusuário publicado.
 - Sem progressão de dias/noites, crimes, pistas, acusação, encontros autônomos ou ferramentas de ação.
 - Sem execução concorrente serializada por conversa; o chamador deve aguardar uma resposta antes de iniciar a próxima. Atomicidade de armazenamento não torna a inferência idempotente.
 - Sem replay completo, backup, expurgo, telemetria persistida ou testes de carga.
 - O catálogo possui versão, mas não há migração entre versões de conteúdo. Não editar fichas de uma versão mantendo partidas antigas como se fossem compatíveis.
 
-Quando o ambiente estiver preparado, os próximos passos de validação são executar a suíte local, construir/subir os containers, conferir o sorteio secreto e a retomada de estado, e só então conferir uma inferência Mantle com as credenciais e limites da conta. Essas verificações não foram realizadas agora.
+Os testes agora verificam sorteio secreto, persistência, nova conexão ao mesmo servidor, visibilidade e contratos HTTP. Continuam pendentes o build da imagem da API, a recuperação após reinício do servidor Redis e uma inferência Mantle com as credenciais e limites da conta.
