@@ -1,6 +1,7 @@
-import {api, ApiError, type CharacterManifest, type Conversation, type ExitSide, type Location, type LocationID, type Message, type WorldSnapshot} from '../shared/api';
+import {api, ApiError, type CasePublic, type CaseEvidence, type GamePublic, type CharacterManifest, type Conversation, type ExitSide, type Location, type LocationID, type Message, type WorldSnapshot} from '../shared/api';
 import {closestNPC, MovementController} from './movement';
 import {ExitBoundary} from './exits';
+import {CaseClock, CasePoller, closestCrime, formatClock} from './case';
 import {CityScene, makeGame} from './scene';
 import './style.css';
 
@@ -21,9 +22,9 @@ app.innerHTML = `
 
       <section id="investigation" class="investigation" aria-label="Sua investigação" hidden>
         <div class="scene-heading"><div><p class="eyebrow">OS CAMINHOS DA INVESTIGAÇÃO</p><h1 id="location-name">Praça Verde</h1></div><button id="open-map" class="button map-button" type="button"><span aria-hidden="true">⌘</span> Mapa da cidade <kbd>M</kbd></button></div>
-        <div class="scene-frame"><div class="frame-corner top-left"></div><div class="frame-corner top-right"></div><div id="game-canvas" aria-label="Cenário lateral. Use as setas para andar e E para conversar." tabindex="0"></div><div class="scene-vignette" aria-hidden="true"></div><div id="scene-loading" class="scene-loading" role="status">Preparando a cidade…</div><div class="world-caption"><span class="caption-dot"></span><span id="world-caption">O bairro guarda suas histórias.</span></div><button id="approach" class="approach-button" type="button" hidden><kbd>E</kbd><span></span></button></div>
+        <div class="case-toolbar"><div class="day-clock"><span id="case-day">DIA 1</span><strong id="case-clock" aria-label="Tempo restante do período">05:00</strong><small id="case-phase">A cidade está acordada</small></div><nav aria-label="Ferramentas de investigação"><button id="open-journal" class="button secondary small" type="button">O Clarim do Rio</button><button id="open-notebook" class="button secondary small" type="button">Caderno <span id="evidence-count">0 pistas</span></button><button id="open-delegate" class="button secondary small" type="button">Chamar o delegado</button></nav></div><div class="scene-frame"><div class="frame-corner top-left"></div><div class="frame-corner top-right"></div><div id="game-canvas" aria-label="Cenário lateral. Use as setas para andar e E para conversar." tabindex="0"></div><div class="scene-vignette" aria-hidden="true"></div><div id="scene-loading" class="scene-loading" role="status">Preparando a cidade…</div><div class="world-caption"><span class="caption-dot"></span><span id="world-caption">O bairro guarda suas histórias.</span></div><button id="inspect-crime" class="approach-button inspect-button" type="button" hidden><kbd>E</kbd><span>Procurar vestígios</span></button><button id="approach" class="approach-button" type="button" hidden><kbd>E</kbd><span></span></button></div>
         <div class="scene-footer"><div class="touch-controls" aria-label="Caminhar pela cidade"><button id="walk-left" type="button" aria-label="Caminhar para a esquerda">←</button><button id="walk-right" type="button" aria-label="Caminhar para a direita">→</button></div><div class="control-guide"><span><kbd>←</kbd><kbd>→</kbd> Caminhar</span><span><kbd>E</kbd> Conversar</span><span><kbd>M</kbd> Viajar</span></div><span class="connection-label" id="connection-label"><i></i> Caso em andamento</span></div>
-        <div class="notebook"><div class="notebook-number">01</div><div><p class="eyebrow">O CADERNO DE FLORIANO</p><h2>Uma boa pergunta abre portas.</h2><p>Aproxime-se de um morador para ouvir sua versão. Às vezes, o que alguém evita dizer é tão revelador quanto o que conta.</p></div><span class="notebook-ornament" aria-hidden="true">✦</span></div>
+        <div class="notebook"><div class="notebook-number">01</div><div><p class="eyebrow">O CADERNO DE FLORIANO</p><h2 id="case-hint-title">Uma boa pergunta abre portas.</h2><p id="case-hint">Aproxime-se de um morador para ouvir sua versão. Procure marcas de cenas do crime e apresente os vestígios recolhidos.</p></div><span class="notebook-ornament" aria-hidden="true">✦</span></div>
       </section>
     </main>
     <footer class="site-footer"><span>MEMÓRIAS LICANTROPICAS</span><span>Nem toda história é contada por inteiro.</span><span>UMA INVESTIGAÇÃO EM PIXELS</span></footer>
@@ -33,7 +34,11 @@ app.innerHTML = `
 
   <div id="exit-overlay" class="overlay" hidden><section class="exit-modal" role="dialog" aria-modal="true" aria-labelledby="exit-title" aria-describedby="exit-description"><header class="modal-heading"><div><p class="eyebrow">NO FIM DESTA RUA</p><h2 id="exit-title">Por onde seguimos?</h2></div><button class="icon-button" id="close-exit" aria-label="Ficar neste local" type="button">×</button></header><p id="exit-description">Escolha um caminho para continuar a investigação.</p><div id="exit-destinations" class="exit-destinations"></div><p id="exit-status" class="status" role="status" aria-live="polite"></p><button id="stay-here" class="button secondary" type="button">Ficar neste local</button></section></div>
 
-  <div id="dialogue-overlay" class="overlay dialogue-overlay" hidden><section class="dialogue-modal" role="dialog" aria-modal="true" aria-labelledby="dialogue-name"><aside class="persona-panel"><div class="persona-frame"><img id="persona-portrait" src="" alt=""/></div><p class="eyebrow">DEPOIMENTO</p><h2 id="dialogue-name"></h2><span class="persona-flourish" aria-hidden="true">— ✦ —</span><p>Nem toda verdade vem à primeira pergunta.</p></aside><div class="conversation-panel"><header class="conversation-heading"><div><span class="conversation-dot"></span><span>Conversa com Floriano</span></div><button id="close-dialogue" class="icon-button" type="button" aria-label="Encerrar conversa">×</button></header><div id="messages" class="messages" role="log" aria-live="polite"></div><div id="dialogue-status" class="status dialogue-status" role="status" aria-live="polite"></div><form id="message-form" class="message-form"><label class="sr-only" for="message-input">Sua pergunta</label><textarea id="message-input" rows="2" maxlength="8000" placeholder="O que você gostaria de perguntar?" required></textarea><button id="send-message" class="button primary" type="submit" aria-label="Enviar pergunta">Enviar <span aria-hidden="true">→</span></button></form><p class="form-hint">Enter para enviar · Shift + Enter para uma nova linha</p></div></section></div>
+  <div id="dialogue-overlay" class="overlay dialogue-overlay" hidden><section class="dialogue-modal" role="dialog" aria-modal="true" aria-labelledby="dialogue-name"><aside class="persona-panel"><div class="persona-frame"><img id="persona-portrait" src="" alt=""/></div><p class="eyebrow">DEPOIMENTO</p><h2 id="dialogue-name"></h2><span class="persona-flourish" aria-hidden="true">— ✦ —</span><p>Nem toda verdade vem à primeira pergunta.</p></aside><div class="conversation-panel"><header class="conversation-heading"><div><span class="conversation-dot"></span><span>Conversa com Floriano</span></div><button id="close-dialogue" class="icon-button" type="button" aria-label="Encerrar conversa">×</button></header><div id="messages" class="messages" role="log" aria-live="polite"></div><div id="dialogue-status" class="status dialogue-status" role="status" aria-live="polite"></div><div id="evidence-presenter" class="evidence-presenter" hidden><label for="present-evidence">Mostrar um vestígio</label><div><select id="present-evidence"></select><button id="present-button" class="button small" type="button">Apresentar</button></div><p id="presentation-status" role="status" aria-live="polite"></p></div><form id="message-form" class="message-form"><label class="sr-only" for="message-input">Sua pergunta</label><textarea id="message-input" rows="2" maxlength="8000" placeholder="O que você gostaria de perguntar?" required></textarea><button id="send-message" class="button primary" type="submit" aria-label="Enviar pergunta">Enviar <span aria-hidden="true">→</span></button></form><p class="form-hint">Enter para enviar · Shift + Enter para uma nova linha</p></div></section></div>
+  <div id="journal-overlay" class="overlay" hidden><section class="journal-modal case-modal" role="dialog" aria-modal="true" aria-labelledby="journal-title"><header class="modal-heading"><div><p class="eyebrow">EDIÇÃO DA MANHÃ · <span id="journal-day"></span></p><h2 id="journal-title">O Clarim do Rio</h2></div><button id="close-journal" class="icon-button" type="button" aria-label="Fechar jornal">×</button></header><p class="journal-motto">Os acontecimentos da cidade, à luz do dia.</p><h3 id="journal-headline"></h3><p id="journal-body"></p><p id="journal-location" class="journal-location"></p><button id="read-journal" class="button primary" type="button">Continuar a investigação</button></section></div>
+  <div id="notebook-overlay" class="overlay" hidden><section class="case-modal notebook-modal" role="dialog" aria-modal="true" aria-labelledby="notebook-title"><header class="modal-heading"><div><p class="eyebrow">O CADERNO DE FLORIANO</p><h2 id="notebook-title">Vestígios e versões</h2></div><button id="close-notebook" class="icon-button" type="button" aria-label="Fechar caderno">×</button></header><p class="case-note">Um objeto pode ter muitos donos. Um depoimento registra uma versão, não uma certeza.</p><h3>Vestígios recolhidos</h3><div id="evidence-list" class="evidence-list"></div><h3>Depoimentos sobre objetos</h3><div id="testimony-list" class="testimony-list"></div><h3>Cenas conhecidas</h3><div id="crime-list" class="crime-list"></div></section></div>
+  <div id="delegate-overlay" class="overlay" hidden><section class="case-modal delegate-modal" role="dialog" aria-modal="true" aria-labelledby="delegate-title"><header class="modal-heading"><div><p class="eyebrow">UM PEDIDO DE PRISÃO</p><h2 id="delegate-title">Na presença do delegado</h2></div><button id="close-delegate" class="icon-button" type="button" aria-label="Dispensar delegado">×</button></header><p class="case-note">Apresente objetos e depoimentos que sustentem sua suspeita. Se o delegado aceitar, haverá detenção nesta noite. A transformação na cela será a prova final.</p><form id="accusation-form"><label class="field-label" for="accused-npc">Quem você acusa?</label><select id="accused-npc" required></select><fieldset><legend>Vestígios</legend><div id="accusation-evidence"></div></fieldset><fieldset><legend>Depoimentos registrados</legend><div id="accusation-testimonies"></div></fieldset><p id="accusation-status" class="status" role="status" aria-live="polite"></p><button id="submit-accusation" class="button primary" type="submit">Apresentar acusação</button></form><div id="accusation-history"></div></section></div>
+  <div id="phase-overlay" class="overlay phase-overlay" hidden><section class="case-modal phase-modal" role="dialog" aria-modal="true" aria-labelledby="phase-title" aria-describedby="phase-description"><span class="phase-moon" aria-hidden="true">☾</span><p class="eyebrow" id="phase-eyebrow">A CIDADE RECOLHE-SE</p><h2 id="phase-title">A noite guarda seus segredos.</h2><p id="phase-description">Floriano aguarda a manhã. Os acontecimentos serão publicados no Clarim do Rio.</p><p id="phase-countdown" role="status" aria-live="polite"></p><button id="ending-new-case" class="button primary" type="button" hidden>Iniciar outro caso</button></section></div>
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 `;
 
@@ -60,10 +65,16 @@ let manifest: CharacterManifest;
 let controller: MovementController | null = null;
 let scene: CityScene | null = null;
 let game: ReturnType<typeof makeGame> | null = null;
-let modal: 'map' | 'dialogue' | 'exit' | null = null;
+let modal: 'map' | 'dialogue' | 'exit' | 'journal' | 'notebook' | 'delegate' | 'phase' | null = null;
 let exitSide: ExitSide | null = null;
 let exitBoundary = new ExitBoundary();
 let busy = false;
+let transitioning = false;
+let pendingWorldSync = false;
+let caseState: CasePublic | null = null;
+let cast: GamePublic['characters'] = [];
+const caseClock = new CaseClock();
+const casePoller = new CasePoller();
 let starting = false;
 let conversation: Conversation | null = null;
 let dialogueNPC: {npc_id: string; name: string} | null = null;
@@ -88,11 +99,9 @@ function toast(message: string) {
 
 function setModal(next: typeof modal) {
   modal = next;
-  $('#map-overlay').hidden = next !== 'map';
-  $('#dialogue-overlay').hidden = next !== 'dialogue';
-  $('#exit-overlay').hidden = next !== 'exit';
-  scene?.setInputEnabled(next === null);
-  $('#approach').hidden = true;
+  for (const name of ['map', 'dialogue', 'exit', 'journal', 'notebook', 'delegate', 'phase']) $(`#${name}-overlay`).hidden = next !== name;
+  scene?.setInputEnabled(next === null && !caseClock.blocked());
+  $('#approach').hidden = true; $('#inspect-crime').hidden = true;
   lastNearest = '';
   if (next === null) $('#game-canvas').focus({preventScroll: true});
 }
@@ -111,28 +120,33 @@ function applySnapshot(snapshot: WorldSnapshot) {
 
 async function launch(resume: boolean) {
   if (starting) return;
-  starting = true;
+  starting = true; casePoller.stop();
   $('#start').setAttribute('disabled', ''); $('#continue').setAttribute('disabled', '');
   status('#launch-status', resume ? 'Reabrindo seu caderno…' : 'Preparando uma nova investigação…');
   try {
     const id = resume ? savedGame() : (await api.createGame()).id;
     if (!id) throw new Error('Não há caso salvo');
     saveGame(id);
-    const [snapshot, places, characters] = await Promise.all([api.world(id), api.locations(), api.manifest()]);
+    casePoller.stop();
+    const investigation = await api.investigation(id);
+    const [snapshot, places, characters, publicGame] = await Promise.all([api.world(id), api.locations(), api.manifest(), api.game(id)]);
+    caseState = null; pendingWorldSync = false; transitioning = false; cast = publicGame.characters;
     locations = places; manifest = characters;
     controller?.dispose(); game?.destroy(true);
     exitBoundary = new ExitBoundary();
     controller = new MovementController(snapshot, api.move, () => api.world(id), applySnapshot, error => toast(explain(error)));
     scene = new CityScene(manifest, locations, snapshot, {
-      blocked: () => Boolean(modal || busy || starting || document.hidden || $('#investigation').hidden),
+      blocked: () => Boolean(modal || busy || transitioning || starting || caseClock.blocked() || document.hidden || $('#investigation').hidden),
       frame: (delta, direction) => {
-        controller?.update(delta, direction);
+        if (!caseClock.blocked() && !transitioning) controller?.update(delta, direction);
         if (controller && world) {
-          if (!modal && !busy && !starting) {
+          if (!modal && !busy && !transitioning && !starting && !caseClock.blocked()) {
             const boundary = exitBoundary.observe(controller.world, controller.x, direction);
             if (boundary) void openExit(boundary);
           }
-          const nearest = !modal && !busy ? closestNPC(world, controller.x) : undefined;
+          const crime = !modal && !busy && !caseClock.blocked() ? closestCrime(caseState, world, controller.x) : undefined;
+          $('#inspect-crime').hidden = !crime;
+          const nearest = !crime && !modal && !busy && !caseClock.blocked() ? closestNPC(world, controller.x) : undefined;
           if ((nearest?.npc_id ?? '') !== lastNearest) {
             lastNearest = nearest?.npc_id ?? '';
             $('#approach').hidden = !nearest;
@@ -142,8 +156,8 @@ async function launch(resume: boolean) {
         return {x: controller?.x ?? snapshot.player.x,
           facing: direction === 'left' ? 'left' : direction === 'right' ? 'right' : controller?.world.player.facing ?? 'right'};
       },
-      approach: () => {void approach();}, map: () => {void openMap();},
-      loaded: () => {$('#scene-loading').hidden = true; $('#game-canvas').focus({preventScroll: true});},
+      approach: () => {void approach();}, inspect: crimeID => {void searchCrime(crimeID);}, map: () => {void openMap();},
+      loaded: () => {$('#scene-loading').hidden = true; scene?.setInputEnabled(modal === null && !caseClock.blocked()); if (!modal) $('#game-canvas').focus({preventScroll: true});},
       failed: () => {$('#scene-loading').hidden = false; $('#scene-loading').textContent = 'Não foi possível carregar a arte da cidade. Recarregue para tentar novamente.';},
     });
     modal = null; busy = false; lastNearest = '';
@@ -151,6 +165,12 @@ async function launch(resume: boolean) {
     $('#scene-loading').hidden = false; $('#scene-loading').textContent = 'Abrindo os caminhos da cidade…';
     applySnapshot(snapshot);
     game = makeGame($('#game-canvas'), scene);
+    await applyCase(investigation, true);
+    casePoller.start(async () => {
+      if (!world || world.game_id !== id || $('#investigation').hidden) return;
+      try {await applyCase(await api.investigation(id));}
+      catch (error) {if (!(error instanceof ApiError && error.status === 409)) $('#case-phase').textContent = 'Sincronizando com a cidade…';}
+    });
     document.body.classList.add('case-active');
     status('#launch-status', '');
   } catch (error) {
@@ -164,7 +184,7 @@ async function launch(resume: boolean) {
 }
 
 async function openMap() {
-  if (!world || !controller || busy || modal) return;
+  if (!world || !controller || busy || modal || caseClock.blocked() || transitioning) return;
   busy = true;
   await settleMovement();
   setModal('map');
@@ -188,7 +208,7 @@ function renderMap() {
 }
 
 async function openExit(side: ExitSide) {
-  if (!world || !controller || busy || modal) return;
+  if (!world || !controller || busy || modal || caseClock.blocked() || transitioning) return;
   busy = true;
   await settleMovement();
   exitSide = side;
@@ -223,12 +243,12 @@ function renderExits() {
 }
 
 async function travel(target: LocationID, side?: ExitSide) {
-  if (!world || !controller || busy) return;
+  if (!world || !controller || busy || caseClock.blocked() || transitioning) return;
   const statusSelector = side ? '#exit-status' : '#map-status';
   busy = true; renderMap(); renderExits(); status(statusSelector, 'Seguindo por outro caminho…');
   try {
     const snapshot = await api.travel(controller.world, target, side);
-    controller.accept(snapshot); setModal(null); toast(`Você chegou: ${snapshot.location.name}.`);
+    controller.accept(snapshot); if (!caseClock.blocked()) setModal(null); toast(`Você chegou: ${snapshot.location.name}.`);
   } catch (error) {
     status(statusSelector, explain(error), true);
     if (error instanceof ApiError && error.status === 409) {
@@ -238,12 +258,12 @@ async function travel(target: LocationID, side?: ExitSide) {
 }
 
 async function approach() {
-  if (!world || !controller || busy || modal) return;
+  if (!world || !controller || busy || modal || caseClock.blocked() || transitioning) return;
   const npc = closestNPC(world, controller.x);
   if (!npc) {toast('Aproxime-se de um morador para conversar.'); return;}
   busy = true;
   await settleMovement();
-  busy = true; dialogueNPC = npc; conversation = null;
+  busy = true; dialogueNPC = npc; conversation = null; renderPresentation(); status('#presentation-status', '');
   setModal('dialogue');
   $('#dialogue-name').textContent = npc.name;
   const image = $('#persona-portrait') as HTMLImageElement;
@@ -255,7 +275,7 @@ async function approach() {
     conversation = await api.approach(world.game_id, npc.npc_id);
     await refreshHistory(); status('#dialogue-status', '');
   } catch (error) {status('#dialogue-status', explain(error), true);}
-  finally {busy = false; setSending(false); $('#message-input').focus();}
+  finally {busy = false; setSending(false); if (modal === 'dialogue' && !caseClock.blocked()) $('#message-input').focus();}
 }
 
 function appendMessage(message: Message) {
@@ -279,14 +299,15 @@ async function refreshHistory() {
 }
 
 function setSending(sending: boolean) {
-  $('#send-message').toggleAttribute('disabled', sending || !conversation);
-  $('#message-input').toggleAttribute('disabled', sending || !conversation);
+  $('#send-message').toggleAttribute('disabled', sending || !conversation || caseClock.blocked());
+  $('#message-input').toggleAttribute('disabled', sending || !conversation || caseClock.blocked());
   $('#close-dialogue').toggleAttribute('disabled', sending);
+  $('#present-button').toggleAttribute('disabled', sending || caseClock.blocked());
 }
 
 async function sendMessage(event: Event) {
   event.preventDefault();
-  if (!conversation || !world || busy) return;
+  if (!conversation || !world || busy || caseClock.blocked()) return;
   const input = $('#message-input') as HTMLTextAreaElement;
   const content = input.value.trim(); if (!content) return;
   busy = true; setSending(true); status('#dialogue-status', `${dialogueNPC?.name ?? 'A persona'} está respondendo…`);
@@ -297,15 +318,225 @@ async function sendMessage(event: Event) {
     // A confirmação pode ter se perdido; ler é seguro, reenviar automaticamente não é.
     try {await refreshHistory();} catch { /* mantém a mensagem original de erro */ }
     status('#dialogue-status', explain(error), true);
-  } finally {busy = false; setSending(false); input.focus();}
+  } finally {busy = false; setSending(false); if (modal === 'dialogue' && !caseClock.blocked()) input.focus();}
 }
+
+function addText(parent: HTMLElement, tag: string, text: string, className?: string) {
+  const element = document.createElement(tag); element.textContent = text;
+  if (className) element.className = className;
+  parent.append(element); return element;
+}
+
+function locationName(id: LocationID) {return locations.find(location => location.id === id)?.name ?? id;}
+function itemKind(evidence: CaseEvidence) {return {unique: 'Exclusivo', singular: 'Singular', common: 'Comum'}[evidence.kind];}
+
+async function applyCase(next: CasePublic, initial = false) {
+  if (!world || (!initial && $('#investigation').hidden) || next.game_id !== world.game_id || (caseState && next.revision < caseState.revision)) return;
+  const previous = caseState;
+  const changed = !previous || previous.day !== next.day || previous.phase !== next.phase || previous.status !== next.status
+    || previous.detained_npc_id !== next.detained_npc_id || pendingWorldSync;
+  caseState = next; caseClock.accept(next); renderClock();
+  if (!previous || previous.revision !== next.revision) {
+    scene?.setInvestigation(next); renderCase();
+  }
+  if (!changed) return;
+  transitioning = true; pendingWorldSync = true; scene?.setInputEnabled(false);
+  try {
+    if (!initial) {
+      await controller?.suspend();
+      const [snapshot, publicGame] = await Promise.all([api.world(next.game_id), api.game(next.game_id)]);
+      if (caseState?.revision !== next.revision || world?.game_id !== next.game_id) return;
+      controller?.accept(snapshot); cast = publicGame.characters; renderCase();
+    }
+    pendingWorldSync = false;
+    if (next.phase !== 'day' || next.status !== 'active') showPhase();
+    else if (initial || previous?.day !== next.day) {
+      conversation = null; dialogueNPC = null; exitBoundary = new ExitBoundary();
+      renderJournal(); setModal('journal'); $('#read-journal').focus();
+    } else if (modal === 'phase') setModal(null);
+  } catch {toast('A manhã chegou. Estamos atualizando os caminhos da cidade.');}
+  finally {transitioning = pendingWorldSync; scene?.setInputEnabled(modal === null && !caseClock.blocked() && !transitioning);}
+}
+
+function renderClock() {
+  if (!caseState || $('#investigation').hidden) return;
+  $('#case-day').textContent = `DIA ${caseState.day}`;
+  $('#case-clock').textContent = caseState.phase === 'finished' ? 'FIM' : formatClock(caseClock.seconds());
+  $('#case-phase').textContent = caseState.phase === 'night' ? 'A noite não é jogável'
+    : caseState.phase === 'finished' ? 'Este caso chegou ao fim'
+    : caseClock.seconds() ? 'Cinco minutos até a noite' : 'Aguardando os acontecimentos da noite…';
+  $('#open-delegate').toggleAttribute('disabled', caseClock.blocked());
+  $('#open-map').toggleAttribute('disabled', caseClock.blocked());
+  if (caseState.phase === 'day' && caseState.status === 'active' && !caseClock.seconds() && modal !== 'phase') {
+    scene?.setInputEnabled(false); showPhase();
+  }
+  if (modal === 'phase') $('#phase-countdown').textContent = caseState.phase === 'finished' ? ''
+    : caseState.phase === 'night' ? `A manhã se aproxima · ${formatClock(caseClock.seconds())}` : 'Aguardando confirmação da cidade…';
+}
+
+function showPhase() {
+  if (!caseState) return;
+  const ending = caseState.ending;
+  $('#phase-eyebrow').textContent = ending ? ending.result === 'won' ? 'A CIDADE RESPIRA ALIVIADA' : 'A CIDADE SILENCIOU' : 'A CIDADE RECOLHE-SE';
+  $('#phase-title').textContent = ending ? ending.result === 'won' ? 'O lobisomem foi descoberto.' : 'A investigação chegou tarde demais.'
+    : caseState.phase === 'night' ? 'A noite guarda seus segredos.' : 'O dia está terminando.';
+  $('#phase-description').textContent = ending?.message ?? 'Floriano aguarda a manhã. Os acontecimentos serão publicados no Clarim do Rio.';
+  $('#ending-new-case').hidden = !ending;
+  setModal('phase');
+  if (ending) $('#ending-new-case').focus();
+  else {$('#phase-title').setAttribute('tabindex', '-1'); $('#phase-title').focus({preventScroll: true});}
+}
+
+function renderJournal() {
+  const edition = caseState?.journal.at(-1);
+  $('#journal-day').textContent = `DIA ${edition?.day ?? caseState?.day ?? 1}`;
+  $('#journal-title').textContent = edition?.title ?? 'O Clarim do Rio';
+  $('#journal-headline').textContent = edition?.headline ?? 'Uma cidade à espera de respostas';
+  $('#journal-body').textContent = edition?.body ?? 'A edição desta manhã está sendo preparada.';
+  $('#journal-location').textContent = edition?.location_id ? `Acontecimento registrado: ${locationName(edition.location_id)}.` : 'Nenhuma nova cena de crime foi anunciada.';
+}
+
+function renderCase() {
+  if (!caseState) return;
+  $('#evidence-count').textContent = `${caseState.inventory.length} ${caseState.inventory.length === 1 ? 'pista' : 'pistas'}`;
+  $('#case-hint-title').textContent = caseState.detained_npc_id
+    ? 'Uma detenção. Uma noite de espera.' : `${caseState.inventory.length} vestígios, ${caseState.testimonies.length} depoimentos.`;
+  $('#case-hint').textContent = caseState.detained_npc_id
+    ? 'O acusado ficará na cela esta noite. O jornal trará os acontecimentos da manhã.'
+    : 'Recolha vestígios nas cenas do crime. Mostre-os aos moradores e confronte versões antes de chamar o delegado.';
+  renderJournal(); renderPresentation(); renderNotebook();
+  if (modal !== 'delegate') renderAccusation();
+}
+
+function renderNotebook() {
+  if (!caseState) return;
+  const inventory = $('#evidence-list'); inventory.replaceChildren();
+  for (const evidence of caseState.inventory) {
+    const item = document.createElement('article'); item.className = 'evidence-card'; item.dataset.evidenceId = evidence.id;
+    addText(item, 'span', itemKind(evidence), 'evidence-kind'); addText(item, 'h4', evidence.name);
+    addText(item, 'p', evidence.description); inventory.append(item);
+  }
+  if (!caseState.inventory.length) addText(inventory, 'p', 'Nenhum vestígio recolhido. Procure as marcas de cena do crime no cenário.', 'empty-case');
+  const testimonyList = $('#testimony-list'); testimonyList.replaceChildren();
+  for (const testimony of caseState.testimonies) {
+    const item = document.createElement('article'); item.className = 'testimony-card';
+    const evidence = caseState.inventory.find(item => item.id === testimony.evidence_id);
+    addText(item, 'h4', `${testimony.witness_name} · dia ${testimony.day}`);
+    addText(item, 'small', evidence?.name ?? 'Vestígio apresentado'); addText(item, 'p', testimony.text); testimonyList.append(item);
+  }
+  if (!caseState.testimonies.length) addText(testimonyList, 'p', 'Apresente um objeto durante uma conversa para registrar um depoimento.', 'empty-case');
+  const crimes = $('#crime-list'); crimes.replaceChildren();
+  for (const crime of caseState.crimes) addText(crimes, 'p', `${crime.victim_name} · ${locationName(crime.location_id)} · ${crime.remaining_clues ? `${crime.remaining_clues} vestígio(s) por encontrar` : 'busca concluída'}`);
+}
+
+function renderPresentation() {
+  const panel = $('#evidence-presenter'); const select = $<HTMLSelectElement>('#present-evidence');
+  const selected = select.value; select.replaceChildren();
+  for (const evidence of caseState?.inventory ?? []) {
+    const option = document.createElement('option'); option.value = evidence.id; option.textContent = evidence.name; select.append(option);
+  }
+  if ([...select.options].some(option => option.value === selected)) select.value = selected;
+  panel.hidden = !caseState?.inventory.length;
+  $('#present-button').toggleAttribute('disabled', busy || caseClock.blocked());
+}
+
+function renderAccusation() {
+  if (!caseState) return;
+  const select = $<HTMLSelectElement>('#accused-npc'); const selected = select.value; select.replaceChildren();
+  for (const member of cast.filter(member => member.alive && member.character.id !== caseState?.detained_npc_id)) {
+    const option = document.createElement('option'); option.value = member.character.id; option.textContent = member.character.name; select.append(option);
+  }
+  if ([...select.options].some(option => option.value === selected)) select.value = selected;
+  const renderChoice = (container: HTMLElement, name: string, id: string, text: string) => {
+    const label = document.createElement('label'); label.className = 'proof-choice';
+    const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.name = name; checkbox.value = id;
+    const title = document.createElement('span'); title.textContent = text; label.append(checkbox, title); container.append(label);
+  };
+  const evidence = $('#accusation-evidence'); evidence.replaceChildren();
+  caseState.inventory.forEach(item => renderChoice(evidence, 'evidence', item.id, `${item.name} · ${itemKind(item)}`));
+  if (!caseState.inventory.length) addText(evidence, 'p', 'Você ainda não recolheu vestígios.', 'empty-case');
+  const testimonies = $('#accusation-testimonies'); testimonies.replaceChildren();
+  caseState.testimonies.forEach(item => renderChoice(testimonies, 'testimony', item.id, `${item.witness_name}: ${item.text}`));
+  if (!caseState.testimonies.length) addText(testimonies, 'p', 'Nenhum depoimento sobre objetos registrado.', 'empty-case');
+  const attempted = caseState.accusations.some(accusation => accusation.day === caseState?.day);
+  $('#submit-accusation').toggleAttribute('disabled', busy || caseClock.blocked() || attempted);
+  if (attempted) status('#accusation-status', 'O delegado já examinou uma acusação neste dia. Aguarde a próxima manhã.');
+  const history = $('#accusation-history'); history.replaceChildren();
+  for (const accusation of caseState.accusations) {
+    const card = document.createElement('article'); card.className = 'accusation-result';
+    addText(card, 'strong', `${accusation.suspect_name} · ${accusation.accepted ? 'detenção autorizada' : 'pedido recusado'} · dia ${accusation.day}`);
+    addText(card, 'p', accusation.reason); history.append(card);
+  }
+}
+
+async function openCasePanel(panel: 'journal' | 'notebook' | 'delegate') {
+  if (!world || busy || modal || caseClock.blocked()) return;
+  await settleMovement();
+  if (caseClock.blocked()) return;
+  if (panel === 'delegate') {renderAccusation(); status('#accusation-status', '');}
+  setModal(panel); $(`#close-${panel}`).focus();
+}
+
+async function searchCrime(id?: string) {
+  if (!world || !controller || busy || modal || caseClock.blocked()) return;
+  const crime = closestCrime(caseState, world, controller.x);
+  if (!crime || (id && crime.id !== id)) return;
+  busy = true;
+  try {
+    await controller.stop();
+    const before = new Set(caseState?.inventory.map(item => item.id));
+    const result = await api.search(world.game_id, crime.id);
+    await applyCase(result);
+    const found = result.inventory.find(item => !before.has(item.id));
+    toast(found ? `Vestígio recolhido: ${found.name}. Você pode apresentá-lo aos moradores.` : 'A busca nesta cena foi concluída.');
+  } catch (error) {toast(explain(error));}
+  finally {busy = false;}
+}
+
+async function presentEvidence() {
+  if (!world || !dialogueNPC || busy || modal !== 'dialogue' || caseClock.blocked()) return;
+  const evidenceID = $<HTMLSelectElement>('#present-evidence').value; if (!evidenceID) return;
+  busy = true; setSending(true); status('#presentation-status', 'O morador examina o objeto…');
+  try {
+    const result = await api.present(world.game_id, evidenceID, dialogueNPC.npc_id);
+    await applyCase(result);
+    const testimony = result.testimonies.find(item => item.evidence_id === evidenceID && item.witness_id === dialogueNPC?.npc_id);
+    status('#presentation-status', testimony?.text ?? 'Depoimento registrado no caderno.');
+  } catch (error) {status('#presentation-status', explain(error), true);}
+  finally {busy = false; setSending(false);}
+}
+
+async function submitAccusation(event: Event) {
+  event.preventDefault(); if (!world || busy || modal !== 'delegate' || caseClock.blocked()) return;
+  const evidence = [...document.querySelectorAll<HTMLInputElement>('#accusation-evidence input:checked')].map(input => input.value);
+  const testimony = [...document.querySelectorAll<HTMLInputElement>('#accusation-testimonies input:checked')].map(input => input.value);
+  busy = true; $('#submit-accusation').setAttribute('disabled', ''); status('#accusation-status', 'O delegado examina os elementos apresentados…');
+  try {
+    const result = await api.accuse(world.game_id, $<HTMLSelectElement>('#accused-npc').value, evidence, testimony);
+    await applyCase(result); renderAccusation();
+    const decision = result.accusations.at(-1);
+    status('#accusation-status', decision?.reason ?? 'Pedido registrado.');
+  } catch (error) {status('#accusation-status', explain(error), true);}
+  finally {busy = false; $('#submit-accusation').toggleAttribute('disabled', caseClock.blocked() || Boolean(caseState?.accusations.some(item => item.day === caseState?.day)));}
+}
+
+setInterval(renderClock, 250);
+$('#inspect-crime').addEventListener('click', () => {void searchCrime();});
+$('#present-button').addEventListener('click', () => {void presentEvidence();});
+$('#accusation-form').addEventListener('submit', event => {void submitAccusation(event);});
+for (const panel of ['journal', 'notebook', 'delegate'] as const) {
+  $(`#open-${panel}`).addEventListener('click', () => {void openCasePanel(panel);});
+  $(`#close-${panel}`).addEventListener('click', () => {if (!busy) setModal(null);});
+}
+$('#read-journal').addEventListener('click', () => {if (!busy) setModal(null);});
+$('#ending-new-case').addEventListener('click', () => {setModal(null); void launch(false);});
 
 $('#start').addEventListener('click', () => {void launch(false);});
 $('#continue').hidden = !savedGame();
 $('#continue').addEventListener('click', () => {void launch(true);});
 $('#new-case').addEventListener('click', async () => {
   if (busy) return;
-  await settleMovement(); setModal(null); $('#investigation').hidden = true; $('#introduction').hidden = false;
+  casePoller.stop(); await settleMovement(); setModal(null); $('#investigation').hidden = true; $('#introduction').hidden = false;
   $('#continue').hidden = !savedGame(); document.body.classList.remove('case-active');
 });
 $('#open-map').addEventListener('click', () => {void openMap();});
@@ -316,7 +547,7 @@ $('#approach').addEventListener('click', () => {void approach();});
 for (const [id, direction] of [['walk-left', 'left'], ['walk-right', 'right']] as const) {
   const button = $(`#${id}`);
   button.addEventListener('pointerdown', event => {
-    if (modal || busy) return;
+    if (modal || busy || caseClock.blocked()) return;
     event.preventDefault(); button.setPointerCapture(event.pointerId); scene?.setTouchDirection(direction);
   });
   for (const event of ['pointerup', 'pointercancel', 'lostpointercapture']) button.addEventListener(event, () => scene?.setTouchDirection('idle'));
@@ -328,15 +559,15 @@ $('#message-input').addEventListener('keydown', event => {
   if (event.key === 'Enter' && !event.shiftKey) {event.preventDefault(); $('#message-form').dispatchEvent(new Event('submit', {cancelable: true}));}
 });
 document.addEventListener('keydown', event => {
-  if (event.key === 'Escape' && modal && !busy) {event.preventDefault(); setModal(null);}
+  if (event.key === 'Escape' && modal && modal !== 'phase' && !busy) {event.preventDefault(); setModal(null);}
   if (event.key === 'Tab' && modal) {
     const overlay = $(`#${modal}-overlay`);
-    const focusable = [...overlay.querySelectorAll<HTMLElement>('button:not([disabled]),textarea:not([disabled])')];
-    if (!focusable.length) return;
+    const focusable = [...overlay.querySelectorAll<HTMLElement>('button:not([disabled]):not([hidden]),textarea:not([disabled]),select:not([disabled]),input:not([disabled])')].filter(element => element.getClientRects().length);
+    if (!focusable.length) {event.preventDefault(); if (modal === 'phase') $('#phase-title').focus(); return;}
     const first = focusable[0], last = focusable[focusable.length - 1];
     if (event.shiftKey && document.activeElement === first) {event.preventDefault(); last.focus();}
     else if (!event.shiftKey && document.activeElement === last) {event.preventDefault(); first.focus();}
   }
 });
-window.addEventListener('blur', () => {void controller?.stop();});
-window.addEventListener('pagehide', () => {controller?.dispose();});
+window.addEventListener('blur', () => {if (!caseClock.blocked()) void controller?.stop(); else void controller?.suspend();});
+window.addEventListener('pagehide', () => {casePoller.stop(); controller?.dispose();});

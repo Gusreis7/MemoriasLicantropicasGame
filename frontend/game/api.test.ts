@@ -38,4 +38,17 @@ describe('contratos HTTP do jogo', () => {
     await expect(api.send('game', 'conversation', 'Olá')).rejects.toBeInstanceOf(ApiError);
     expect(fetch).toHaveBeenCalledOnce();
   });
+
+  it('busca e apresenta vestígios sem escolher dono, reconhecimento ou fase', async () => {
+    const fetch = vi.fn().mockImplementation(() => Promise.resolve(new Response('{}', {status: 200})));
+    vi.stubGlobal('fetch', fetch);
+    await api.search('game-id', 'crime-id');
+    expect(fetch.mock.calls[0][0]).toBe('/api/v1/games/game-id/crime-scenes/crime-id/search');
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({});
+    await api.present('game-id', 'evidence-id', 'capitu');
+    expect(fetch.mock.calls[1][0]).toBe('/api/v1/games/game-id/evidence/evidence-id/present');
+    expect(JSON.parse(fetch.mock.calls[1][1].body)).toEqual({npc_id: 'capitu'});
+    await api.accuse('game-id', 'capitu', ['evidence-id'], ['testimony-id']);
+    expect(JSON.parse(fetch.mock.calls[2][1].body)).toEqual({suspect_id: 'capitu', evidence_ids: ['evidence-id'], testimony_ids: ['testimony-id']});
+  });
 });
