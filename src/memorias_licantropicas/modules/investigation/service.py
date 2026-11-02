@@ -41,6 +41,7 @@ class InvestigationService:
             seconds_remaining=max(0, ceil((state.phase_ends_at - now).total_seconds())) if state.status == "active" else 0,
             journal=tuple(JournalPublic(illustration=entry.illustration, day=entry.day, headline=entry.headline, body=entry.body,
                 victim_id=entry.victim_id, victim_name=names.get(entry.victim_id) if entry.victim_id else None,
+                suspicious_death_count=entry.suspicious_death_count,
                 location_id=entry.location_id, detention_outcome=entry.detention_outcome) for entry in state.journal),
             crimes=tuple(CrimePublic(id=crime.id, day=crime.day, victim_id=crime.victim_id,
                 victim_name=names.get(crime.victim_id, crime.victim_id), location_id=crime.location_id, x=crime.x,

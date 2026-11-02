@@ -69,6 +69,7 @@ class JournalEdition(Contract):
     headline: str
     body: str
     victim_id: str | None = None
+    suspicious_death_count: int = Field(default=0, ge=0)
     location_id: LocationID | None = None
     detention_outcome: Literal["none", "released", "transformed"] = "none"
 
