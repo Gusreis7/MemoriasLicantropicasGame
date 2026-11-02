@@ -38,7 +38,7 @@ async def test_hostile_city_can_expel_player_atomically(inquiry):
     repo=RedisSocialRepository(inquiry.storage.client,inquiry.storage.prefix)
     relations=initial_relationships(tuple(m.character_id for m in inquiry.game.characters))
     relations=tuple(r.model_copy(update={'trust':-100,'affinity':-80,'resentment':100,'suspicion':100}) if r.target_id=='player' else r for r in relations)
-    state=SocialState(game_id=inquiry.game.id,relationships=relations)
+    state=SocialState(game_id=inquiry.game.id,revision=1,relationships=relations)
     assert await repo.save(state,0)
     inquiry.service._social_repository=repo
     await inquiry.service.open_assembly(inquiry.game.id,'capitu',speech='Todos devem obedecer às minhas acusações.')
