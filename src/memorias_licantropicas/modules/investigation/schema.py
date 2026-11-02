@@ -38,6 +38,7 @@ class ConfrontRequest(Contract):
 
 
 class JournalPublic(Contract):
+    illustration: str = "crime_street"
     day: int
     title: str = "O Clarim do Rio"
     headline: str

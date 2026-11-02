@@ -4,6 +4,7 @@ import {ExitBoundary} from './exits';
 import {CaseClock, CasePoller, closestCrime, formatClock} from './case';
 import {CityScene, makeGame} from './scene';
 import {sendDialogue} from './dialogue';
+import {CustodyScene, makeCustodyGame, type CustodyMode} from './custody';
 import './style.css';
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
@@ -36,7 +37,7 @@ app.innerHTML = `
   <div id="exit-overlay" class="overlay" hidden><section class="exit-modal" role="dialog" aria-modal="true" aria-labelledby="exit-title" aria-describedby="exit-description"><header class="modal-heading"><div><p class="eyebrow">NO FIM DESTA RUA</p><h2 id="exit-title">Por onde seguimos?</h2></div><button class="icon-button" id="close-exit" aria-label="Ficar neste local" type="button">×</button></header><p id="exit-description">Escolha um caminho para continuar a investigação.</p><div id="exit-destinations" class="exit-destinations"></div><p id="exit-status" class="status" role="status" aria-live="polite"></p><button id="stay-here" class="button secondary" type="button">Ficar neste local</button></section></div>
 
   <div id="dialogue-overlay" class="overlay dialogue-overlay" hidden><section class="dialogue-modal" role="dialog" aria-modal="true" aria-labelledby="dialogue-name"><aside class="persona-panel"><div class="persona-frame"><img id="persona-portrait" src="" alt=""/></div><p class="eyebrow">DEPOIMENTO</p><h2 id="dialogue-name"></h2><span class="persona-flourish" aria-hidden="true">— ✦ —</span><p>Nem toda verdade vem à primeira pergunta.</p></aside><div class="conversation-panel"><header class="conversation-heading"><div><span class="conversation-dot"></span><span>Conversa com Floriano</span></div><button id="close-dialogue" class="icon-button" type="button" aria-label="Encerrar conversa">×</button></header><div id="messages" class="messages" role="log" aria-live="polite"></div><div id="dialogue-status" class="status dialogue-status" role="status" aria-live="polite"></div><div id="evidence-presenter" class="evidence-presenter" hidden><label for="present-evidence">Mostrar um vestígio</label><div><select id="present-evidence"></select><button id="present-button" class="button small" type="button">Apresentar</button></div><p id="presentation-status" role="status" aria-live="polite"></p></div><details id="interrogation-panel" class="interrogation-panel"><summary>Interrogar e confrontar versões</summary><p class="case-note">Pergunte onde estava, com quem e o que fazia. Um álibi é uma declaração que pode ser confrontada.</p><div class="interrogation-controls"><label>Dia <input id="interrogation-day" type="number" min="0" value="0"/></label><label>Período <select id="interrogation-period"><option value="night">Noite</option><option value="day">Dia</option></select></label><button id="interrogate-button" class="button small" type="button">Perguntar sobre o álibi</button></div><p id="interrogation-status" role="status" aria-live="polite"></p><details><summary>Confrontar com registros do caderno</summary><p class="case-note">Selecione vestígios, seus depoimentos e versões contraditórias. Insistir sem novos elementos não força uma confissão.</p><div id="confrontation-proofs" class="confrontation-proofs"></div><button id="confront-button" class="button small" type="button">Confrontar e pedir que admita</button><p id="confrontation-status" role="status" aria-live="polite"></p></details></details><form id="message-form" class="message-form"><label class="sr-only" for="message-input">Sua pergunta</label><textarea id="message-input" rows="2" maxlength="8000" placeholder="O que você gostaria de perguntar?" required></textarea><button id="send-message" class="button primary" type="submit" aria-label="Enviar pergunta">Enviar <span aria-hidden="true">→</span></button></form><p class="form-hint">Enter para enviar · Shift + Enter para uma nova linha</p></div></section></div>
-  <div id="journal-overlay" class="overlay" hidden><section class="journal-modal case-modal" role="dialog" aria-modal="true" aria-labelledby="journal-title"><header class="newspaper-masthead"><div class="newspaper-dateline"><span>RIO DE JANEIRO</span><span>EDIÇÃO DA MANHÃ</span><button id="close-journal" class="icon-button" type="button" aria-label="Fechar jornal">×</button></div><h2 id="journal-title">O Clarim do Rio</h2><div class="newspaper-edition"><span>NOTÍCIAS DA CIDADE · 1890</span><span id="journal-day"></span></div></header><article class="newspaper-story"><p class="journal-motto">Os acontecimentos da cidade, à luz do dia.</p><h3 id="journal-headline"></h3><figure id="journal-snapshot" class="journal-snapshot" hidden><img src="/assets/press/crime-scene-snapshot.png" alt="Registro monocromático de uma rua carioca à noite, com um chapéu caído e pegadas no calçamento."/><figcaption id="journal-snapshot-caption"></figcaption></figure><p id="journal-body"></p><p id="journal-location" class="journal-location"></p></article><button id="read-journal" class="button primary" type="button">Continuar a investigação</button></section></div>
+  <div id="journal-overlay" class="overlay" hidden><section class="journal-modal case-modal" role="dialog" aria-modal="true" aria-labelledby="journal-title"><header class="newspaper-masthead"><div class="newspaper-dateline"><span>RIO DE JANEIRO</span><span>EDIÇÃO DA MANHÃ</span><button id="close-journal" class="icon-button" type="button" aria-label="Fechar jornal">×</button></div><h2 id="journal-title">O Clarim do Rio</h2><div class="newspaper-edition"><span>NOTÍCIAS DA CIDADE · 1890</span><span id="journal-day"></span></div></header><article class="newspaper-story"><p class="journal-motto">Os acontecimentos da cidade, à luz do dia.</p><h3 id="journal-headline"></h3><figure id="journal-snapshot" class="journal-snapshot" hidden><img id="journal-image" src="/assets/press/crime-scene-snapshot.png" alt="Registro monocromático de uma rua carioca à noite, com um chapéu caído e pegadas no calçamento."/><figcaption id="journal-snapshot-caption"></figcaption></figure><p id="journal-body"></p><p id="journal-location" class="journal-location"></p></article><button id="read-journal" class="button primary" type="button">Continuar a investigação</button></section></div>
   <div id="notebook-overlay" class="overlay" hidden><section class="case-modal notebook-modal" role="dialog" aria-modal="true" aria-labelledby="notebook-title"><header class="modal-heading"><div><p class="eyebrow">O CADERNO DE FLORIANO</p><h2 id="notebook-title">Vestígios e versões</h2></div><button id="close-notebook" class="icon-button" type="button" aria-label="Fechar caderno">×</button></header><p class="case-note">Um objeto pode ter muitos donos. Um depoimento registra uma versão, não uma certeza.</p><h3>Vestígios recolhidos</h3><div id="evidence-list" class="evidence-list"></div><h3>Depoimentos sobre objetos</h3><div id="testimony-list" class="testimony-list"></div><h3>Álibis e interrogatórios</h3><div id="interrogation-list" class="testimony-list"></div><h3>Confrontos</h3><div id="confrontation-list" class="testimony-list"></div><h3>Cenas conhecidas</h3><div id="crime-list" class="crime-list"></div><h3>Relatos ouvidos por Floriano</h3><p class="case-note">Fofocas conservam a fonte de quem contou. Repetir uma história não a torna prova.</p><p id="reports-status" class="status" role="status" aria-live="polite"></p><div id="heard-report-list" class="testimony-list"></div></section></div>
   <div id="delegate-overlay" class="overlay" hidden>
     <section class="case-modal delegate-modal" role="dialog" aria-modal="true" aria-labelledby="delegate-title">
@@ -58,7 +59,8 @@ app.innerHTML = `
       </div>
     </section>
   </div>
-  <div id="phase-overlay" class="overlay phase-overlay" hidden><section class="case-modal phase-modal" role="dialog" aria-modal="true" aria-labelledby="phase-title" aria-describedby="phase-description"><span class="phase-moon" aria-hidden="true">☾</span><p class="eyebrow" id="phase-eyebrow">A CIDADE RECOLHE-SE</p><h2 id="phase-title">A noite guarda seus segredos.</h2><p id="phase-description">Floriano aguarda a manhã. Os acontecimentos serão publicados no Clarim do Rio.</p><p id="phase-countdown" role="status" aria-live="polite"></p><button id="ending-new-case" class="button primary" type="button" hidden>Iniciar outro caso</button></section></div>
+  <div id="custody-overlay" class="overlay custody-overlay" hidden><section class="custody-modal" role="dialog" aria-modal="true" aria-labelledby="custody-title"><header><p class="eyebrow">NA DELEGACIA</p><h2 id="custody-title">Uma noite sob custódia</h2><p id="custody-caption" role="status" aria-live="polite"></p></header><div id="custody-canvas" aria-label="Cena da cadeia com o acusado atrás das grades"></div><footer><span id="custody-clock"></span><button id="leave-custody" class="button secondary" type="button">Voltar à investigação</button></footer></section></div>
+  <div id="phase-overlay" class="overlay phase-overlay" hidden><section class="case-modal phase-modal" role="dialog" aria-modal="true" aria-labelledby="phase-title" aria-describedby="phase-description"><article id="victory-paper" class="victory-paper" hidden><header class="newspaper-masthead"><div class="newspaper-dateline"><span>RIO DE JANEIRO · 1890</span><span>EDIÇÃO EXTRAORDINÁRIA</span></div><h2>O Clarim do Rio</h2><div class="newspaper-edition"><span>A VITÓRIA DE FLORIANO</span><span id="victory-day"></span></div></header><h3 id="victory-headline"></h3><div class="press-picture press-victory" role="img" aria-label="Ilustração em preto e branco da cidade celebrando Floriano"></div><p id="victory-body"></p><p class="victory-ending">O caso está encerrado. A cidade volta a respirar.</p></article><span class="phase-moon" aria-hidden="true">☾</span><p class="eyebrow" id="phase-eyebrow">A CIDADE RECOLHE-SE</p><h2 id="phase-title">A noite guarda seus segredos.</h2><p id="phase-description">Floriano aguarda a manhã. Os acontecimentos serão publicados no Clarim do Rio.</p><p id="phase-countdown" role="status" aria-live="polite"></p><button id="ending-new-case" class="button primary" type="button" hidden>Iniciar outro caso</button></section></div>
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 `;
 
@@ -85,7 +87,7 @@ let manifest: CharacterManifest;
 let controller: MovementController | null = null;
 let scene: CityScene | null = null;
 let game: ReturnType<typeof makeGame> | null = null;
-let modal: 'map' | 'dialogue' | 'exit' | 'journal' | 'notebook' | 'delegate' | 'phase' | null = null;
+let modal: 'map' | 'dialogue' | 'exit' | 'journal' | 'notebook' | 'delegate' | 'phase' | 'custody' | null = null;
 let exitSide: ExitSide | null = null;
 let exitBoundary = new ExitBoundary();
 let busy = false;
@@ -104,6 +106,9 @@ let dialogueUnavailable = false;
 let renewingDialogue = false;
 const dialogueDrafts = new Map<string, string>();
 let dialogueNPC: {npc_id: string; name: string} | null = null;
+let custodyGame: ReturnType<typeof makeCustodyGame> | null = null;
+let custodyScene: CustodyScene | null = null;
+let custodyNpc: string | null = null;
 let lastNearest = '';
 let toastTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -128,7 +133,7 @@ function setModal(next: typeof modal) {
     void api.closeConversation(world.game_id, conversation.id).catch(() => { /* Reserva expira automaticamente. */ });
   }
   modal = next;
-  for (const name of ['map', 'dialogue', 'exit', 'journal', 'notebook', 'delegate', 'phase']) $(`#${name}-overlay`).hidden = next !== name;
+  for (const name of ['map', 'dialogue', 'exit', 'journal', 'notebook', 'delegate', 'phase', 'custody']) $(`#${name}-overlay`).hidden = next !== name;
   scene?.setInputEnabled(next === null && !caseClock.blocked());
   $('#approach').hidden = true; $('#inspect-crime').hidden = true;
   lastNearest = '';
@@ -162,7 +167,7 @@ async function launch(resume: boolean) {
     const [snapshot, places, characters, publicGame] = await Promise.all([api.world(id), api.locations(), api.manifest(), api.game(id)]);
     caseState = null; heardReports = []; pendingWorldSync = false; transitioning = false; cast = publicGame.characters;
     locations = places; manifest = characters;
-    controller?.dispose(); game?.destroy(true);
+    controller?.dispose(); game?.destroy(true); custodyGame?.destroy(true); custodyGame=null;custodyScene=null;custodyNpc=null;
     exitBoundary = new ExitBoundary();
     controller = new MovementController(snapshot, api.move, () => api.world(id), applySnapshot, error => toast(explain(error)));
     scene = new CityScene(manifest, locations, snapshot, {
@@ -446,11 +451,18 @@ async function applyCase(next: CasePublic, initial = false) {
       controller?.accept(snapshot); cast = publicGame.characters; renderCase();
     }
     pendingWorldSync = false;
-    if (next.phase !== 'day' || next.status !== 'active') showPhase();
+    if (next.status === 'won' && next.ending?.method === 'detention') {
+      await showCustody(next.ending.werewolf_id,'transformed'); showPhase();
+    } else if (next.phase === 'night' && next.detained_npc_id) {
+      void showCustody(next.detained_npc_id,'night');
+    } else if (next.phase !== 'day' || next.status !== 'active') showPhase();
+    else if (initial && next.detained_npc_id) {void showCustody(next.detained_npc_id,'waiting');}
     else if (initial || previous?.day !== next.day) {
       conversation = null; dialogueNPC = null; exitBoundary = new ExitBoundary();
+      if (previous?.detained_npc_id && next.journal.at(-1)?.detention_outcome === 'released') await showCustody(previous.detained_npc_id,'released');
       renderJournal(); setModal('journal'); $('#read-journal').focus();
-    } else if (modal === 'phase') setModal(null);
+    } else if (next.detained_npc_id) {void showCustody(next.detained_npc_id,'waiting');}
+    else if (modal === 'phase' || modal === 'custody') setModal(null);
   } catch {toast('A manhã chegou. Estamos atualizando os caminhos da cidade.');}
   finally {transitioning = pendingWorldSync; scene?.setInputEnabled(modal === null && !caseClock.blocked() && !transitioning);}
 }
@@ -465,16 +477,37 @@ function renderClock() {
   $('#open-delegate').toggleAttribute('disabled', caseClock.blocked());
   $('#open-assembly').toggleAttribute('disabled', caseClock.blocked() || Boolean(caseState?.assembly));
   $('#open-map').toggleAttribute('disabled', caseClock.blocked());
-  if (caseState.phase === 'day' && caseState.status === 'active' && !caseClock.seconds() && modal !== 'phase') {
+  if (caseState.phase === 'day' && caseState.status === 'active' && !caseClock.seconds() && modal !== 'phase' && modal !== 'custody') {
     scene?.setInputEnabled(false); showPhase();
   }
+  if (modal === 'custody') $('#custody-clock').textContent = caseState.status === 'won' ? 'Transformação confirmada pelo delegado' : caseState.phase === 'night' ? `Amanhecer em ${formatClock(caseClock.seconds())}` : `Anoitecer em ${formatClock(caseClock.seconds())}`;
   if (modal === 'phase') $('#phase-countdown').textContent = caseState.phase === 'finished' ? ''
     : caseState.phase === 'night' ? `A manhã se aproxima · ${formatClock(caseClock.seconds())}` : 'Aguardando confirmação da cidade…';
+}
+
+function showCustody(npcID:string,mode:CustodyMode):Promise<void> {
+  const asset=manifest.characters.find(c=>c.id===npcID);
+  if(!asset)return Promise.resolve();
+  const name=npcName(npcID);
+  $('#custody-title').textContent=mode==='transformed' ? 'A verdade por trás das grades' : mode==='released' ? 'A porta se abre ao amanhecer' : `${name} está sob custódia`;
+  $('#custody-caption').textContent=mode==='transformed' ? `${name} se transformou. Floriano desvendou o caso.` : mode==='released' ? `${name} não se transformou e será solto. A investigação continua.` : 'A acusação ainda não confirma a culpa. Floriano aguarda os acontecimentos da noite.';
+  $('#leave-custody').hidden=mode!=='waiting';setModal('custody');
+  if(!custodyScene || custodyNpc!==npcID){custodyGame?.destroy(true);custodyNpc=npcID;custodyScene=new CustodyScene(asset);custodyGame=makeCustodyGame($('#custody-canvas'),custodyScene);}
+  return new Promise(resolve=>{custodyScene!.setMode(mode,resolve);if(mode==='waiting'||mode==='night')resolve();});
 }
 
 function showPhase() {
   if (!caseState) return;
   const ending = caseState.ending;
+  const victorious = ending?.result === 'won';
+  $('#victory-paper').hidden = !victorious;
+  $('#phase-overlay .phase-modal').classList.toggle('is-victory',victorious);
+  if(victorious) {
+    const edition=caseState.journal.at(-1);
+    $('#victory-day').textContent=`DIA ${caseState.day}`;
+    $('#victory-headline').textContent=edition?.illustration === 'victory' ? edition.headline : 'Floriano vence: a cidade está livre do lobisomem';
+    $('#victory-body').textContent=edition?.illustration === 'victory' ? edition.body : ending.message;
+  }
   $('#phase-eyebrow').textContent = ending ? ending.result === 'won' ? 'A CIDADE RESPIRA ALIVIADA' : 'A CIDADE SILENCIOU' : 'A CIDADE RECOLHE-SE';
   $('#phase-title').textContent = ending ? ending.result === 'won' ? 'O lobisomem foi descoberto.' : 'A investigação chegou tarde demais.'
     : caseState.phase === 'night' ? 'A noite guarda seus segredos.' : 'O dia está terminando.';
@@ -493,9 +526,17 @@ function renderJournal() {
   $('#journal-body').textContent = edition?.body ?? 'A edição desta manhã está sendo preparada.';
   $('#journal-location').textContent = edition?.location_id ? `Acontecimento registrado: ${locationName(edition.location_id)}.` : 'Nenhuma nova cena de crime foi anunciada.';
   const snapshot = $<HTMLElement>('#journal-snapshot');
-  snapshot.hidden = !edition?.victim_id;
+  const variant = edition?.illustration ?? (edition?.victim_id ? 'crime_street' : 'quiet');
+  snapshot.hidden = variant === 'quiet';
+  const picture=$('#journal-image');
+  picture.hidden = variant !== 'crime_street';
+  let archival = snapshot.querySelector<HTMLElement>('.press-picture');
+  if(!archival){archival=document.createElement('div');archival.className='press-picture';archival.setAttribute('role','img');snapshot.prepend(archival);}
+  archival.hidden = variant === 'crime_street';
+  archival.className=`press-picture press-${variant.replace('crime_','')}`;
+  archival.setAttribute('aria-label',variant === 'victory' ? 'Ilustração da vitória de Floriano' : 'Ilustração de arquivo do local noticiado');
   $('#journal-snapshot-caption').textContent = edition?.location_id
-    ? `Registro da madrugada · ${locationName(edition.location_id)}` : 'Registro de arquivo do Clarim do Rio';
+    ? `Ilustração do Clarim · ${locationName(edition.location_id)}` : 'Ilustração de arquivo do Clarim do Rio';
 }
 
 function renderCase() {
@@ -776,6 +817,7 @@ for (const panel of ['journal', 'notebook', 'delegate'] as const) {
   $(`#close-${panel}`).addEventListener('click', () => {if (!busy) setModal(null);});
 }
 $('#read-journal').addEventListener('click', () => {if (!busy) setModal(null);});
+$('#leave-custody').addEventListener('click',()=>{if(caseState?.phase==='day' && caseState.status==='active')setModal(null);});
 $('#ending-new-case').addEventListener('click', () => {setModal(null); void launch(false);});
 
 $('#start').addEventListener('click', () => {void launch(false);});
@@ -809,7 +851,7 @@ $('#message-input').addEventListener('input', () => {
   if (world && conversation) dialogueDrafts.set(`${world.game_id}:${conversation.id}`, $<HTMLTextAreaElement>('#message-input').value);
 });
 document.addEventListener('keydown', event => {
-  if (event.key === 'Escape' && modal && modal !== 'phase' && !busy) {event.preventDefault(); setModal(null);}
+  if (event.key === 'Escape' && modal && modal !== 'phase' && !(modal === 'custody' && (caseClock.blocked() || transitioning)) && !busy) {event.preventDefault(); setModal(null);}
   if (event.key === 'Tab' && modal) {
     const overlay = $(`#${modal}-overlay`);
     const focusable = [...overlay.querySelectorAll<HTMLElement>('button:not([disabled]):not([hidden]),textarea:not([disabled]),select:not([disabled]),input:not([disabled])')].filter(element => element.getClientRects().length);

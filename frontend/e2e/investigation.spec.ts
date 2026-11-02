@@ -80,9 +80,11 @@ async function cityFixture(page: import('@playwright/test').Page) {
 async function begin(page: import('@playwright/test').Page) {
   await page.goto('/'); await page.locator('#start').click();
   await expect(page.locator('#scene-loading')).toBeHidden({timeout: 30000});
-  await expect(page.locator('#journal-overlay')).toBeVisible();
+  await expect(page.locator('#journal-overlay:visible, #custody-overlay:visible')).toBeVisible();
+  if(await page.locator('#custody-overlay').isVisible()) {await page.locator('#leave-custody').click();}
+  else {await expect(page.locator('#journal-overlay')).toBeVisible();
   await expect(page.locator('#journal-title')).toHaveText('O Clarim do Rio');
-  await page.locator('#read-journal').click();
+  await page.locator('#read-journal').click();}
 }
 
 test('busca, apresenta vestígios e pede detenção antes de aguardar a noite', async ({page}) => {
@@ -109,13 +111,19 @@ test('busca, apresenta vestígios e pede detenção antes de aguardar a noite', 
   await page.locator('#submit-accusation').click(); await expect(page.locator('#accusation-status')).toContainText('detenção');
   expect(city.requests.find(request => request.path.endsWith('/accusations'))?.body).toEqual({suspect_id: 'capitu', evidence_ids: ['ev-1', 'ev-2'], testimony_ids: ['testimony-ui']});
   city.state.phase = 'night'; city.state.revision++; city.state.phase_ends_at = new Date(Date.now() + 8000).toISOString();
-  await expect(page.locator('#phase-overlay')).toBeVisible({timeout: 5000});
+  await expect(page.locator('#custody-overlay')).toBeVisible({timeout: 5000});
   await expect(page.locator('#open-map')).toBeDisabled(); const calls = city.movementCalls();
   await page.keyboard.press('Escape'); await page.keyboard.down('ArrowRight'); await page.waitForTimeout(350); await page.keyboard.up('ArrowRight');
-  expect(city.movementCalls()).toBe(calls); await expect(page.locator('#phase-overlay')).toBeVisible();
+  expect(city.movementCalls()).toBe(calls); await expect(page.locator('#custody-overlay')).toBeVisible();
   city.state.phase = 'finished'; city.state.status = 'won'; city.state.revision++;
-  city.state.ending = {result: 'won', message: 'A transformação foi testemunhada na cela. A cidade expulsou o lobisomem.', werewolf_id: 'capitu'};
-  await expect(page.locator('#phase-title')).toHaveText('O lobisomem foi descoberto.', {timeout: 5000});
+  city.state.ending = {result: 'won', method:'detention', message: 'A transformação foi testemunhada na cela. A cidade expulsou o lobisomem.', werewolf_id: 'capitu'};
+  await expect(page.locator('#custody-title')).toContainText('verdade');
+  await page.waitForTimeout(1700);
+  await page.screenshot({path:'../artifacts/custody-transformation.png',fullPage:true});
+  await expect(page.locator('#phase-title')).toHaveText('O lobisomem foi descoberto.', {timeout: 10000});
+  await expect(page.locator('#victory-paper')).toBeVisible();
+  await expect(page.locator('#victory-headline')).toContainText('Floriano');
+  await page.screenshot({path:'../artifacts/clarim-victory.png',fullPage:true});
   await expect(page.locator('#phase-description')).toContainText('expulsou'); await expect(page.locator('#ending-new-case')).toBeVisible();
 });
 
@@ -223,4 +231,23 @@ test('rejeição de disponibilidade preserva rascunho e bloqueia envios repetido
   await page.locator('#close-dialogue').click();await page.locator('#approach').click();
   await expect(page.locator('#message-input')).toBeEnabled();
   await expect(page.locator('#message-input')).toHaveValue('O que aconteceu no cais?');
+});
+
+
+test('cadeia mostra detido, bloqueia a noite e solta inocente antes do jornal', async ({page}) => {
+  const city=await cityFixture(page);await begin(page);
+  city.state.detained_npc_id='rubiao';city.state.revision++;
+  await expect(page.locator('#custody-overlay')).toBeVisible();
+  await expect(page.locator('#custody-title')).toContainText('Rubião');
+  await expect(page.locator('#custody-canvas canvas')).toHaveAttribute('width','960');
+  await page.screenshot({path:'../artifacts/custody-waiting.png',fullPage:true});
+  city.state.phase='night';city.state.phase_ends_at=new Date(Date.now()+8000).toISOString();city.state.revision++;
+  await expect(page.locator('#leave-custody')).toBeHidden();
+  await page.keyboard.press('Escape');await expect(page.locator('#custody-overlay')).toBeVisible();
+  city.state.phase='day';city.state.day=2;city.state.detained_npc_id=null;city.state.revision++;
+  city.state.phase_ends_at=new Date(Date.now()+300000).toISOString();
+  city.state.journal.push({day:2,title:'O Clarim do Rio',headline:'Detido solto ao amanhecer',body:'Rubião não se transformou e foi solto.',victim_id:null,victim_name:null,location_id:null,detention_outcome:'released',illustration:'quiet'});
+  await expect(page.locator('#custody-title')).toContainText('amanhecer');
+  await expect(page.locator('#journal-overlay')).toBeVisible({timeout:10000});
+  await expect(page.locator('#journal-body')).toContainText('foi solto');
 });

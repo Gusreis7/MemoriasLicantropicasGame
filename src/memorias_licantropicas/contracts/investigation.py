@@ -64,6 +64,7 @@ class Accusation(Contract):
 
 
 class JournalEdition(Contract):
+    illustration: str = "crime_street"
     day: int
     headline: str
     body: str

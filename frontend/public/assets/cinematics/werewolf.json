@@ -1,0 +1,92 @@
+{
+  "frames": {
+    "0": {
+      "frame": {
+        "x": 0,
+        "y": 0,
+        "w": 543,
+        "h": 724
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 543,
+        "h": 724
+      },
+      "sourceSize": {
+        "w": 543,
+        "h": 724
+      }
+    },
+    "1": {
+      "frame": {
+        "x": 543,
+        "y": 0,
+        "w": 543,
+        "h": 724
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 543,
+        "h": 724
+      },
+      "sourceSize": {
+        "w": 543,
+        "h": 724
+      }
+    },
+    "2": {
+      "frame": {
+        "x": 1086,
+        "y": 0,
+        "w": 543,
+        "h": 724
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 543,
+        "h": 724
+      },
+      "sourceSize": {
+        "w": 543,
+        "h": 724
+      }
+    },
+    "3": {
+      "frame": {
+        "x": 1629,
+        "y": 0,
+        "w": 543,
+        "h": 724
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 543,
+        "h": 724
+      },
+      "sourceSize": {
+        "w": 543,
+        "h": 724
+      }
+    }
+  },
+  "meta": {
+    "image": "werewolf.png",
+    "size": {
+      "w": 2172,
+      "h": 724
+    },
+    "scale": "1"
+  }
+}

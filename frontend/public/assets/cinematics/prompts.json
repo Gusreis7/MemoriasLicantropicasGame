@@ -1,0 +1,22 @@
+{
+  "generator": "image_gen built-in",
+  "assets": {
+    "werewolf": {
+      "prompt": "Game sprite sheet for a pixel art mystery game in Rio de Janeiro 1890. ONE ROW of FOUR equally spaced full-body frames on genuinely transparent background, no scenery no text no borders. The same imposing anthropomorphic werewolf, charcoal brown fur, amber eyes, torn dark period frock coat and trousers, clawed feet and hands, not gory. Facing slightly right. Four sequential transformation-reveal poses: hunched crouch, rising and spreading claws, upright howl, settled breathing. Identical scale and fixed foot baseline in all four cells, ample margins and no overlap. Crisp square pixels and restrained warm earthy palette matching reference character game sprites. These frames animate a monster revealed inside a prison cell. Whole body including feet visible in each cell.",
+      "source": "exec-c8dd51d2-bb7a-42cf-9afc-0d465f1bf385.png"
+    },
+    "jail": {
+      "prompt": "Pixel art game background, landscape composition 16:9, a simple Rio de Janeiro 1890 police station holding cell seen straight on. Empty cell, NO people NO monster NO text. Old pale stone walls, a small high barred window with moonlight, wooden bench along back wall, straw at lower right, simple oil lantern on left wall. Clear central floor for compositing a full-body character, floor baseline around 82% of image height. The central cell entrance is open to camera: do NOT draw foreground bars across the center, foreground bars are added by the game. Dark forest green shadows, muted brown, amber lamp and cool moonlight. Crisp pixel art, deliberately simple and static background, low detail, match reference game's warm earthy palette. Quiet suspenseful atmosphere, not horror gore.",
+      "source": "exec-39353fbc-656a-475e-941b-0c5fa2e13afd.png"
+    },
+    "animals": {
+      "prompt": "Production pixel art animal animation atlas, transparent background, NO scenery NO text NO grid lines. Exactly FOUR columns by THREE rows, every cell equal size with ample transparent padding, animals same scale and baseline within each row, full silhouettes never touching neighboring cells. Row 1: the same small brown street dog facing right in four distinct walk-cycle leg poses (front legs forward, passing, opposite legs forward, passing). Row 2: the same orange tabby cat facing right, STANDING and WALKING on four legs, four distinct alternating leg and tail walk poses. Row 3: the same blue gray and cream small bird flying right, four distinct wing-beat poses (wings fully up, level, down, level). Crisp stepped square pixels, dark outlines, warm colors and small shading clusters like the reference. This is an actual animation sheet, not a selection of different animals.",
+      "source": "exec-90bcaa0f-8a03-4570-bfdd-0fefc87a2e69.png",
+      "final_source": "exec-918bb879-0d29-4943-bf73-d3fb3eb4b464.png"
+    },
+    "press": {
+      "prompt": "A single pixel art monochrome newspaper illustration atlas for a mystery game in Rio de Janeiro 1890. Exactly TWO columns and TWO rows, four equally sized rectangular illustrations separated only by clear thin gutters. NO words, NO headlines, NO typography. Black, white and gray pixel art engraving, same style as reference. Top left: deserted docks at night, an overturned basket and footprints, no body or gore. Top right: gaslit garden path outside a colonial house, a fallen hat and ambiguous footprints, no people. Bottom left: distant werewolf silhouette behind iron bars in an old police cell, recognizable but not gory. Bottom right: citizens in period clothing cheering a detective in dark frock coat in a sunny town square, celebratory victory mood. These are four reusable archival newspaper images; exact names and reports are rendered by HTML, no fixed victim identity in images.",
+      "source": "exec-6c775a64-b7b8-47cf-9d6a-7e278f0189a7.png"
+    }
+  }
+}
