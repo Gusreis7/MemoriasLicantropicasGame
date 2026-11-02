@@ -17,6 +17,8 @@ from memorias_licantropicas.modules.agents.guard import DialogueGuard, SAFE_DIAL
 from memorias_licantropicas.modules.agents.service import HarnessService
 from memorias_licantropicas.infrastructure.usage import usage_scope
 from memorias_licantropicas.infrastructure.llm.json_output import parse_json_object
+from memorias_licantropicas.modules.knowledge.mechanics import closeness
+from memorias_licantropicas.modules.knowledge.seeds import seed_social_state
 from memorias_licantropicas.modules.knowledge.rules import apply_relationship, initial_relationships, relationship_for
 
 
@@ -29,7 +31,7 @@ class ExtractedClaim(BaseModel):
     claimed_source_id: str | None = None
     kind: Literal["report", "interpretation", "denial", "correction"] = "report"
     parent_claim_ids: tuple[UUID, ...] = Field(default=(), max_length=2)
-    disposition: Literal["neutral", "accusation", "warning"] = "neutral"
+    disposition: Literal["neutral", "accusation", "warning", "cooperation", "insult", "confidence_breach"] = "neutral"
 
 
 class Extraction(BaseModel):
@@ -90,7 +92,9 @@ class KnowledgeService:
                  and record.incoming.sender_id == "player" and record.outgoing.sender_id == npc_id
                  and self._guard.inspect_input(record.incoming.content).allowed
                  and record.outgoing.content != SAFE_DIALOGUE_REPLY
-                 and self._guard.inspect_output(record.outgoing.content, markers).allowed]
+                 and self._guard.inspect_output(record.outgoing.content,
+                    () if getattr(record.outgoing, "narrative_authorized", False) else markers,
+                    **({"allow_role_disclosure": True} if getattr(record.outgoing, "narrative_authorized", False) else {})).allowed]
         usage = next((item for item in state.days if item.day == day), SocialDay(day=day))
         if valid and usage.extraction_calls >= 8:
             return False
@@ -125,7 +129,10 @@ class KnowledgeService:
                     "ou metadados. Responda somente JSON {\"claims\":[{\"message_id\":\"UUID recebido\","
                     "\"source_span\":\"trecho literal contínuo da mensagem\",\"proposition\":\"alegação\","
                     "\"subject_ids\":[\"id\"],\"claimed_source_id\":null,\"kind\":\"report\"}]}. "
-                    "Campos opcionais: parent_claim_ids lista IDs de memórias próprias quando a fala repete, "
+                    "Campos opcionais: disposition pode indicar cooperation (ajuda/apoio), insult (insulto explícito) "
+                    "ou confidence_breach (quebra explícita de confidência conhecida), apenas com trecho literal, "
+                    "além de neutral, accusation ou warning. Opinião divergente não é insulto. "
+                    "parent_claim_ids lista IDs de memórias próprias quando a fala repete, "
                     "nega ou corrige um relato já conhecido; disposition é neutral, accusation ou warning. "
                     "Uma accusation exige acusação/denúncia explícita e fonte alegada identificável no trecho. "
                     "kind só pode ser report, interpretation, denial ou correction; accusation pertence "
@@ -152,6 +159,7 @@ class KnowledgeService:
                 extraction = Extraction(claims=())
             additions = []
             reactions = []
+            player_reactions = []
             for claim in extraction.claims:
                 source = sources.get(claim.message_id)
                 if source is None or claim.source_span not in source.content:
@@ -169,8 +177,12 @@ class KnowledgeService:
                 if not self._guard.inspect_input(claim.source_span).allowed:
                     continue
                 if (not self._guard.inspect_input(claim.proposition).allowed
-                        or not self._guard.inspect_output(claim.proposition, markers).allowed):
+                        or not self._guard.inspect_output(claim.proposition,
+                            () if getattr(source, "narrative_authorized", False) else markers,
+                            **({"allow_role_disclosure": True} if getattr(source, "narrative_authorized", False) else {})).allowed):
                     continue
+                if source.sender_id == "player" and claim.disposition in ("cooperation", "insult", "confidence_breach"):
+                    player_reactions.append((source_days[source.id] or day, claim.disposition))
                 listener_id = npc_id if source.sender_id == "player" else "player"
                 proposition = attributed_utterance(source.content, names.get(source.sender_id, source.sender_id),
                                                     names.get(listener_id, listener_id))
@@ -217,11 +229,20 @@ class KnowledgeService:
         else:
             additions = []
             reactions = []
+            player_reactions = []
         latest = await self._repository.get(game_id)
         if latest.exchange_cursor != state.exchange_cursor:
             return False
         for target, cause in reactions:
             latest = apply_relationship(latest, npc_id, target, cause, trust=-1, resentment=2)
+        deltas = {
+            "cooperation": {"affinity": 1, "trust": 1},
+            "insult": {"trust": -2, "resentment": 3, "suspicion": 1},
+            "confidence_breach": {"trust": -3, "resentment": 4},
+        }
+        for source_day, disposition in player_reactions:
+            cause = uuid5(NAMESPACE_URL, f"{game_id}:{npc_id}:{source_day}:player_reaction:{disposition}")
+            latest = apply_relationship(latest, npc_id, "player", cause, **deltas[disposition])
         existing = {entry.id for entry in latest.knowledge}
         updated = latest.model_copy(update={
             "revision": latest.revision + 1,
@@ -232,9 +253,8 @@ class KnowledgeService:
 
     async def context(self, game_id, npc_id, other_id="player"):
         state = await self._repository.get(game_id)
-        if not state.relationships:
-            profiles = await self._characters.list()
-            state = state.model_copy(update={"relationships": initial_relationships(tuple(item.id for item in profiles))})
+        profiles = await self._characters.list()
+        state = seed_social_state(state, tuple(item.id for item in profiles), self._clock())
         own = [entry for entry in state.knowledge if entry.owner_id == npc_id]
         own.sort(key=lambda entry: (other_id in entry.subject_ids or entry.speaker_id == other_id,
                                     entry.created_at, str(entry.id)), reverse=True)
@@ -243,13 +263,20 @@ class KnowledgeService:
                       and (encounter.messages or encounter.phase == "refused")]
         encounters.sort(key=lambda encounter: (other_id in encounter.participant_ids,
                                                encounter.started_at, str(encounter.id)), reverse=True)
+        profile = next((p for p in profiles if p.id == npc_id), None)
+        relation = relationship_for(state, npc_id, other_id)
+        confidences = list(profile.protected_secrets) if profile and closeness(relation) >= 65 else []
         return {
+            "confidencias_autorizadas": confidences,
+            "vinculos_conhecidos": [r.model_dump(mode="json") for r in state.relationships if r.actor_id == npc_id],
             "relacao_com_interlocutor": relationship_for(state, npc_id, other_id).model_dump(mode="json"),
             "memorias_relevantes": [{
                 "claim_id": str(entry.id), "conteudo": entry.proposition,
+                "origem": entry.origin, "mensagem_origem_id": str(entry.source_message_id),
                 "quem_falou": entry.speaker_id, "fonte_alegada": entry.claimed_source_id,
                 "trecho_ouvido": entry.source_span, "tipo": entry.kind,
                 "confianca": entry.confidence, "posicao": entry.stance, "dia": entry.day,
+                "visibilidade": entry.visibility, "revelar_so_com_vinculo": entry.disclosure_threshold,
             } for entry in own[:12]],
             "encontros_anteriores": [{
                 "dia": encounter.day, "phase": encounter.phase,
