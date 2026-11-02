@@ -101,18 +101,19 @@ def build_services(settings: Settings) -> Services:
     )
     llm = MeteredLLMClient(raw_llm, usage, configured_model=settings.bedrock_model)
     social_repository = RedisSocialRepository(redis, settings.redis_prefix)
-    def social_client(max_tokens):
+    def social_client(max_tokens, timeout_seconds=12):
         raw = BedrockMantleClient(
             base_url=settings.mantle_base_url,
             api_key=settings.bedrock_api_key.get_secret_value() if settings.bedrock_api_key else None,
-            model=settings.bedrock_model, timeout_seconds=12, max_tokens=max_tokens,
+            model=settings.bedrock_model, timeout_seconds=timeout_seconds, max_tokens=max_tokens,
             token_provider=(ProfileTokenProvider(settings.aws_profile, settings.aws_region)
                             if settings.aws_profile else None),
         )
         return MeteredLLMClient(raw, usage, configured_model=settings.bedrock_model)
     speech_llm, extraction_llm = social_client(400), social_client(800)
     assembly_llm = social_client(900)
-    social_clients = (speech_llm, extraction_llm, assembly_llm)
+    dialogue_llm = social_client(min(240, settings.llm_max_tokens), settings.llm_timeout_seconds)
+    social_clients = (speech_llm, extraction_llm, assembly_llm, dialogue_llm)
     investigation._social_repository = social_repository
     investigation._assembly_llm = assembly_llm
     knowledge = KnowledgeService(social_repository, characters, extraction_llm)
@@ -122,7 +123,7 @@ def build_services(settings: Settings) -> Services:
     world = WorldService(games, characters, world_repository, player_gate, day_policy=turns,
                          on_approach=social.interrupt if social else None, social_repository=social_repository)
     master = SessionMasterService(turns, games, memory, llm, redis, settings.redis_prefix)
-    harness = HarnessService(characters, games, memory, llm, history_limit=settings.llm_history_limit,
+    harness = HarnessService(characters, games, memory, dialogue_llm, history_limit=settings.llm_history_limit,
                              day_policy=turns, context_provider=investigation.npc_context_locked,
                              knowledge_provider=knowledge.context if knowledge else None, session_master=master)
     return Services(

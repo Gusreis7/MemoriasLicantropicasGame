@@ -199,7 +199,7 @@ def apply_assembly_effects(state, game, world, now):
             'player':world.player.model_copy(update={'direction':'idle','last_updated_at':now})})
     if status in ('won','lost'):
         headline='Floriano vence: a cidade está livre do lobisomem' if status=='won' else 'Floriano é expulso: a investigação termina sem solução'
-        body=(f'A assembleia acolheu os argumentos e expulsou {NAMES.get(record.suspect_id,record.suspect_id)}, o lobisomem. O Clarim celebra a vitória de Floriano.' if status=='won' else
+        body=(f"A assembleia acolheu os argumentos: {NAMES.get(record.suspect_id,record.suspect_id)} foi {'expulsa' if record.suspect_id in ('capitu','florenca','virgilia') else 'expulso'} da cidade após a confirmação da licantropia. O Clarim celebra a vitória de Floriano." if status=='won' else
               'A maioria dos moradores decidiu expulsar Floriano da cidade. Sem o detetive, a investigação terminou em derrota; o perigo permanece.')
         state=state.model_copy(update={'journal':(*state.journal,JournalEdition(day=state.day,
             illustration='victory' if status=='won' else 'crime_street',headline=headline,body=body,
