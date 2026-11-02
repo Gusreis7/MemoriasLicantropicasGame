@@ -13,6 +13,7 @@ from memorias_licantropicas.infrastructure.redis_repository import (
     RedisMemoryRepository,
 )
 from memorias_licantropicas.modules.agents.service import HarnessService
+from memorias_licantropicas.modules.session_master.service import SessionMasterService
 from memorias_licantropicas.modules.characters.repository import CatalogCharacterRepository
 from memorias_licantropicas.modules.characters.service import CharacterService
 from memorias_licantropicas.modules.games.service import GameService
@@ -78,9 +79,9 @@ def build_services(settings: Settings) -> Services:
     games = RedisGameRepository(redis, prefix=settings.redis_prefix)
     memory = RedisMemoryRepository(redis, prefix=settings.redis_prefix)
     world_repository = RedisWorldRepository(redis, settings.redis_prefix)
-    player_gate = RedisPlayerGate(redis, settings.redis_prefix, settings.llm_timeout_seconds + 10)
+    player_gate = RedisPlayerGate(redis, settings.redis_prefix, 2 * settings.llm_timeout_seconds + 15)
     turns = TurnService(redis, settings.redis_prefix, games, characters, world_repository, player_gate)
-    investigation = InvestigationService(turns, characters)
+    investigation = InvestigationService(turns, characters, memory)
     pricing_matches = (settings.bedrock_model == settings.llm_pricing_model
                        and settings.aws_region == settings.llm_pricing_region)
     usage = RedisUsageRepository(redis, settings.redis_prefix, pricing=UsagePricing(
@@ -117,9 +118,10 @@ def build_services(settings: Settings) -> Services:
     worker = SocialWorker(social, social_repository, interval_seconds=settings.social_poll_seconds)
     world = WorldService(games, characters, world_repository, player_gate, day_policy=turns,
                          on_approach=social.interrupt if social else None, social_repository=social_repository)
+    master = SessionMasterService(turns, games, memory, llm, redis, settings.redis_prefix)
     harness = HarnessService(characters, games, memory, llm, history_limit=settings.llm_history_limit,
                              day_policy=turns, context_provider=investigation.npc_context_locked,
-                             knowledge_provider=knowledge.context if knowledge else None)
+                             knowledge_provider=knowledge.context if knowledge else None, session_master=master)
     return Services(
         characters=CharacterService(characters),
         games=GameService(characters, games, day_policy=turns),
@@ -128,7 +130,7 @@ def build_services(settings: Settings) -> Services:
         llm=llm,
         conversations=ConversationService(
             characters, games, memory, harness,
-            RedisConversationGate(redis, settings.redis_prefix, settings.llm_timeout_seconds + 10),
+            RedisConversationGate(redis, settings.redis_prefix, 2 * settings.llm_timeout_seconds + 15),
             world, player_gate,
         ),
         world=world,

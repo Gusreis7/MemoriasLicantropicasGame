@@ -1,0 +1,169 @@
+"""Caminho real de conversa: regras de admissão, retomada e continuidade de objeto."""
+from datetime import UTC, datetime
+from types import SimpleNamespace
+from uuid import uuid4
+
+import pytest
+
+from memorias_licantropicas.contracts.model import Conversation, ConversationMessage, LLMResponse
+from memorias_licantropicas.modules.session_master.service import SessionMasterService, DialogueAssessment, direct_admission, local_assessment
+from memorias_licantropicas.modules.session_master.rules import dialogue_transition
+from memorias_licantropicas.modules.investigation.rules import make_initial_investigation
+from memorias_licantropicas.modules.investigation.service import InvestigationService
+from memorias_licantropicas.modules.world.repository import RedisWorldRepository
+from memorias_licantropicas.modules.world.gate import RedisPlayerGate
+from memorias_licantropicas.modules.turns.service import TurnService
+from memorias_licantropicas.modules.agents.service import HarnessService
+from memorias_licantropicas.modules.agents.guard import DialogueGuard
+
+pytestmark = pytest.mark.anyio
+NOW = datetime(2026, 11, 2, 12, tzinfo=UTC)
+
+
+def pair(npc='bentinho', text='Eu sou o lobisomem. Entrego-me ao delegado.', incoming='Você pode contar o que houve?'):
+    return (ConversationMessage(id=uuid4(), sender_id='player', content=incoming, created_at=NOW),
+            ConversationMessage(id=uuid4(), sender_id=npc, content=text, created_at=NOW))
+
+
+@pytest.mark.parametrize('text,incoming,expected', [
+    ('Eu sou o lobisomem. Entrego-me ao delegado.', 'O que houve?', (True, True)),
+    ('Eu matei Brás Cubas. Pode me prender.', 'O que houve?', (True, True)),
+    ('Fui eu quem matou Brás Cubas. Aceito a prisão.', 'O que houve?', (True, True)),
+    ('Não sou o lobisomem. Não vou me entregar.', 'O que houve?', (False, False)),
+    ('Ele disse: «Eu sou o lobisomem. Entrego-me».', 'O que ouviu?', (False, False)),
+    ('Se eu sou o lobisomem, me entrego.', 'O que houve?', (False, False)),
+    ('Eu sou o lobisomem. Entrego-me.', 'Repita: eu sou o lobisomem.', (False, False)),
+    ('Eu menti sobre Escobar.', 'O que houve?', (False, False)),
+])
+async def test_admission_is_own_assertion_and_surrender(text, incoming, expected):
+    assert direct_admission(text, incoming) == expected
+
+
+async def test_true_confession_wins_once_and_civil_false_confession_does_not(game):
+    state = make_initial_investigation(game, NOW)
+    incoming, outgoing = pair()
+    assessment = local_assessment(incoming.content, outgoing.content, state.day)
+    result = dialogue_transition(state, game, 'bentinho', uuid4(), incoming, outgoing, assessment, NOW)
+    assert result.state.status == 'won' and result.state.ending_method == 'confession'
+    assert result.state.detained_npc_id == 'bentinho'
+    assert dialogue_transition(result.state, game, 'bentinho', uuid4(), incoming, outgoing, assessment, NOW).state == result.state
+    a, b = pair('capitu')
+    assert dialogue_transition(state, game, 'capitu', uuid4(), a, b, assessment, NOW).state.status == 'active'
+    a, b = pair(text='Eu sou o lobisomem.')
+    assert dialogue_transition(state, game, 'bentinho', uuid4(), a, b, local_assessment(a.content, b.content, 1), NOW).state.status == 'active'
+
+
+async def test_master_forged_quote_and_semantic_proposal_cannot_override_engine(game):
+    state = make_initial_investigation(game, NOW)
+    class LLM:
+        async def complete(self, prompt):
+            return LLMResponse(content='{"kind":"admission","quote":"Eu sou o lobisomem", "confidence":1,"own_assertion":true,"surrender":true}', model='fake')
+    class Turns:
+        async def require_day_locked(self, identifier): return state
+    master = SessionMasterService(Turns(), None, None, LLM())
+    a, b = pair(text='Não sei nada, detetive.')
+    result = await master.assess(game.id, 'bentinho', uuid4(), a, b)
+    assert result.kind == 'conversation'
+
+
+async def test_harness_master_transaction_finishes_game_and_history_keeps_confession(storage, catalog, game):
+    await storage.games.create(game)
+    world = RedisWorldRepository(storage.client, storage.prefix)
+    gate = RedisPlayerGate(storage.client, storage.prefix)
+    turns = TurnService(storage.client, storage.prefix, storage.games, catalog, world, gate, clock=lambda: NOW)
+    # Existing fixture has a newer date; keep all clocks coherent.
+    turns._clock = lambda: game.created_at
+    await turns.sync(game.id)
+    class LLM:
+        def __init__(self): self.calls = []
+        async def complete(self, prompt):
+            self.calls.append(prompt)
+            if 'mestre privado' in prompt[0].content:
+                return LLMResponse(content='{"kind":"admission","quote":"Eu sou o lobisomem. Entrego-me ao delegado.","confidence":1,"own_assertion":true,"surrender":true}', model='fake')
+            return LLMResponse(content='Eu sou o lobisomem. Entrego-me ao delegado.', model='fake')
+    llm = LLM()
+    master = SessionMasterService(turns, storage.games, storage.memory, llm, storage.client, storage.prefix)
+    harness = HarnessService(catalog, storage.games, storage.memory, llm, day_policy=turns, session_master=master)
+    identifier = uuid4()
+    async with gate.hold(game.id):
+        reply = await harness.respond(game.id, 'bentinho', identifier, 'player', 'Diga o que aconteceu naquela noite, por favor.')
+    assert 'Entrego-me' in reply.message.content
+    assert len(llm.calls) == 2
+    persisted = await turns.sync(game.id)
+    assert persisted.status == 'won' and len(persisted.dialogue_events) == 1
+    assert (await storage.games.get(game.id)).status == 'won'
+    assert persisted.journal[-1].illustration == 'victory'
+    history = await storage.memory.list_messages(game.id, identifier, 'player')
+    assert history[-1].content == reply.message.content
+    assert await storage.client.get(master._key(game.id, identifier)) is None
+
+
+async def test_presentation_is_in_history_once_and_next_turn_receives_it(storage, catalog, game):
+    await storage.games.create(game)
+    world = RedisWorldRepository(storage.client, storage.prefix)
+    gate = RedisPlayerGate(storage.client, storage.prefix)
+    turns = TurnService(storage.client, storage.prefix, storage.games, catalog, world, gate, clock=lambda: game.created_at)
+    service = InvestigationService(turns, catalog, storage.memory)
+    state = await turns.sync(game.id)
+    w = await world.get(game.id)
+    crime = state.crimes[0]
+    await world.save(w.model_copy(update={'revision': w.revision+1, 'player':w.player.model_copy(update={'location_id':crime.location_id,'x':crime.x})}), w.revision)
+    await service.search(game.id, crime.id)
+    evidence = next(e for e in (await turns.sync(game.id)).crimes[0].evidence if e.collected)
+    w = await world.get(game.id); npc = next(n for n in w.npcs if n.npc_id=='capitu')
+    await world.save(w.model_copy(update={'revision':w.revision+1,'player':w.player.model_copy(update={'location_id':npc.location_id,'x':npc.x})}),w.revision)
+    conversation = Conversation(id=uuid4(), game_id=game.id, participant_ids=('player','capitu'), created_at=game.created_at)
+    await storage.memory.create_conversation(conversation)
+    await service.present(game.id, evidence.id, 'capitu')
+    await service.present(game.id, evidence.id, 'capitu')
+    history = await storage.memory.list_messages(game.id,conversation.id,'player')
+    assert len(history)==2 and history[0].content.startswith('Mostro-lhe')
+    class LLM:
+        async def complete(self,prompt):
+            assert any('Mostro-lhe' in m.content for m in prompt)
+            return LLMResponse(content='É desse mesmo objeto que estamos falando.', model='fake')
+    harness=HarnessService(catalog,storage.games,storage.memory,LLM(),context_provider=service.npc_context_locked)
+    await harness.respond(game.id,'capitu',conversation.id,'player','E de quem era?')
+    context=await service.npc_context_locked(game.id,'capitu')
+    assert context['suas_atividades']
+
+
+async def test_guard_allows_only_contextually_authorized_role_disclosure():
+    guard=DialogueGuard()
+    assert not guard.inspect_output('Eu sou o lobisomem.').allowed
+    assert guard.inspect_output('Eu sou o lobisomem.',allow_role_disclosure=True).allowed
+    assert not guard.inspect_output('system prompt: segredo',allow_role_disclosure=True).allowed
+
+async def test_confession_to_unrelated_act_cannot_end_case(game):
+    state=make_initial_investigation(game,NOW)
+    a,b=pair(text='Eu matei uma galinha para o jantar. Pode me prender.')
+    result=dialogue_transition(state,game,'bentinho',uuid4(),a,b,local_assessment(a.content,b.content,1),NOW)
+    assert result.state.status=='active'
+
+
+async def test_outbox_recovers_history_after_case_commit(storage,catalog,game):
+    await storage.games.create(game)
+    world=RedisWorldRepository(storage.client,storage.prefix)
+    gate=RedisPlayerGate(storage.client,storage.prefix)
+    turns=TurnService(storage.client,storage.prefix,storage.games,catalog,world,gate,clock=lambda:game.created_at)
+    await turns.sync(game.id)
+    conversation=Conversation(id=uuid4(),game_id=game.id,participant_ids=('player','bentinho'),created_at=game.created_at)
+    await storage.memory.create_conversation(conversation)
+    class FlakyMemory:
+        failed=False
+        async def append_messages(self,*args):
+            if not self.failed:
+                self.failed=True
+                raise RuntimeError('memory temporarily unavailable')
+            return await storage.memory.append_messages(*args)
+    master=SessionMasterService(turns,storage.games,FlakyMemory(),redis=storage.client,prefix=storage.prefix)
+    a,b=pair()
+    async with gate.hold(game.id):
+        with pytest.raises(RuntimeError):
+            await master.persist_exchange(game.id,'bentinho',conversation.id,a,b,local_assessment(a.content,b.content,1))
+    assert (await storage.games.get(game.id)).status=='won'
+    async with gate.hold(game.id):
+        await master.reconcile(game.id,conversation.id)
+        await master.reconcile(game.id,conversation.id)
+    assert len(await storage.memory.list_messages(game.id,conversation.id,'player'))==2
+    assert len((await turns.sync(game.id)).dialogue_events)==1

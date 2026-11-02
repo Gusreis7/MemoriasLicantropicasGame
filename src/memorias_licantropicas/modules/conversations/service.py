@@ -21,7 +21,7 @@ def public_message(message: ConversationMessage, private_markers: tuple[str, ...
             content = parse_dialogue_output(content, message.sender_id)
         except LLMUnavailableError:
             content = SAFE_DIALOGUE_REPLY
-        decision = DialogueGuard().inspect_output(content, private_markers)
+        decision = DialogueGuard().inspect_output(content, private_markers, allow_role_disclosure=True)
         if not decision.allowed:
             content = decision.reply or SAFE_DIALOGUE_REPLY
     return MessagePublic(id=message.id, speaker="player" if message.sender_id == PLAYER_ID else "npc",
@@ -99,7 +99,11 @@ class ConversationService:
         if game is None or profile is None:
             raise NotFoundError("Persona não encontrada nesta partida.")
         npc = next(member for member in game.characters if member.character_id == conversation.npc_id)
-        private_markers = HarnessService._private_markers(profile, npc)
+        private_markers = HarnessService._private_markers(profile, npc, profile.protected_secrets)
+        master = getattr(self._harness, '_session_master', None)
+        if master is not None:
+            async with self._player_gate.hold(game_id):
+                await master.reconcile(game_id, conversation_id)
         messages = await self._memory.list_messages(game_id, conversation_id, PLAYER_ID, limit=limit)
         return ConversationHistory(conversation_id=conversation_id,
                                    messages=tuple(public_message(message, private_markers) for message in messages))

@@ -1,7 +1,7 @@
 """Casos de uso de pistas: autorização física e transições sob o relógio do motor."""
 
 from math import ceil
-from uuid import UUID
+from uuid import UUID, NAMESPACE_URL, uuid5
 
 from memorias_licantropicas.contracts.errors import AccessDeniedError, ConflictError, NotFoundError
 from memorias_licantropicas.contracts.investigation import CaseEvent, CaseTransition
@@ -14,9 +14,10 @@ from memorias_licantropicas.modules.investigation.schema import (
 
 
 class InvestigationService:
-    def __init__(self, turns, characters):
+    def __init__(self, turns, characters, memory=None):
         self._turns = turns
         self._characters = characters
+        self._memory = memory
 
     async def _names(self):
         return {"bras_cubas": "Brás Cubas", **{profile.id: profile.name for profile in await self._characters.list()}}
@@ -178,7 +179,23 @@ class InvestigationService:
             return CaseTransition(state=state.model_copy(update={"testimonies": (*state.testimonies, record)}),
                 events=(CaseEvent(type="evidence.presented", data={"evidence_id": str(evidence.id),
                     "testimony_id": str(record.id), "witness_id": npc_id, "day": state.day}),))
-        return await self.public(await self._turns.act(game_id, transition))
+        state = await self._turns.act(game_id, transition)
+        if self._memory is not None:
+            conversation = await self._memory.get_player_conversation(game_id, npc_id)
+            evidence = find_evidence(state, evidence_id)
+            testimony = next(record for record in state.testimonies if record.witness_id == npc_id
+                and find_evidence(state, record.evidence_id).item_id == evidence.item_id)
+            if conversation is not None:
+                from memorias_licantropicas.contracts.model import ConversationMessage
+                shown = ITEMS_BY_ID[evidence.item_id]
+                # Um retry repete o mesmo par, com os mesmos IDs, data e objeto original.
+                original = find_evidence(state, testimony.evidence_id)
+                action = ConversationMessage(id=uuid5(NAMESPACE_URL, f'present:{testimony.id}:player'),
+                    sender_id='player', content=f'Mostro-lhe {shown.name}: {original.description}', created_at=testimony.created_at)
+                response = ConversationMessage(id=uuid5(NAMESPACE_URL, f'present:{testimony.id}:npc'),
+                    sender_id=npc_id, content=testimony.text, created_at=testimony.created_at)
+                await self._memory.append_messages(game_id, conversation.id, (action, response))
+        return await self.public(state)
 
     async def accuse(self, game_id: UUID, suspect_id: str, evidence_ids, testimony_ids) -> CasePublic:
         def transition(state, game, world):
@@ -208,7 +225,19 @@ class InvestigationService:
         if npc_id not in INVENTORIES:
             raise NotFoundError("Ficha de objetos não encontrada.")
         from memorias_licantropicas.modules.investigation.interrogation import COOPERATION
+        from memorias_licantropicas.modules.investigation.interrogation import make_interrogation
+        game = await self._turns._games.get(game_id) if hasattr(self._turns, '_games') else getattr(self._turns, 'game', None)
+        names = await self._names()
+        memories = []
+        if game is not None:
+            periods = sorted({(r.day, r.period) for r in state.activity_records if r.npc_id == npc_id})
+            for day, period in periods[-8:]:
+                declared = make_interrogation(state, game, npc_id, day, period, names, self._turns.now())
+                memories.append({'dia': day, 'periodo': period, 'local_id': declared.location_id,
+                    'companhias': declared.companion_ids, 'atividade': declared.activity,
+                    'lembranca': declared.text})
         return {
+            "suas_atividades": memories,
             "cooperacao_com_investigacao": COOPERATION.get(npc_id, "Ajude a esclarecer o crime com o que sabe."),
             "dia": state.day,
             "fase": state.phase,

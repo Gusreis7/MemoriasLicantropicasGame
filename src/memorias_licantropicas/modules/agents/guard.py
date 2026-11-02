@@ -229,9 +229,10 @@ class DialogueGuard:
                     return _refuse("encoded_instruction")
         return GuardDecision(allowed=True)
 
-    def inspect_output(self, text: str, private_markers: tuple[str, ...] = ()) -> GuardDecision:
+    def inspect_output(self, text: str, private_markers: tuple[str, ...] = (), *, allow_role_disclosure: bool = False) -> GuardDecision:
         normalized = _normalize(text)
-        decision = _inspect_rules(normalized, _OUTPUT_RULES)
+        rules = tuple(rule for rule in _OUTPUT_RULES if not (allow_role_disclosure and rule[0] == 'secret_role_disclosure'))
+        decision = _inspect_rules(normalized, rules)
         if not decision.allowed:
             return decision
         if _echoes_private_marker(normalized, private_markers):
@@ -241,7 +242,7 @@ class DialogueGuard:
                           for nested in _decoded_candidates(candidate))
         for decoded in candidates:
             normalized_decoded = _normalize(decoded)
-            if not _inspect_rules(normalized_decoded, _OUTPUT_RULES).allowed:
+            if not _inspect_rules(normalized_decoded, rules).allowed:
                 return _refuse("encoded_output")
             if _echoes_private_marker(normalized_decoded, private_markers):
                 return _refuse("private_context_echo")
