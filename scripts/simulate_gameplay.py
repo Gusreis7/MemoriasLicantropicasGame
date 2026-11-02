@@ -161,15 +161,19 @@ class Simulation:
         return case, living
 
     async def next_morning(self):
-        case = await self.investigation.get(self.game_id)
-        self.clock.value = case.phase_ends_at
-        case = await self.investigation.get(self.game_id)
-        assert case.phase == "night" or case.status != "active"
-        if case.status == "active":
-            self.clock.value = case.phase_ends_at
-            with patch("memorias_licantropicas.modules.investigation.rules.choice", self.rng.choice):
+        # A prisão aceita já inicia a noite. Todas as leituras que podem resolver
+        # uma noite usam o mesmo PRNG da simulação, inclusive a sincronização inicial.
+        with patch("memorias_licantropicas.modules.investigation.rules.choice", self.rng.choice):
+            case = await self.investigation.get(self.game_id)
+            if case.status != "active" or case.phase == "finished":
+                return case
+            if case.phase == "day":
+                self.clock.value = max(self.clock.value, case.phase_ends_at)
                 case = await self.investigation.get(self.game_id)
-        return case
+            if case.status == "active" and case.phase == "night":
+                self.clock.value = max(self.clock.value, case.phase_ends_at)
+                case = await self.investigation.get(self.game_id)
+            return case
 
     async def play(self, wolf, policy):
         start = monotonic()
