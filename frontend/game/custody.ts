@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import type {CharacterAsset} from '../shared/api';
 export type CustodyMode = 'waiting' | 'night' | 'transformed' | 'released';
+export type AdmissionStage = 'entering' | 'closing' | 'held';
 
 export class CustodyScene extends Phaser.Scene {
   private human?: Phaser.GameObjects.Sprite;
@@ -8,10 +9,12 @@ export class CustodyScene extends Phaser.Scene {
   private gate?: Phaser.GameObjects.Container;
   private ready = false;
   private finishTimer?: ReturnType<typeof setTimeout>;
+  private admissionTimers: Array<ReturnType<typeof setTimeout>> = [];
+  private admissionPending = false;
   private mode: CustodyMode = 'waiting';
   private done?: () => void;
   private reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  constructor(private character: CharacterAsset) {super('custody');}
+  constructor(private character: CharacterAsset, private onAdmissionStage?: (stage:AdmissionStage)=>void) {super('custody');}
   preload() {
     this.load.image('jail-room','/assets/cinematics/jail.png');
     this.load.atlas('detainee',this.character.path,this.character.atlasPath!);
@@ -28,21 +31,28 @@ export class CustodyScene extends Phaser.Scene {
     this.anims.create({key:'detainee-walk',frames:this.character.walkFrames.map(frame=>({key:'detainee',frame})),frameRate:7,repeat:-1});
     this.anims.create({key:'wolf-breathe',frames:['0','1','2','3'].map(frame=>({key:'wolf-reveal',frame})),frameRate:4,repeat:-1});
     this.gate=this.add.container(0,0).setDepth(5);
-    for (let x=324;x<=636;x+=26) this.gate.add(this.add.rectangle(x,210,6,328,0x253735).setStrokeStyle(1,0x819080));
-    this.gate.add([this.add.rectangle(480,46,318,10,0x34463d),this.add.rectangle(480,374,318,10,0x34463d)]);
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN,()=>{clearTimeout(this.finishTimer);});
-    this.events.once(Phaser.Scenes.Events.DESTROY,()=>{clearTimeout(this.finishTimer);});
+    for (let x=324;x<=636;x+=26) this.gate.add(this.add.rectangle(x,210,6,328,0x253735).setName('gate-bar').setStrokeStyle(1,0x819080));
+    this.gate.add([this.add.rectangle(480,46,318,10,0x34463d).setName('gate-rail'),this.add.rectangle(480,374,318,10,0x34463d).setName('gate-rail')]);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN,()=>this.clearTimers());
+    this.events.once(Phaser.Scenes.Events.DESTROY,()=>this.clearTimers());
     this.ready=true;this.applyMode();
   }
-  setMode(mode:CustodyMode,done?:()=>void) {
-    if(this.mode===mode && this.ready) {if(done)done();return;}
+  setMode(mode:CustodyMode,done?:()=>void,admit=false) {
+    if(this.mode===mode && this.ready && !admit) {if(done)done();return;}
+    this.admissionPending=admit && mode==='waiting';
     this.mode=mode;this.done=done;if(this.ready)this.applyMode();
   }
   private applyMode() {
     if(!this.human || !this.wolf || !this.gate)return;
+    this.clearTimers();
+    this.tweens.killTweensOf([this.human,this.wolf,this.gate]);
+    // A server phase change interrupts admission safely, with the person in custody.
+    this.human.setPosition(480,370).setAlpha(1).stop().setFrame(this.character.frameNames?.[0] ?? 0);
+    this.wolf.setVisible(false);this.gate.setX(0);
     if(this.mode==='waiting' || this.mode==='night') {
-      this.human.setPosition(480,370).setAlpha(1).stop().setFrame(this.character.frameNames?.[0] ?? 0);
-      this.wolf.setVisible(false);this.gate.setX(0);
+      if(this.admissionPending && !this.reduced) this.admit();
+      else this.onAdmissionStage?.('held');
+      this.admissionPending=false;
     } else if(this.mode==='transformed') {
       this.wolf.setVisible(true).setAlpha(this.reduced?1:0);
       if(!this.reduced)this.wolf.play('wolf-breathe');
@@ -56,6 +66,40 @@ export class CustodyScene extends Phaser.Scene {
       this.tweens.add({targets:this.human,x:1050,delay:this.reduced?0:1050,duration:this.reduced?0:1300});
       this.finishTimer=setTimeout(()=>this.done?.(),this.reduced?150:2500);
     }
+  }
+  private clearTimers() {
+    clearTimeout(this.finishTimer);
+    this.admissionTimers.forEach(clearTimeout);this.admissionTimers=[];
+  }
+  update() {
+    if(!this.gate)return;
+    // Clip the native shapes to the doorway in both Canvas and WebGL.
+    // Offscreen bars slide behind the wall; rails shorten at the right jamb.
+    const offset=this.gate.x;
+    for(const child of this.gate.list as Phaser.GameObjects.Rectangle[]) {
+      if(child.name==='gate-bar')child.setVisible(child.x+offset<=639);
+      else {
+        const width=Math.max(0,318-offset);
+        child.setVisible(width>0).setX(480-offset/2).setDisplaySize(Math.max(1,width),10);
+      }
+    }
+  }
+  private admit() {
+    const human=this.human!,gate=this.gate!;
+    gate.setX(330);human.setPosition(245,448).setFlipX(false).play('detainee-walk');
+    this.onAdmissionStage?.('entering');
+    // Walk across the clear foreground, then through the open doorway.
+    this.tweens.add({targets:human,x:480,duration:900,ease:'Linear'});
+    this.tweens.add({targets:human,y:370,delay:900,duration:650,ease:'Linear'});
+    this.tweens.add({targets:gate,x:0,delay:1550,duration:600,ease:'Cubic.easeInOut'});
+    this.admissionTimers.push(setTimeout(()=>{
+      human.setPosition(480,370).stop().setFrame(this.character.frameNames?.[0] ?? 0);
+      this.onAdmissionStage?.('closing');
+    },1550));
+    this.admissionTimers.push(setTimeout(()=>{
+      this.tweens.killTweensOf([human,gate]);gate.setX(0);
+      this.onAdmissionStage?.('held');
+    },2250));
   }
 }
 export function makeCustodyGame(parent:HTMLElement,scene:CustodyScene) {

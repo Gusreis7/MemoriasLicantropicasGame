@@ -464,7 +464,7 @@ async function applyCase(next: CasePublic, initial = false) {
       conversation = null; dialogueNPC = null; exitBoundary = new ExitBoundary();
       if (previous?.detained_npc_id && next.journal.at(-1)?.detention_outcome === 'released') await showCustody(previous.detained_npc_id,'released');
       renderJournal(); setModal('journal'); $('#read-journal').focus();
-    } else if (next.detained_npc_id) {void showCustody(next.detained_npc_id,'waiting');}
+    } else if (next.detained_npc_id) {void showCustody(next.detained_npc_id,'waiting',previous?.detained_npc_id!==next.detained_npc_id);}
     else if (modal === 'phase' || modal === 'custody') setModal(null);
   } catch {toast('A manhã chegou. Estamos atualizando os caminhos da cidade.');}
   finally {transitioning = pendingWorldSync; scene?.setInputEnabled(modal === null && !caseClock.blocked() && !transitioning);}
@@ -488,7 +488,7 @@ function renderClock() {
     : caseState.phase === 'night' ? `A manhã se aproxima · ${formatClock(caseClock.seconds())}` : 'Aguardando confirmação da cidade…';
 }
 
-function showCustody(npcID:string,mode:CustodyMode):Promise<void> {
+function showCustody(npcID:string,mode:CustodyMode,admit=false):Promise<void> {
   const asset=manifest.characters.find(c=>c.id===npcID);
   if(!asset)return Promise.resolve();
   const name=npcName(npcID);
@@ -497,8 +497,15 @@ function showCustody(npcID:string,mode:CustodyMode):Promise<void> {
   $('#custody-caption').textContent=mode==='transformed' ? `${name} se transformou. Floriano desvendou o caso.` : mode==='released' ? `${name} não se transformou e será ${words.release}. A investigação continua.` : 'A acusação ainda não confirma a culpa. Floriano aguarda os acontecimentos da noite.';
   $('#custody-canvas').setAttribute('aria-label',`Delegacia com a mesa do delegado à esquerda, ${name} na cela central e bancos de espera à direita`);
   $('#leave-custody').hidden=mode!=='waiting';setModal('custody');
-  if(!custodyScene || custodyNpc!==npcID){custodyGame?.destroy(true);custodyNpc=npcID;custodyScene=new CustodyScene(asset);custodyGame=makeCustodyGame($('#custody-canvas'),custodyScene);}
-  return new Promise(resolve=>{custodyScene!.setMode(mode,resolve);if(mode==='waiting'||mode==='night')resolve();});
+  if(!custodyScene || custodyNpc!==npcID){
+    custodyGame?.destroy(true);custodyNpc=npcID;
+    custodyScene=new CustodyScene(asset,stage=>{
+      if(custodyNpc!==npcID || modal!=='custody' || caseState?.detained_npc_id!==npcID)return;
+      $('#custody-caption').textContent=stage==='entering' ? `${name} caminha para dentro da cela.` : stage==='closing' ? 'A grade se fecha. A noite trará a resposta.' : 'A acusação ainda não confirma a culpa. Floriano aguarda os acontecimentos da noite.';
+    });
+    custodyGame=makeCustodyGame($('#custody-canvas'),custodyScene);
+  }
+  return new Promise(resolve=>{custodyScene!.setMode(mode,resolve,admit);if(mode==='waiting'||mode==='night')resolve();});
 }
 
 function showPhase() {
