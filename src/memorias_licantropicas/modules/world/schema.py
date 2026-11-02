@@ -51,6 +51,8 @@ class VisibleNPC(Contract):
     x: float
     sprite_id: str
     can_approach: bool
+    activity: Literal["idle", "talking"] = "idle"
+    social_partner_id: str | None = None
 
 
 class WorldSnapshot(Contract):

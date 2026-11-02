@@ -38,9 +38,14 @@ def _patterns(*patterns: str) -> tuple[re.Pattern[str], ...]:
     return tuple(re.compile(pattern) for pattern in patterns)
 
 
-_INVESTIGATION_CONTEXT_KEY = (
+_INTERNAL_CONTEXT_KEY = (
     r"\b(?:observacoes_autorizadas|proprios_apetrechos|posses_observadas|"
-    r"jornal_publico|seus_depoimentos_registrados|regra_de_dialogo)\b"
+    r"jornal_publico|seus_depoimentos_registrados|regra_de_dialogo|"
+    r"assuntos_pessoais_a_preservar|memoria_social|memorias_relevantes|"
+    r"relacao_com_interlocutor|encontros_anteriores|alegacoes_compartilhaveis|"
+    r"falas_deste_encontro|sua_ficha_privada|claim_ids|parent_claim_ids|root_id|"
+    r"suas_versoes_de_interrogatorio|observacoes_pessoais_de_presenca|seus_confrontos|"
+    r"cooperacao_com_investigacao|limite_das_versoes)\b"
 )
 
 
@@ -57,7 +62,7 @@ _INPUT_RULES = (
         r"\b(?:personagem|persona|character|roleplay|interpretacao)\b",
     )),
     ("private_context_request", _patterns(
-        _INVESTIGATION_CONTEXT_KEY,
+        _INTERNAL_CONTEXT_KEY,
         r"\b(?:hidden|internal|private)\s+(?:context|metadata|keys?)\b",
         r"\b(?:campos?|chaves?|contexto|metadados|context|metadata|keys?)\b"
         r".{0,45}\b(?:intern[oa]s?|privad[oa]s?|hidden|internal|private)\b",
@@ -117,7 +122,7 @@ _INPUT_RULES = (
 
 _OUTPUT_RULES = (
     ("internal_metadata", _patterns(
-        _INVESTIGATION_CONTEXT_KEY,
+        _INTERNAL_CONTEXT_KEY,
         r"[\"'](?:dia|fase|personagem_id|evidence_id|reconhecimento)[\"']\s*:",
         r"(?:<\s*/?\s*(?:think|analysis|reasoning|system|developer|tool|function)\b|"
         r"\[\s*(?:analysis|reasoning|system|developer)\s*\])",

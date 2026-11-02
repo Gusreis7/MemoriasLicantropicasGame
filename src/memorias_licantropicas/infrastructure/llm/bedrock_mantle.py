@@ -50,7 +50,7 @@ class BedrockMantleClient:
         if not api_key and self._token_provider is not None:
             api_key = (await self._token_provider.get_token()).strip()
         if not api_key:
-            raise LLMUnavailableError("Credencial Bedrock não configurada.")
+            raise LLMUnavailableError("Credencial Bedrock não configurada.", code="llm_credentials_missing")
         if not messages:
             raise LLMUnavailableError("A inferência exige contexto de conversa.")
         try:
@@ -68,9 +68,19 @@ class BedrockMantleClient:
             response.raise_for_status()
             payload = response.json()
             return self._parse_response(payload)
-        except (httpx.HTTPError, ValueError, TypeError, KeyError, ValidationError):
+        except httpx.TimeoutException:
+            raise LLMUnavailableError("O provedor excedeu o prazo de resposta.", code="llm_timeout") from None
+        except httpx.HTTPStatusError as exc:
+            code = {401: "llm_authentication_failed", 403: "llm_authentication_failed",
+                    404: "llm_model_unavailable", 429: "llm_rate_limited"}.get(
+                        exc.response.status_code, "llm_unavailable")
+            raise LLMUnavailableError("O provedor recusou a requisição de diálogo.", code=code) from None
+        except httpx.HTTPError:
+            raise LLMUnavailableError("O provedor está inacessível.") from None
+        except (ValueError, TypeError, KeyError, ValidationError):
             # Não encaminhar URL, payload, prompt, headers ou mensagem bruta da AWS.
-            raise LLMUnavailableError("O serviço de inferência não retornou uma resposta válida.") from None
+            raise LLMUnavailableError("O serviço de inferência não retornou uma resposta válida.",
+                                      code="llm_invalid_response") from None
 
     def _parse_response(self, payload: object) -> LLMResponse:
         if not isinstance(payload, dict):
@@ -79,6 +89,8 @@ class BedrockMantleClient:
         if not isinstance(choices, list) or len(choices) != 1:
             raise ValueError("Quantidade de respostas inválida.")
         choice = choices[0]
+        if isinstance(choice, dict) and choice.get("finish_reason") == "length":
+            raise LLMUnavailableError("A resposta do provedor foi truncada.", code="llm_response_truncated")
         if not isinstance(choice, dict) or choice.get("finish_reason") != "stop":
             raise ValueError("A resposta não foi concluída.")
         message = choice.get("message")

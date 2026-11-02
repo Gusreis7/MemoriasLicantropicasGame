@@ -57,4 +57,28 @@ describe('movimento e abordagem', () => {
     expect(controller.world.player.movement_seq).toBe(8);
     expect(controller.direction).toBe('idle');
   });
+
+  it('atualiza a vida dos NPCs sem interromper a caminhada prevista', () => {
+    const changed = vi.fn();
+    const controller = new MovementController(snapshot(), vi.fn(), vi.fn(), changed, vi.fn());
+    controller.x = 207; controller.direction = 'right';
+    const social = {...snapshot(), revision: 2, visible_npcs: []};
+    expect(controller.observe(social)).toBe(true);
+    expect(controller.x).toBe(207);
+    expect(controller.direction).toBe('right');
+    expect(controller.world.visible_npcs).toEqual([]);
+    expect(controller.observe(snapshot())).toBe(false);
+    expect(controller.observe({...social, revision: 3, player: {...social.player, movement_seq: 7}})).toBe(false);
+  });
+
+  it('descarta observação recebida enquanto um comando aguarda confirmação', async () => {
+    let resolve: (world: WorldSnapshot) => void = () => {};
+    const send = vi.fn().mockImplementation(() => new Promise<WorldSnapshot>(done => {resolve = done;}));
+    const controller = new MovementController(snapshot(), send, vi.fn(), vi.fn(), vi.fn());
+    controller.update(16, 'right');
+    expect(controller.observe({...snapshot(), revision: 4, visible_npcs: []})).toBe(false);
+    resolve({...snapshot(), revision: 1});
+    await Promise.resolve(); await Promise.resolve();
+    controller.dispose();
+  });
 });

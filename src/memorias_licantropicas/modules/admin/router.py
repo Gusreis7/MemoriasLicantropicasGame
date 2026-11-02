@@ -9,6 +9,8 @@ from memorias_licantropicas.modules.admin.schema import (
     LoginRequest, Page, SessionPublic,
 )
 from memorias_licantropicas.modules.admin.service import AdminService
+from memorias_licantropicas.contracts.social import SocialState
+from memorias_licantropicas.contracts.usage import UsageSummary
 
 
 async def no_cache(response: Response):
@@ -90,6 +92,16 @@ async def messages(game_id: UUID, conversation_id: UUID, user: User, service: Se
 @router.get("/games/{game_id}/interactions", response_model=Interactions)
 async def interactions(game_id: UUID, user: User, service: Service):
     return await service.interactions(game_id)
+
+
+@router.get("/games/{game_id}/social", response_model=SocialState)
+async def social(game_id: UUID, user: User, service: Service):
+    return await service.social(game_id)
+
+
+@router.get("/games/{game_id}/usage", response_model=UsageSummary)
+async def usage(game_id: UUID, user: User, service: Service):
+    return await service.usage(game_id)
 
 
 @router.get("/health")

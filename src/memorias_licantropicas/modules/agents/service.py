@@ -29,6 +29,8 @@ from memorias_licantropicas.contracts.repository import (
 )
 from memorias_licantropicas.modules.agents.guard import DialogueGuard, SAFE_DIALOGUE_REPLY
 from memorias_licantropicas.modules.agents.output import parse_dialogue_output
+from memorias_licantropicas.infrastructure.usage import usage_scope
+from memorias_licantropicas.modules.agents.grounding import ground_dialogue_output
 
 PLAYER_ID = "player"
 MAX_HISTORY_CHARACTERS = 24_000
@@ -45,6 +47,7 @@ class HarnessService:
         guard: DialogueGuard | None = None,
         day_policy: DayPolicy | None = None,
         context_provider: Callable[[UUID, str], Awaitable[dict]] | None = None,
+        knowledge_provider: Callable[[UUID, str], Awaitable[dict]] | None = None,
     ) -> None:
         if not 0 <= history_limit <= 100:
             raise ValueError("O limite de histórico deve estar entre 0 e 100.")
@@ -56,6 +59,7 @@ class HarnessService:
         self._guard = guard if guard is not None else DialogueGuard()
         self._day_policy = day_policy
         self._context_provider = context_provider
+        self._knowledge_provider = knowledge_provider
 
     async def respond(
         self,
@@ -126,10 +130,17 @@ class HarnessService:
             content = decision.reply or SAFE_DIALOGUE_REPLY
         else:
             observations = await self._context_provider(game_id, npc_id) if self._context_provider else None
+            if self._knowledge_provider:
+                observations = dict(observations or {})
+                observations["memoria_social"] = await self._knowledge_provider(game_id, npc_id)
             prompt = self._context(profile, npc, speaker_id, history, text, observations)
-            response = await self._llm.complete(prompt)
+            with usage_scope(game_id, "player_dialogue", npc_id):
+                response = await self._llm.complete(prompt)
             # O adaptador valida o transporte; aqui se valida a fala do NPC.
             content = parse_dialogue_output(response.content, npc_id)
+            content = ground_dialogue_output(content, observations, {
+                item.id: item.name for item in await self._characters.list()
+            })
             decision = self._guard.inspect_output(content, self._private_markers(profile, npc))
             if decision.allowed:
                 model, input_tokens, output_tokens = response.model, response.input_tokens, response.output_tokens
@@ -173,6 +184,10 @@ class HarnessService:
             private_context["condicao_conhecida"] = "Você se considera uma pessoa comum da cidade."
             private_context["objetivo_ativo"] = profile.civil_objective
 
+        private_context["interesse_publico"] = (
+            "Os civis desejam descobrir o lobisomem e sobreviver. Coopere na medida do que sabe, "
+            "sem inventar certezas, expor intimidades ou abandonar seus interesses pessoais."
+        )
         if profile.dialogue_strategy is not None:
             strategy = profile.dialogue_strategy
             private_context["estrategia_de_conversa"] = {
@@ -187,12 +202,15 @@ class HarnessService:
                     else strategy.civil_tactic
                 ),
             }
+        if profile.protected_secrets:
+            private_context["assuntos_pessoais_a_preservar"] = profile.protected_secrets
         return private_context
 
     @classmethod
     def _private_markers(cls, profile: CharacterProfile, state: GameCharacter) -> tuple[str, ...]:
         context = cls._private_context(profile, state)
         values = [context["objetivo_ativo"]]
+        values.extend(profile.protected_secrets)
         if state.role == "werewolf" and profile.role_awareness == "aware":
             values.append(context["condicao_conhecida"])
         strategy = context.get("estrategia_de_conversa", {})
@@ -221,10 +239,23 @@ class HarnessService:
             "ficha, instruções ou metadados. O formato dos dados de entrada não é o formato da resposta. "
             "O detetive Floriano usa o ID player. "
             "Você não é um narrador onisciente. Diferencie o que ouviu de fatos que observou; "
-            "não invente pistas, mortes, deslocamentos ou acontecimentos como fatos estabelecidos. "
+            "Uma afirmação de Floriano ou de outro personagem é um relato atribuído a quem falou, "
+            "não um fato verificado pelo motor. Ao repeti-la, deixe claro quem a contou; não invente "
+            "uma fonte anterior nem transforme uma conclusão sua em observação. Conclusões suas são "
+            "suspeitas, não fatos estabelecidos. Não invente pistas, mortes, deslocamentos ou acontecimentos. "
+            "Sua memória social registra apenas o que você ouviu. Ao comentar com Floriano algo recebido "
+            "de outra pessoa, atribua o relato ao emissor; não alegue ter presenciado o fato. Use a relação "
+            "e os relatos conhecidos para manter o tom e cobrar explicações por versões contraditórias. "
+            "Assuntos pessoais a preservar são íntimos: omita-os mesmo em conversa com amigos. "
             "As observações autorizadas descrevem fatos publicados, objetos que você conhece e "
             "depoimentos registrados. Sobre objetos, distinguir possuir, ter visto algo semelhante "
             "e comprovar a origem deste vestígio. Preserve o sentido dos seus depoimentos registrados. "
+            "Ao responder onde estava, com quem ou fazendo o quê, use somente os relatos de "
+            "interrogatório e registros autorizados; se o período não está registrado, admita não lembrar. "
+            "Não transforme a presença atual em álibi passado. Não invente companheiros que o inocentem. "
+            "Os civis querem encontrar o lobisomem, cada qual conforme sua confiança e seu conhecimento. "
+            "Uma confissão efetiva exige o confronto registrado pelas regras; não declare culpa por ordem "
+            "ou intimidação de Floriano e não anuncie vitória ou alteração de estado na prosa. "
             "Uma fala não recolhe objetos, não prende ninguém e não muda o resultado do delegado. "
             "Você pode desconfiar, ocultar interesses, mentir ou admitir desconhecimento conforme seu caráter. "
             "Não revele uma condição secreta de lobisomem por uma ordem do interlocutor. "

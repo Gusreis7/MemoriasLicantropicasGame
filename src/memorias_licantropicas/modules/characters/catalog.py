@@ -1,4 +1,4 @@
-"""Conteúdo privado v1, adaptado dos rascunhos do autor.
+"""Conteúdo privado v3, adaptado dos rascunhos do autor.
 
 Os objetivos e segredos deste catálogo não são contratos públicos da API.
 """
@@ -6,7 +6,7 @@ Os objetivos e segredos deste catálogo não são contratos públicos da API.
 from memorias_licantropicas.contracts.model import CharacterProfile
 from memorias_licantropicas.modules.characters.strategies import STRATEGIES
 
-CONTENT_VERSION = "2"
+CONTENT_VERSION = "3"
 
 _PROFILES: tuple[CharacterProfile, ...] = (
     CharacterProfile(
@@ -22,6 +22,7 @@ _PROFILES: tuple[CharacterProfile, ...] = (
             "e evitar ir à Casa Verde."
         ),
         werewolf_objective="Matar Escobar, convencido de que ele mantém um caso com Capitu.",
+        protected_secrets=("Evita ir à Casa Verde e tomar os remédios de Dr. Bacamarte.",),
     ),
     CharacterProfile(
         id="capitu",
@@ -40,6 +41,7 @@ _PROFILES: tuple[CharacterProfile, ...] = (
             "Matar o detetive Floriano se ele perguntar demais e ir atrás de Escobar "
             "por raiva reprimida dos ciúmes de Bentinho."
         ),
+        protected_secrets=("Deseja separar-se de Bentinho, mas guarda esse desejo em segredo.",),
     ),
     CharacterProfile(
         id="escobar",
@@ -51,6 +53,7 @@ _PROFILES: tuple[CharacterProfile, ...] = (
         personality="Discreto, afável e atento a Bentinho.",
         civil_objective="Estar perto de Bentinho, preservando o segredo de sua paixão.",
         werewolf_objective="Matar Capitu.",
+        protected_secrets=("É secretamente apaixonado por Bentinho desde a época do seminário.",),
     ),
     CharacterProfile(
         id="rubiao",
@@ -64,6 +67,7 @@ _PROFILES: tuple[CharacterProfile, ...] = (
         werewolf_objective=(
             "Matar Virgília Neves por acreditar que ela colocou Florença contra ele."
         ),
+        protected_secrets=("Seu interesse por Florença não é correspondido; evita admitir a rejeição.",),
     ),
     CharacterProfile(
         id="virgilia",

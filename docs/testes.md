@@ -9,13 +9,19 @@ Implementada em `feat/test_suits`, criada a partir de `develop` após a integra�
 | `test_games.py` | Todos os sete suspeitos podem ser sorteados; exatamente um lobisomem; elenco inválido, vazio ou duplicado; conflito na criação; partida ausente |
 | `test_api.py` | Criação e leitura pública de partida; catálogo; sorteio não exposto; cliente não pode enviar seed ou papel; isolamento entre partidas; respostas 404/422/503; saúde e OpenAPI |
 | `test_redis.py` | Insert/roundtrip; proibição de sobrescrita; inserts concorrentes; nova conexão; namespaces; dados corrompidos; falha de conexão; participantes elegíveis; append e deduplicação; rejeição atômica de lote conflitante; histórico limitado e privado |
-| `test_harness.py` | Par pergunta/resposta; contexto do encontro anterior; sigilo dos objetivos alheios; negação de Bacamarte; validação do interlocutor; NPC–NPC; falha de inferência sem mensagens parciais; texto inválido |
+| `test_harness.py` | Par pergunta/resposta; contexto do encontro anterior; atribuição de alegações não verificadas; segredos pessoais limitados à persona; sigilo dos objetivos alheios; negação de Bacamarte; validação do interlocutor; NPC–NPC; falha sem mensagens parciais; texto inválido |
 | `test_mantle.py` | URL, bearer token, modelo e payload Chat Completions; texto e consumo retornados; status 401/429/500; saída inválida/truncada; ausência de credencial sem enviar HTTP |
 | `test_conversations.py` | Fluxo HTTP com os sete NPCs, continuidade do histórico, bloqueio de spoofing, falhas, simultaneidade e versão do catálogo |
 | `test_conversation_gate.py` | Reserva compartilhada, liberação, expiração e proteção contra liberação por proprietário antigo |
 | `test_aws_credentials.py` | Perfil e região enviados ao gerador de token; falhas sanitizadas, sem AWS real |
+| `test_social_knowledge.py` | Extração privada, origens e versões, crenças, relações, migração de transcrições antigas, cotas, CAS e fencing |
+| `test_social_service.py` | Agenda, recusa, viagem/caminhada, uma fala por turno, interrupção, noite, budgets e recuperação do worker |
+| `test_social_integration.py` | Outbox atômico e idempotente, privacidade do caderno e autenticação da visão administrativa |
+| `test_social_flow.py` | Fluxo Floriano → Capitu → Virgília → retorno ao detetive, preservando fontes e fatos do caso |
 
 O sorteio é controlado somente em testes parametrizados para verificar cada resultado possível de forma determinística. Não se faz uma asserção estatística sujeita a flutuações aleatórias. Na aplicação a fonte continua sendo `secrets.choice`.
+
+Os cenários narrativos usam respostas simuladas: verificam que alegações anteriores chegam identificadas como fala do jogador, que a instrução de sistema mantém alegações como não verificadas, que a resposta anterior do NPC permanece no contexto e que segredos pessoais protegidos são filtrados antes de salvar o diálogo. Isso verifica a montagem e os limites do contexto; não mede se um modelo real seguirá as instruções em todas as respostas.
 
 ## Execução rápida
 

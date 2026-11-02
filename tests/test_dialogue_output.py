@@ -96,6 +96,25 @@ async def test_private_objective_cannot_be_echoed_to_player(harness, storage, ga
 
 
 @pytest.mark.anyio
+async def test_personal_secret_from_biography_is_filtered_before_persistence(
+    harness, storage, game, llm, catalog, monkeypatch,
+):
+    await storage.games.create(game)
+    secret = (await catalog.get("capitu")).protected_secrets[0]
+
+    async def response(messages):
+        return LLMResponse(content=secret, model="stub")
+
+    monkeypatch.setattr(llm, "complete", response)
+    conversation_id = uuid4()
+    reply = await harness.respond(game.id, "capitu", conversation_id, "player", "O que sente por Bentinho?")
+    assert reply.message.content == SAFE_DIALOGUE_REPLY
+    assert reply.model == "dialogue-guard"
+    history = await storage.memory.list_messages(game.id, conversation_id, "player")
+    assert all(secret not in message.content for message in history)
+
+
+@pytest.mark.anyio
 async def test_blocked_turn_never_calls_model_and_is_not_replayed_as_instruction(harness, storage, game, llm):
     await storage.games.create(game)
     conversation_id = uuid4()

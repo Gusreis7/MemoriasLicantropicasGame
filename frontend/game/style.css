@@ -198,6 +198,15 @@ kbd{font:10px/1.2 Arial,sans-serif;min-width:21px;padding:4px 5px;border:1px sol
 .persona-panel h2{font-size:23px;align-self:start;margin-top:4px}
 .persona-panel>p:last-child,.persona-flourish{display:none}
 .conversation-panel{min-height:0}
+.interrogation-panel{flex-shrink:0;margin:0 18px;padding:7px 0;border-top:1px solid #c8bc9470;font-size:12px;max-height:34vh;overflow:auto}
+.interrogation-panel summary{cursor:pointer;color:var(--ink);padding:5px 0}
+.interrogation-panel .case-note{font-size:11px;margin:6px 0}
+.interrogation-controls{display:flex;gap:8px;align-items:end;flex-wrap:wrap}
+.interrogation-controls label{display:grid;gap:3px;font-size:11px}
+.interrogation-controls input{width:65px}
+.interrogation-controls input,.interrogation-controls select{padding:6px;border:1px solid #bbb28c;background:#f7f1de;color:var(--ink)}
+.confrontation-proofs{max-height:120px;overflow:auto;margin-bottom:6px}
+.interrogation-panel .proof-choice{font-size:11px}
 .conversation-heading{height:46px;min-height:46px;padding:0 17px}
 .messages{padding:20px 18px}
 .message-content{font-size:14px}

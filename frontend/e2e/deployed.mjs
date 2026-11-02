@@ -33,11 +33,16 @@ try {
     console.log('Uma resposta real da persona foi recebida e persistida.');
   }
   const gameID = await page.evaluate(() => localStorage.getItem('memorias-licantropicas:game'));
+  await page.locator('#interrogation-panel > summary').click();
+  await page.locator('#interrogate-button').click();
+  await page.waitForFunction(() => !document.querySelector('#interrogate-button').disabled);
+  assert.match(await page.locator('#interrogation-status').textContent(), /período|Naquele|Não consigo/);
   const publicCase = await (await page.request.get(`http://localhost:7077/api/v1/games/${gameID}/investigation`)).json();
   assert.equal(publicCase.phase, 'day');
   assert.equal(publicCase.journal.at(-1).title, 'O Clarim do Rio');
   assert.equal(publicCase.crimes[0].remaining_clues, 2);
   assert.equal(publicCase.ending, null);
+  assert.equal(publicCase.interrogations.length, 1);
   assert.equal((await page.request.post('http://localhost:7079/api/__test__/clock', {data: {seconds: 300}})).status(), 404);
   const worldBefore = await (await page.request.get(`http://localhost:7077/api/v1/games/${gameID}/world`)).json();
   assert.equal(worldBefore.location.width, 960);
@@ -65,6 +70,13 @@ try {
   assert.equal(await page.locator('.role-badge.wolf').count(), 1);
   assert.equal(await page.locator('#cycle-section').isVisible(), true);
   assert.match(await page.locator('#cycle-summary').textContent(), /Dia 1/);
+  await page.locator('#usage-section').waitFor({state: 'visible'});
+  const usage = await (await page.request.get(`http://localhost:7078/admin/api/v1/games/${gameID}/usage`)).json();
+  if (process.env.REAL_LLM_SMOKE === '1') {
+    assert.ok(usage.totals.completed_calls >= 1);
+    assert.ok(usage.totals.known_input_tokens > 0);
+    assert.ok(Number(usage.totals.known_estimated_cost_usd) > 0);
+  }
   await page.screenshot({path: '../artifacts/deployed-admin.png', fullPage: true});
   await page.locator('#logout').click();
   await page.locator('#login-view').waitFor({state: 'visible'});

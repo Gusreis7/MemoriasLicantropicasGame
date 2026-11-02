@@ -3,9 +3,11 @@ import json
 from uuid import UUID, uuid4
 
 import pytest
+import httpx
 
-from memorias_licantropicas.contracts.errors import LLMUnavailableError
-from memorias_licantropicas.contracts.model import Conversation
+from memorias_licantropicas.contracts.errors import LLM_PUBLIC_DETAILS, LLMUnavailableError, StorageUnavailableError
+from memorias_licantropicas.contracts.model import Conversation, LLMResponse
+from memorias_licantropicas.infrastructure.llm.bedrock_mantle import BedrockMantleClient
 
 pytestmark = pytest.mark.anyio
 
@@ -77,6 +79,86 @@ async def test_failure_keeps_history_empty_and_releases_gate(api_client, storage
     assert (await api_client.get(url)).json()["messages"] == []
     llm.error = None
     assert (await api_client.post(url, json={"content": "Olá"})).status_code == 200
+
+
+@pytest.mark.parametrize("code", [*LLM_PUBLIC_DETAILS, "unknown-private-provider-code"])
+async def test_http_dialogue_error_exposes_only_whitelisted_diagnostic(api_client, storage, llm, caplog, code):
+    game, conversation = await open_conversation(api_client, storage)
+    url = f'/api/v1/games/{game["id"]}/conversations/{conversation["id"]}/messages'
+    raw_private = "PRIVATE_PROVIDER_BODY PRIVATE_API_KEY PRIVATE_PROFILE PRIVATE_PROMPT"
+    llm.error = LLMUnavailableError(raw_private, code=code)
+    expected_code = code if code in LLM_PUBLIC_DETAILS else "llm_unavailable"
+    response = await api_client.post(url, json={"content": "O que ouviu hoje?"})
+    assert response.status_code == 503
+    assert response.json() == {"detail": LLM_PUBLIC_DETAILS[expected_code], "code": expected_code}
+    assert (await api_client.get(url)).json()["messages"] == []
+    diagnostic_logs = [record.getMessage() for record in caplog.records
+                       if record.name == "memorias_licantropicas.main"]
+    assert diagnostic_logs == [f"dialogue_unavailable code={expected_code}"]
+    assert all(secret not in response.text + caplog.text for secret in raw_private.split())
+    if code not in LLM_PUBLIC_DETAILS:
+        assert code not in response.text + caplog.text
+
+
+async def test_storage_503_keeps_its_original_public_contract(api_client, storage, llm):
+    game, conversation = await open_conversation(api_client, storage)
+    url = f'/api/v1/games/{game["id"]}/conversations/{conversation["id"]}/messages'
+    llm.error = StorageUnavailableError("private-redis-diagnostic")
+    response = await api_client.post(url, json={"content": "Olá"})
+    assert response.status_code == 503
+    assert response.json() == {"detail": "Persistência temporariamente indisponível."}
+    assert "private-redis-diagnostic" not in response.text
+
+
+@pytest.mark.parametrize("with_profile,code", [
+    (False, "llm_credentials_missing"), (True, "llm_credentials_unavailable"),
+])
+async def test_missing_or_expired_credentials_do_not_send_http_or_save_half_dialogue(
+    api_client, storage, llm, monkeypatch, caplog, with_profile, code,
+):
+    import memorias_licantropicas.infrastructure.llm.aws_credentials as credentials_module
+
+    game, conversation = await open_conversation(api_client, storage)
+    url = f'/api/v1/games/{game["id"]}/conversations/{conversation["id"]}/messages'
+    raw_private = "PRIVATE_TOKEN_CACHE PRIVATE_AWS_PROFILE PRIVATE_PROMPT"
+    def fail_credentials(**kwargs):
+        raise RuntimeError(raw_private)
+    def forbidden(request):
+        pytest.fail("Credenciais indisponíveis não podem disparar HTTP ao provedor")
+    monkeypatch.setattr(credentials_module, "provide_token", fail_credentials)
+    provider = credentials_module.ProfileTokenProvider("PRIVATE_AWS_PROFILE", "us-east-1") if with_profile else None
+    client = BedrockMantleClient(base_url="https://example.invalid/v1", api_key=None, model="test-model",
+                                 timeout_seconds=1, max_tokens=64, token_provider=provider)
+    await client._client.aclose()
+    client._client = httpx.AsyncClient(base_url="https://example.invalid/v1/", transport=httpx.MockTransport(forbidden))
+    original_complete = llm.complete
+    monkeypatch.setattr(llm, "complete", client.complete)
+    try:
+        response = await api_client.post(url, json={"content": "Minha pergunta privada sobre a cidade."})
+        assert response.status_code == 503
+        assert response.json() == {"code": code, "detail": LLM_PUBLIC_DETAILS[code]}
+        assert (await api_client.get(url)).json()["messages"] == []
+        outbox = f'{storage.prefix}:game:{{{game["id"]}}}:social:exchanges'
+        assert await storage.client.llen(outbox) == 0
+        assert all(secret not in response.text + caplog.text for secret in raw_private.split())
+        monkeypatch.setattr(llm, "complete", original_complete)
+        assert (await api_client.post(url, json={"content": "Podemos tentar outra vez?"})).status_code == 200
+        assert len((await api_client.get(url)).json()["messages"]) == 2
+    finally:
+        await client.aclose()
+
+
+async def test_invalid_persona_output_returns_safe_specific_diagnostic(api_client, storage, llm, monkeypatch, caplog):
+    game, conversation = await open_conversation(api_client, storage)
+    url = f'/api/v1/games/{game["id"]}/conversations/{conversation["id"]}/messages'
+    async def invalid(messages):
+        return LLMResponse(content='<think>PRIVATE_PROVIDER_REASONING</think>Olá', model="stub")
+    monkeypatch.setattr(llm, "complete", invalid)
+    response = await api_client.post(url, json={"content": "Olá"})
+    assert response.status_code == 503
+    assert response.json() == {"code": "llm_invalid_response", "detail": LLM_PUBLIC_DETAILS["llm_invalid_response"]}
+    assert "PRIVATE_PROVIDER_REASONING" not in response.text + caplog.text
+    assert (await api_client.get(url)).json()["messages"] == []
 
 
 async def test_concurrent_messages_are_rejected_until_first_finishes(api_client, storage, llm, monkeypatch):

@@ -31,7 +31,7 @@ class RedisConversationGate:
             async with asyncio.timeout(self._timeout):
                 yield
         except TimeoutError:
-            raise LLMUnavailableError("A conversa excedeu o tempo de resposta.") from None
+            raise LLMUnavailableError("A conversa excedeu o tempo de resposta.", code="llm_timeout") from None
         finally:
             # Só o dono pode liberar a reserva; não remove eventual reserva posterior.
             try:

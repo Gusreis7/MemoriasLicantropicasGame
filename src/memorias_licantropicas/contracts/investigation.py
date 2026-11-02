@@ -72,6 +72,57 @@ class JournalEdition(Contract):
     detention_outcome: Literal["none", "released", "transformed"] = "none"
 
 
+class ActivityRecord(Contract):
+    """Registro privado do motor; não confundir com versão declarada em interrogatório."""
+    id: UUID
+    npc_id: str
+    day: int = Field(ge=0)
+    period: Literal["day", "night"]
+    location_id: LocationID
+    companion_ids: tuple[str, ...] = ()
+    activity: str
+    observed_by: tuple[str, ...] = ()
+    source: Literal["initial_scenario", "world_snapshot", "night_resolution"]
+    occurred_at: AwareDatetime
+
+
+class ActivityClaim(Contract):
+    npc_id: str
+    location_id: LocationID
+    companion_ids: tuple[str, ...] = ()
+    activity: str
+    source: Literal["observed", "heard"] = "observed"
+
+
+class Interrogation(Contract):
+    id: UUID
+    npc_id: str
+    day: int = Field(ge=0)
+    period: Literal["day", "night"]
+    location_id: LocationID | None
+    companion_ids: tuple[str, ...] = ()
+    activity: str
+    text: str
+    observations: tuple[ActivityClaim, ...] = ()
+    truthful: bool
+    source_record_ids: tuple[UUID, ...] = ()
+    created_at: AwareDatetime
+
+
+class Confrontation(Contract):
+    id: UUID
+    npc_id: str
+    day: int
+    evidence_ids: tuple[UUID, ...] = ()
+    testimony_ids: tuple[UUID, ...] = ()
+    interrogation_ids: tuple[UUID, ...] = ()
+    confessed: bool = False
+    text: str
+    # Pontuação e dificuldade são privados; nunca retorná-los no HTTP.
+    pressure: int = 0
+    created_at: AwareDatetime
+
+
 class InvestigationState(Contract):
     game_id: UUID
     revision: int = Field(default=0, ge=0)
@@ -85,6 +136,10 @@ class InvestigationState(Contract):
     accusations: tuple[Accusation, ...] = ()
     journal: tuple[JournalEdition, ...] = ()
     detained_npc_id: str | None = None
+    activity_records: tuple[ActivityRecord, ...] = ()
+    interrogations: tuple[Interrogation, ...] = ()
+    confrontations: tuple[Confrontation, ...] = ()
+    ending_method: Literal["detention", "confession", "survival"] | None = None
 
 
 class CaseEvent(Contract):

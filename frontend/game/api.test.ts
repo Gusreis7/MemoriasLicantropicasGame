@@ -4,6 +4,23 @@ import {api, ApiError, request, type WorldSnapshot} from '../shared/api';
 afterEach(() => vi.unstubAllGlobals());
 
 describe('contratos HTTP do jogo', () => {
+  it('interroga um período e confronta com referências sem escolher confissão ou culpa', async () => {
+    const fetch = vi.fn().mockImplementation(() => Promise.resolve(new Response('{}', {status: 200})));
+    vi.stubGlobal('fetch', fetch);
+    await api.interrogate('case', 'capitu', 0, 'night');
+    expect(fetch.mock.calls[0][0]).toBe('/api/v1/games/case/interrogations');
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({npc_id: 'capitu', day: 0, period: 'night'});
+    await api.confront('case', 'capitu', ['ev'], ['statement'], ['alibi']);
+    expect(fetch.mock.calls[1][0]).toBe('/api/v1/games/case/confrontations');
+    expect(JSON.parse(fetch.mock.calls[1][1].body)).toEqual({npc_id: 'capitu', evidence_ids: ['ev'], testimony_ids: ['statement'], interrogation_ids: ['alibi']});
+  });
+  it('consulta apenas relatos ouvidos pelo jogador, sem pedir estado social privado', async () => {
+    const fetch = vi.fn().mockResolvedValue(new Response('{"reports":[]}', {status: 200}));
+    vi.stubGlobal('fetch', fetch);
+    await expect(api.reports('game-id')).resolves.toEqual({reports: []});
+    expect(fetch.mock.calls[0][0]).toBe('/api/v1/games/game-id/social/reports');
+    expect(fetch.mock.calls[0][1].method).toBe('GET');
+  });
   it('aborda enviando somente a persona e envia somente texto na conversa', async () => {
     const fetch = vi.fn().mockResolvedValue(new Response('{}', {status: 200}));
     vi.stubGlobal('fetch', fetch);
@@ -30,6 +47,17 @@ describe('contratos HTTP do jogo', () => {
   it('preserva status HTTP para recuperar conflitos e indisponibilidade', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({detail: 'Estado mudou'}), {status: 409})));
     await expect(request('/api/v1/games/game/world')).rejects.toMatchObject({status: 409, message: 'Estado mudou'});
+  });
+
+  it('preserva o código seguro do provedor sem tratar toda indisponibilidade como erro de conversa', async () => {
+    const fetch = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({
+      detail: 'Não foi possível renovar a autorização.', code: 'llm_credentials_unavailable',
+    }), {status: 503})).mockResolvedValueOnce(new Response(JSON.stringify({detail: 'Persistência indisponível.'}), {status: 503}));
+    vi.stubGlobal('fetch', fetch);
+    await expect(api.send('game', 'conversation', 'Olá')).rejects.toMatchObject({
+      status: 503, code: 'llm_credentials_unavailable', message: 'Não foi possível renovar a autorização.',
+    });
+    await expect(api.world('game')).rejects.toMatchObject({status: 503, code: undefined, message: 'Persistência indisponível.'});
   });
 
   it('não repete envio quando a rede falha', async () => {

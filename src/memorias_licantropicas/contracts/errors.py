@@ -17,5 +17,21 @@ class StorageUnavailableError(Exception):
     pass
 
 
+LLM_PUBLIC_DETAILS = {
+    "llm_unavailable": "O serviço de diálogo está temporariamente indisponível.",
+    "llm_credentials_missing": "O serviço de diálogo está sem autenticação configurada no servidor.",
+    "llm_credentials_unavailable": "A autenticação do serviço de diálogo precisa ser renovada no servidor.",
+    "llm_authentication_failed": "O serviço de diálogo recusou a autenticação do servidor.",
+    "llm_rate_limited": "O serviço de diálogo atingiu o limite de uso. Aguarde antes de tentar novamente.",
+    "llm_timeout": "O serviço de diálogo demorou além do limite para responder.",
+    "llm_invalid_response": "O personagem não retornou uma resposta válida desta vez.",
+    "llm_response_truncated": "A resposta do personagem foi interrompida antes de terminar.",
+    "llm_model_unavailable": "O modelo de diálogo configurado está indisponível no servidor.",
+}
+
+
 class LLMUnavailableError(Exception):
-    pass
+    def __init__(self, message: str, *, code: str = "llm_unavailable"):
+        super().__init__(message)
+        # Somente códigos conhecidos podem atravessar a fronteira HTTP/logs.
+        self.code = code if code in LLM_PUBLIC_DETAILS else "llm_unavailable"

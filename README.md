@@ -24,9 +24,13 @@ Essas são direções de estudo; as mecânicas e integrações ainda serão defi
 
 A primeira versão visual permite andar lateralmente, viajar entre cinco locais pelo mapa, abordar os sete NPCs e conversar com suas personas, retomando o histórico. Inclui sprites animados, retratos e cenários pixel art. O painel admin autenticado mostra a verdade da partida, transcrições, grafo e eventos.
 
-A suíte comum usa Redis em memória/real e inferência simulada; houve também validação manual separada com Qwen real no ambiente Docker. Motor de crimes, turnos completos, encontros autônomos e condições de vitória ainda são próximas etapas.
+A suíte comum usa Redis em memória/real e inferência simulada; houve também validação manual separada com Qwen real no ambiente Docker. O ciclo já inclui crimes, dias/noites, acusação e desfechos. A convivência acrescenta encontros autônomos entre NPCs, relações direcionais e fofocas com origem rastreável.
 
 ## Planejamento
+
+Os [interrogatórios e confrontos](docs/interrogatorios.md) registram local, companhia e atividade por período. Além da prisão confirmada à noite, é possível vencer por confissão sustentada em provas, com dificuldade própria de cada persona. Os civis colaboram conforme suas lembranças e interesses. No diálogo, abra **Interrogar e confrontar versões**; os registros ficam no caderno.
+
+O [plano desta evolução](docs/plano_interrogatorios_equilibrio.md) define os contratos de implementação. O [relatório das dez simulações](docs/relatorio_simulacoes.md) registra equilíbrio exploratório e avaliação real do Qwen. O [consumo por partida](docs/consumo_llm.md) aparece no admin autenticado, com tokens, chamadas e estimativa USD.
 
 O [planejamento do projeto](docs/planejamento.md) descreve o ciclo do jogo, os módulos, o harness de agentes, a memória, as etapas de desenvolvimento e as decisões ainda em aberto.
 
@@ -35,6 +39,8 @@ O [plano visual aprovado](docs/planejamento_visual.md) detalha a delegação. A 
 A [revisão de exploração e diálogos](docs/revisao_exploracao_dialogos.md) registra cenários compactos, passagens entre locais, figurantes, parser de falas e guarda contra instruções maliciosas, com seus contratos e testes.
 
 O [plano de investigação](docs/plano_investigacao.md) descreve o ciclo de cinco minutos, jornal, vestígios, testemunhos e acusação, além das propostas para a próxima etapa. Os [contratos do ciclo](docs/contratos_ciclo_investigacao.md) fixam as interfaces das frentes.
+
+O [plano de convivência e fofocas](docs/plano_convivencia_fofocas.md), os [contratos compartilhados](docs/contratos_convivencia_fofocas.md) e a [entrega da convivência](docs/entrega_convivencia.md) descrevem memória social, encontros amigáveis/hostis, circulação de relatos e validação.
 
 Os [contratos entre as frentes](docs/contratos_agentes.md) fixam as interfaces e responsabilidades. A [integração da base](docs/base_agentes.md) descreve configuração, uso e limites atuais.
 
@@ -84,6 +90,7 @@ O uv usa a versão de Python indicada em `.python-version`. Para adicionar depen
 - `POST /api/v1/games/{game_id}/conversations/{conversation_id}/messages`: envia `{"content": "O que sabe sobre Brás Cubas?"}` e recebe a fala da persona.
 - `GET /api/v1/games/{game_id}/conversations/{conversation_id}/messages`: recupera o histórico.
 - `GET /api/v1/games/{game_id}/investigation`: relógio, fase, jornal, vestígios recolhidos e depoimentos.
+- `GET /api/v1/games/{game_id}/social/reports`: falas que Floriano efetivamente ouviu, sem acesso a conversas privadas de NPCs.
 - `POST /api/v1/games/{game_id}/crime-scenes/{crime_id}/search`: procura um vestígio próximo.
 - `POST /api/v1/games/{game_id}/evidence/{evidence_id}/present`: apresenta um objeto ao NPC próximo.
 - `POST /api/v1/games/{game_id}/accusations`: entrega objetos e depoimentos ao delegado.
@@ -114,9 +121,13 @@ No jogo: **A/D ou setas** para andar, **E** para abordar, **M** para abrir o map
 
 Cada dia jogável dura cinco minutos reais. A noite dura oito segundos e bloqueia ações; pela manhã, Floriano retorna à banca **O Clarim do Rio** na Praça Verde. O relógio continua durante ausência e as noites vencidas são resolvidas ao retomar. **E** também procura vestígios perto de uma cena. O caderno guarda objetos e depoimentos; durante conversas, use o seletor de vestígios para apresentá-los. O delegado decide com corroboração registrada; a vitória exige confirmar a transformação do preso na noite seguinte. Se todos os civis morrerem, há derrota.
 
+NPCs podem procurar outros personagens, conversar e comentar o que Floriano lhes contou. O caderno inclui relatos ouvidos pelo jogador; o admin mostra também encontros privados, relações e a cadeia de transmissão. Abordar um NPC interrompe sua conversa atual. Até quatro encontros acontecem por dia, nos períodos de60/120/180/240 segundos; NPCs em trânsito ficam temporariamente indisponíveis. `SOCIAL_ENABLED=false` suspende novas inferências sociais e libera encontros em andamento, preservando a memória já registrada. O intervalo do worker é configurado por `SOCIAL_POLL_SECONDS` (padrão1 segundo).
+
 O admin usa senha com hash scrypt, sessão Redis, cookie HTTPOnly/SameSite Strict, expiração, logout e limite de tentativas. Não há credencial padrão embutida; sem senha configurada, o login fica desabilitado. Detalhes em [autenticação/admin](docs/admin.md).
 
 O antigo smoke test foi substituído pelo fluxo do jogo. A API usa bearer explícito ou gera token temporário pelo perfil AWS. Cada mensagem real ao modelo consome a cota/créditos ou gera cobrança conforme a conta. Consulte [entrega visual](docs/entrega_visual.md) para renovar a sessão e executar o teste do build servido.
+
+Se o diálogo retornar503 com o restante do jogo funcionando, consulte o [diagnóstico e bugfix de indisponibilidade de diálogo](docs/bugfix_indisponibilidade_dialogo.md). A autenticação por perfil no Docker depende do overlay `compose.aws-local.yaml`; a saúde da API não valida a credencial Bedrock.
 
 ## Convenção de branches
 
