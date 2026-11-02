@@ -30,3 +30,11 @@
 - Não deve haver blur, brilho radial sobre o papel, `backdrop-filter` nem rotação 3D nos elementos do caderno.
 - Confirmar que os seletores, conteúdos, marcas de falecimento, atalhos e rolagem ainda existem.
 - Reconstruir a aplicação e revisar a tela no Brave após a integração. Não executar a suíte de testes nesta entrega.
+
+## Revisão: papel sem pauta e retratos como figurinhas
+
+- Retomar a paleta clara de papel da janela anterior ao spread; capa em areia, páginas em marfim e lombada discreta.
+- Retirar a pauta e as texturas de linhas do papel.
+- Transformar os cartões horizontais em figurinhas compactas: retrato maior, nome e situação abaixo, borda de papel e pequena fita de fixação. Nenhuma rotação ou filtro suaviza o conteúdo.
+- Distribuir as figurinhas em colunas conforme a largura disponível, sem expandir cada cartão para preencher espaço lateral.
+- Apresentar os vestígios numa coluna na página direita, com ícones maiores e descrições legíveis. Preservar as duas metades iguais e os marcadores de páginas.
