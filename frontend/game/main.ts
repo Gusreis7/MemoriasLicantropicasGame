@@ -26,7 +26,7 @@ app.innerHTML = `
 
       <section id="investigation" class="investigation" aria-label="Sua investigação" hidden>
         <div class="scene-heading"><div><p class="eyebrow">OS CAMINHOS DA INVESTIGAÇÃO</p><h1 id="location-name">Praça Verde</h1></div><button id="open-map" class="button map-button" type="button"><span aria-hidden="true">⌘</span> Mapa da cidade <kbd>M</kbd></button></div>
-        <div class="case-toolbar"><div class="day-clock"><span id="case-day">DIA 1</span><strong id="case-clock" aria-label="Tempo restante do período">05:00</strong><small id="case-phase">A cidade está acordada</small></div><nav aria-label="Ferramentas de investigação"><button id="open-journal" class="button secondary small" type="button">O Clarim do Rio</button><button id="open-notebook" class="button secondary small" type="button">Caderno <span id="evidence-count">0 pistas</span></button><button id="open-assembly" class="button secondary small" type="button">Assembleia da cidade</button><button id="open-delegate" class="button secondary small" type="button">Chamar o delegado</button></nav></div><div class="scene-frame"><div class="frame-corner top-left"></div><div class="frame-corner top-right"></div><div id="game-canvas" aria-label="Cenário lateral. Use as setas para andar e E para conversar." tabindex="0"></div><div class="scene-vignette" aria-hidden="true"></div><div id="scene-loading" class="scene-loading" role="status">Preparando a cidade…</div><div class="world-caption"><span class="caption-dot"></span><span id="world-caption">O bairro guarda suas histórias.</span></div><button id="inspect-crime" class="approach-button inspect-button" type="button" hidden><kbd>E</kbd><span>Procurar vestígios</span></button><button id="approach" class="approach-button" type="button" hidden><kbd>E</kbd><span></span></button></div>
+        <div class="case-toolbar"><div class="day-clock"><span id="case-day">DIA 1</span><strong id="case-clock" aria-label="Tempo restante do período">05:00</strong><small id="case-phase">A cidade está acordada</small></div><nav aria-label="Ferramentas de investigação"><button id="open-journal" class="button secondary small" type="button">O Clarim do Rio</button><button id="open-notebook" class="button secondary small" type="button" title="Abrir ou fechar o caderno (C)">Caderno <kbd>C</kbd> <span id="evidence-count">0 pistas</span></button><button id="open-assembly" class="button secondary small" type="button">Assembleia da cidade</button><button id="open-delegate" class="button secondary small" type="button">Chamar o delegado</button></nav></div><div class="scene-frame"><div class="frame-corner top-left"></div><div class="frame-corner top-right"></div><div id="game-canvas" aria-label="Cenário lateral. Use as setas para andar e E para conversar." tabindex="0"></div><div class="scene-vignette" aria-hidden="true"></div><div id="scene-loading" class="scene-loading" role="status">Preparando a cidade…</div><div class="world-caption"><span class="caption-dot"></span><span id="world-caption">O bairro guarda suas histórias.</span></div><button id="inspect-crime" class="approach-button inspect-button" type="button" hidden><kbd>E</kbd><span>Procurar vestígios</span></button><button id="approach" class="approach-button" type="button" hidden><kbd>E</kbd><span></span></button></div>
         <div class="scene-footer"><div class="touch-controls" aria-label="Caminhar pela cidade"><button id="walk-left" type="button" aria-label="Caminhar para a esquerda">←</button><button id="walk-right" type="button" aria-label="Caminhar para a direita">→</button></div><div class="control-guide"><span><kbd>←</kbd><kbd>→</kbd> Caminhar</span><span><kbd>E</kbd> Conversar</span><span><kbd>M</kbd> Viajar</span></div><span class="connection-label" id="connection-label"><i></i> Caso em andamento</span></div>
         <div class="notebook"><div class="notebook-number">01</div><div><p class="eyebrow">O CADERNO DE FLORIANO</p><h2 id="case-hint-title">Uma boa pergunta abre portas.</h2><p id="case-hint">Aproxime-se de um morador para ouvir sua versão. Procure marcas de cenas do crime e apresente os vestígios recolhidos.</p></div><span class="notebook-ornament" aria-hidden="true">✦</span></div>
       </section>
@@ -40,7 +40,7 @@ app.innerHTML = `
 
   <div id="dialogue-overlay" class="overlay dialogue-overlay" hidden><section class="dialogue-modal" role="dialog" aria-modal="true" aria-labelledby="dialogue-name"><aside class="persona-panel"><div class="persona-frame"><img id="persona-portrait" src="" alt=""/></div><p class="eyebrow">DEPOIMENTO</p><h2 id="dialogue-name"></h2><span class="persona-flourish" aria-hidden="true">— ✦ —</span><p>Nem toda verdade vem à primeira pergunta.</p></aside><div class="conversation-panel"><header class="conversation-heading"><div><span class="conversation-dot"></span><span>Conversa com Floriano</span></div><button id="close-dialogue" class="icon-button" type="button" aria-label="Encerrar conversa">×</button></header><div id="messages" class="messages" role="log" aria-live="polite"></div><div id="dialogue-status" class="status dialogue-status" role="status" aria-live="polite"></div><div id="evidence-presenter" class="evidence-presenter" hidden><label for="present-evidence">Mostrar um vestígio</label><div><select id="present-evidence"></select><button id="present-button" class="button small" type="button">Apresentar</button></div><p id="presentation-status" role="status" aria-live="polite"></p></div><details id="interrogation-panel" class="interrogation-panel"><summary>Interrogar e confrontar versões</summary><p class="case-note">Pergunte onde estava, com quem e o que fazia. Um álibi é uma declaração que pode ser confrontada.</p><div class="interrogation-controls"><label>Dia <input id="interrogation-day" type="number" min="0" value="0"/></label><label>Período <select id="interrogation-period"><option value="night">Noite</option><option value="day">Dia</option></select></label><button id="interrogate-button" class="button small" type="button">Perguntar sobre o álibi</button></div><p id="interrogation-status" role="status" aria-live="polite"></p><details><summary>Confrontar com registros do caderno</summary><p class="case-note">Selecione vestígios, seus depoimentos e versões contraditórias. Insistir sem novos elementos não força uma confissão.</p><div id="confrontation-proofs" class="confrontation-proofs"></div><button id="confront-button" class="button small" type="button">Confrontar e pedir que admita</button><p id="confrontation-status" role="status" aria-live="polite"></p></details></details><form id="message-form" class="message-form"><label class="sr-only" for="message-input">Sua pergunta</label><textarea id="message-input" rows="2" maxlength="8000" placeholder="O que você gostaria de perguntar?" required></textarea><button id="send-message" class="button primary" type="submit" aria-label="Enviar pergunta">Enviar <span aria-hidden="true">→</span></button></form><p class="form-hint">Enter para enviar · Shift + Enter para uma nova linha</p></div></section></div>
   <div id="journal-overlay" class="overlay" hidden><section class="journal-modal case-modal" role="dialog" aria-modal="true" aria-labelledby="journal-title"><header class="newspaper-masthead"><div class="newspaper-dateline"><span>RIO DE JANEIRO</span><span>EDIÇÃO DA MANHÃ</span><button id="close-journal" class="icon-button" type="button" aria-label="Fechar jornal">×</button></div><h2 id="journal-title">O Clarim do Rio</h2><div class="newspaper-edition"><span>NOTÍCIAS DA CIDADE · 1890</span><span id="journal-day"></span></div></header><article class="newspaper-story"><p class="journal-motto">Os acontecimentos da cidade, à luz do dia.</p><p id="journal-death-toll" class="journal-death-toll"></p><h3 id="journal-headline"></h3><figure id="journal-victim" class="journal-victim" hidden><img id="journal-victim-image" alt=""/><figcaption id="journal-victim-caption"></figcaption></figure><figure id="journal-snapshot" class="journal-snapshot" hidden><img id="journal-image" src="/assets/press/crime-scene-snapshot.png" alt="Registro monocromático de uma rua carioca à noite, com um chapéu caído e pegadas no calçamento."/><figcaption id="journal-snapshot-caption"></figcaption></figure><p id="journal-body"></p><p id="journal-location" class="journal-location"></p></article><button id="read-journal" class="button primary" type="button">Continuar a investigação</button></section></div>
-  <div id="notebook-overlay" class="overlay" hidden><section class="case-modal notebook-modal" role="dialog" aria-modal="true" aria-labelledby="notebook-title"><header class="modal-heading"><div><p class="eyebrow">O CADERNO DE FLORIANO</p><h2 id="notebook-title">Vestígios e versões</h2></div><button id="close-notebook" class="icon-button" type="button" aria-label="Fechar caderno">×</button></header><p class="case-note">Um objeto pode ter muitos donos. Um depoimento registra uma versão, não uma certeza.</p><h3>Vestígios recolhidos</h3><div id="evidence-list" class="evidence-list"></div><h3>Depoimentos sobre objetos</h3><div id="testimony-list" class="testimony-list"></div><h3>Álibis e interrogatórios</h3><div id="interrogation-list" class="testimony-list"></div><h3>Confrontos</h3><div id="confrontation-list" class="testimony-list"></div><h3>Cenas conhecidas</h3><div id="crime-list" class="crime-list"></div><h3>Relatos ouvidos por Floriano</h3><p class="case-note">Fofocas conservam a fonte de quem contou. Repetir uma história não a torna prova.</p><p id="reports-status" class="status" role="status" aria-live="polite"></p><div id="heard-report-list" class="testimony-list"></div></section></div>
+  <div id="notebook-overlay" class="overlay notebook-overlay" hidden><section class="case-modal notebook-modal" role="dialog" aria-modal="true" aria-labelledby="notebook-title"><header class="notebook-heading"><div><p class="eyebrow">ANOTAÇÕES DE FLORIANO · 1890</p><h2 id="notebook-title">Caderno de suspeitos</h2></div><button id="close-notebook" class="icon-button" type="button" aria-label="Fechar caderno">×</button></header><div class="notebook-spread"><aside class="notebook-page notebook-suspect-page" aria-labelledby="notebook-suspects-title"><header class="notebook-page-heading"><span>FOLHA 01</span><h3 id="notebook-suspects-title">Os moradores</h3><p>Sete destinos, uma sombra.</p></header><div id="notebook-suspects" class="notebook-suspects" aria-live="polite"></div></aside><section class="notebook-page notebook-notes-page" aria-label="Anotações do caso"><div class="notebook-tabs" role="tablist" aria-label="Seções do caderno"><button id="notebook-tab-clues" class="notebook-tab" type="button" role="tab" aria-selected="true" aria-controls="notebook-clues" tabindex="0">Pistas <kbd>1</kbd></button><button id="notebook-tab-reports" class="notebook-tab" type="button" role="tab" aria-selected="false" aria-controls="notebook-reports" tabindex="-1">Relatos <kbd>2</kbd></button></div><div id="notebook-clues" class="notebook-tab-panel" role="tabpanel" aria-labelledby="notebook-tab-clues"><header class="notebook-page-heading"><span>FOLHA 02 · INDÍCIOS</span><h3>O que ficou para trás</h3><p>Vestígios, versões e contradições.</p></header><section class="notebook-section"><h4>Vestígios recolhidos</h4><div id="evidence-list" class="evidence-list"></div></section><section class="notebook-section"><h4>Depoimentos sobre objetos</h4><div id="testimony-list" class="testimony-list"></div></section><section class="notebook-section"><h4>Álibis e interrogatórios</h4><div id="interrogation-list" class="testimony-list"></div></section><section class="notebook-section"><h4>Confrontos</h4><div id="confrontation-list" class="testimony-list"></div></section><section class="notebook-section"><h4>Cenas conhecidas</h4><div id="crime-list" class="crime-list"></div></section></div><div id="notebook-reports" class="notebook-tab-panel" role="tabpanel" aria-labelledby="notebook-tab-reports" hidden><header class="notebook-page-heading"><span>FOLHA 02 · VOZES DA CIDADE</span><h3>O que dizem pelas ruas</h3><p>Uma notícia conserva a voz e a fonte de quem a contou.</p></header><p id="reports-status" class="status notebook-status" role="status" aria-live="polite"></p><div id="heard-report-list" class="testimony-list"></div></div></section></div><footer class="notebook-shortcuts"><span><kbd>C</kbd> guardar o caderno</span><span><kbd>1</kbd> pistas</span><span><kbd>2</kbd> relatos</span><span><kbd>Esc</kbd> fechar</span></footer></section></div>
   <div id="delegate-overlay" class="overlay" hidden>
     <section class="case-modal delegate-modal" role="dialog" aria-modal="true" aria-labelledby="delegate-title">
       <aside class="delegate-persona">
@@ -97,6 +97,7 @@ let transitioning = false;
 let pendingWorldSync = false;
 let caseState: CasePublic | null = null;
 let heardReports: HeardReport[] = [];
+let notebookTab: 'clues' | 'reports' = 'clues';
 let cast: GamePublic['characters'] = [];
 const caseClock = new CaseClock();
 const casePoller = new CasePoller();
@@ -599,8 +600,52 @@ function renderCase() {
   if (modal !== 'delegate') renderAccusation();
 }
 
+function deadSuspectMark() {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 64 64'); svg.setAttribute('aria-hidden', 'true');
+  svg.classList.add('notebook-death-mark');
+  for (const d of ['M9 10 15 9 19 16 26 21 30 27 37 31 42 38 49 43 56 52 52 57 44 50 38 45 31 40 26 33 19 29 14 22 10 18Z', 'M55 10 49 9 45 16 38 21 34 27 27 31 22 38 15 43 8 52 12 57 20 50 26 45 33 40 38 33 45 29 50 22 54 18Z']) {
+    const slash = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    slash.setAttribute('d', d); slash.setAttribute('fill', '#a91f1a');
+    slash.setAttribute('stroke', '#611813'); slash.setAttribute('stroke-width', '1');
+    svg.append(slash);
+  }
+  return svg;
+}
+
+function renderNotebookSuspects() {
+  const list = $('#notebook-suspects'); list.replaceChildren();
+  for (const member of cast) {
+    const deceased = !member.alive;
+    const card = document.createElement('article');
+    card.className = `notebook-suspect${deceased ? ' is-deceased' : ''}`;
+    card.setAttribute('aria-label', `${member.character.name} · ${deceased ? 'falecido' : 'sob suspeita'}`);
+    const imageFrame = document.createElement('div'); imageFrame.className = 'notebook-suspect-portrait';
+    const portrait = document.createElement('img'); portrait.src = portraitPath(member.character.id);
+    portrait.alt = ''; portrait.loading = 'lazy'; portrait.decoding = 'async';
+    imageFrame.append(portrait);
+    if (deceased) imageFrame.append(deadSuspectMark());
+    const name = document.createElement('strong'); name.textContent = member.character.name;
+    const state = document.createElement('small'); state.textContent = deceased ? 'Falecido · riscado' : 'Sob suspeita';
+    card.append(imageFrame, name, state); list.append(card);
+  }
+  if (!cast.length) addText(list, 'p', 'Os nomes dos moradores aparecerão quando o caso começar.', 'empty-case');
+}
+
+function selectNotebookTab(tab: 'clues' | 'reports', focus = false) {
+  notebookTab = tab;
+  const clues = tab === 'clues';
+  const cluesButton = $<HTMLButtonElement>('#notebook-tab-clues');
+  const reportsButton = $<HTMLButtonElement>('#notebook-tab-reports');
+  cluesButton.setAttribute('aria-selected', String(clues)); cluesButton.tabIndex = clues ? 0 : -1;
+  reportsButton.setAttribute('aria-selected', String(!clues)); reportsButton.tabIndex = clues ? -1 : 0;
+  $('#notebook-clues').hidden = !clues; $('#notebook-reports').hidden = clues;
+  if (focus) (clues ? cluesButton : reportsButton).focus();
+}
+
 function renderNotebook() {
   if (!caseState) return;
+  renderNotebookSuspects();
   const inventory = $('#evidence-list'); inventory.replaceChildren();
   for (const {item: evidence, copies} of stackEvidence(caseState.inventory)) {
     const item = document.createElement('article'); item.className = 'evidence-card'; item.dataset.itemId = evidence.item_id;
@@ -650,6 +695,7 @@ function renderNotebook() {
     addText(card, 'h4', `${npcName(record.npc_id)} · dia ${record.day}`); addText(card, 'p', record.text); confrontations.append(card);
   }
   renderReports();
+  selectNotebookTab(notebookTab);
 }
 
 function renderReports() {
@@ -894,6 +940,13 @@ for (const panel of ['journal', 'notebook', 'delegate'] as const) {
   $(`#open-${panel}`).addEventListener('click', () => {void openCasePanel(panel);});
   $(`#close-${panel}`).addEventListener('click', () => {if (!busy) setModal(null);});
 }
+$('#notebook-tab-clues').addEventListener('click', () => selectNotebookTab('clues'));
+$('#notebook-tab-reports').addEventListener('click', () => selectNotebookTab('reports'));
+$('.notebook-tabs').addEventListener('keydown', event => {
+  if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+    event.preventDefault(); selectNotebookTab(notebookTab === 'clues' ? 'reports' : 'clues', true);
+  }
+});
 $('#read-journal').addEventListener('click', () => {if (!busy) setModal(null);});
 $('#leave-custody').addEventListener('click',()=>{if(caseState?.phase==='day' && caseState.status==='active')setModal(null);});
 $('#ending-new-case').addEventListener('click', () => {setModal(null); void launch(false);});
@@ -929,6 +982,20 @@ $('#message-input').addEventListener('input', () => {
   if (world && conversation) dialogueDrafts.set(`${world.game_id}:${conversation.id}`, $<HTMLTextAreaElement>('#message-input').value);
 });
 document.addEventListener('keydown', event => {
+  const target = event.target;
+  const typing = target instanceof HTMLElement
+    && (target.isContentEditable || target.matches('input, textarea, select'));
+  if (!typing && !event.altKey && !event.ctrlKey && !event.metaKey && !event.repeat) {
+    if (modal === 'notebook' && (event.key === '1' || event.key === '2')) {
+      event.preventDefault(); selectNotebookTab(event.key === '1' ? 'clues' : 'reports', true); return;
+    }
+    if (event.key.toLowerCase() === 'c' && !busy && !caseClock.blocked()) {
+      if (modal === 'notebook') {event.preventDefault(); setModal(null); return;}
+      if (modal === null && caseState && !$('#investigation').hidden) {
+        event.preventDefault(); void openCasePanel('notebook'); return;
+      }
+    }
+  }
   if (event.key === 'Escape' && modal && modal !== 'phase' && !(modal === 'custody' && (caseClock.blocked() || transitioning)) && !busy) {event.preventDefault(); setModal(null);}
   if (event.key === 'Tab' && modal) {
     const overlay = $(`#${modal}-overlay`);
