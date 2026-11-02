@@ -111,7 +111,10 @@ def build_services(settings: Settings) -> Services:
         )
         return MeteredLLMClient(raw, usage, configured_model=settings.bedrock_model)
     speech_llm, extraction_llm = social_client(400), social_client(800)
-    social_clients = (speech_llm, extraction_llm)
+    assembly_llm = social_client(900)
+    social_clients = (speech_llm, extraction_llm, assembly_llm)
+    investigation._social_repository = social_repository
+    investigation._assembly_llm = assembly_llm
     knowledge = KnowledgeService(social_repository, characters, extraction_llm)
     social = SocialService(social_repository, knowledge, games, characters, world_repository,
                            turns, speech_llm, player_gate, enabled=settings.social_enabled)

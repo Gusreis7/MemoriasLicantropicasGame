@@ -55,7 +55,9 @@ class TurnService:
     async def sync(self, game_id: UUID) -> InvestigationState:
         game, world, state = await self._repository.read_snapshot(game_id)
         self._validate_snapshot(game, world, state)
-        if state is not None and (state.status != "active" or state.phase == "finished"
+        assembly_expired = bool(state and state.assembly_session and state.assembly_session.phase == "debate"
+            and self.now() >= state.assembly_session.deadline)
+        if state is not None and not assembly_expired and (state.status != "active" or state.phase == "finished"
                                   or self.now() < state.phase_ends_at):
             return state
         # Só a inicialização ou uma fase vencida exigem reserva. Leituras de um
@@ -77,6 +79,15 @@ class TurnService:
                 previous_world=world, world=world, occurred_at=now,
                 events=(CaseEvent(type="investigation.initialized", data={"legacy": True, "day": state.day}),),
             )
+        if (state.assembly_session and state.assembly_session.phase == "debate"
+                and now >= state.assembly_session.deadline):
+            from memorias_licantropicas.modules.investigation.assembly import resolve_transition, apply_assembly_effects
+            result = resolve_transition(state, game, now)
+            updated = result.state.model_copy(update={"revision": state.revision + 1})
+            updated, next_game, next_world = apply_assembly_effects(updated, game, world, now)
+            await self._repository.commit(previous=state,state=updated,previous_game=game,game=next_game,
+                previous_world=world,world=next_world,events=result.events,occurred_at=now)
+            state,game,world=updated,next_game,next_world
         # Uma noite mata no máximo um civil. Uma detenção inocente pode proteger
         # a última vítima uma vez; depois ela é solta. O catch-up termina no fim.
         for _ in range(2 * len(game.characters) + 4):
@@ -202,8 +213,10 @@ class TurnService:
             events.append(CaseEvent(type=f"game.{status}", data={"day": day, "werewolf_id": werewolf}))
         return updated, game, world, tuple(events)
 
-    async def require_day_locked(self, game_id: UUID) -> InvestigationState:
+    async def require_day_locked(self, game_id: UUID, *, allow_assembly=False) -> InvestigationState:
         state = await self._sync_locked(game_id)
+        if state.assembly_session and state.assembly_session.phase == "debate" and not allow_assembly:
+            raise ConflictError("A assembleia está em andamento; conclua a votação.")
         if state.status != "active" or state.phase != "day":
             raise ConflictError("A investigação está indisponível nesta fase.")
         return state
@@ -212,12 +225,13 @@ class TurnService:
         """Checagem após inferência: o chamador já mantém a reserva do jogador."""
         state = await self._repository.get(game_id)
         if (state is None or state.status != "active" or state.phase != "day"
-                or self.now() >= state.phase_ends_at):
+                or self.now() >= state.phase_ends_at
+                or (state.assembly_session and state.assembly_session.phase == "debate")):
             raise ConflictError("O dia terminou; consulte a próxima edição do jornal.")
 
-    async def act(self, game_id: UUID, transition, *, start_night_on_detention: bool = False) -> InvestigationState:
+    async def act(self, game_id: UUID, transition, *, start_night_on_detention: bool = False, allow_assembly=False) -> InvestigationState:
         async with self._gate.hold(game_id):
-            return await self.act_locked(game_id, transition, start_night_on_detention=start_night_on_detention)
+            return await self.act_locked(game_id, transition, start_night_on_detention=start_night_on_detention, allow_assembly=allow_assembly)
 
     async def apply_dialogue_assessment_locked(self, game_id, npc_id, conversation_id, incoming, outgoing, assessment):
         from uuid import NAMESPACE_URL, uuid5
@@ -229,9 +243,9 @@ class TurnService:
         return await self.act_locked(game_id, lambda state, game, world: dialogue_transition(
             state, game, npc_id, conversation_id, incoming, outgoing, assessment, self.now()))
 
-    async def act_locked(self, game_id: UUID, transition, *, start_night_on_detention: bool = False) -> InvestigationState:
+    async def act_locked(self, game_id: UUID, transition, *, start_night_on_detention: bool = False, allow_assembly=False) -> InvestigationState:
         """Chamador mantém player_gate; compartilhado por ações e mestre da sessão."""
-        state = await self.require_day_locked(game_id)
+        state = await self.require_day_locked(game_id, allow_assembly=allow_assembly)
         game, world, _ = await self._load(game_id)
         result = transition(state, game, world)
         if not isinstance(result, CaseTransition):
@@ -247,23 +261,27 @@ class TurnService:
                     or result.state.phase != state.phase or result.state.status != state.status
                     or result.state.phase_ends_at != state.phase_ends_at):
                 raise ValueError("Somente uma acusação aceita pode adiantar a noite.")
+        from memorias_licantropicas.modules.investigation.assembly import validate_session_transition
+        session_change = validate_session_transition(state, result.state, game)
         assembly = result.state.assembly is not None and state.assembly is None
-        if assembly:
+        if assembly and not session_change:
             from memorias_licantropicas.modules.investigation.assembly import convene
             record = result.state.assembly
-            expected = convene(state, game, record.suspect_id, record.evidence_ids, record.testimony_ids, record.created_at)
+            expected = convene(state, game, record.nominated_id or record.suspect_id, record.evidence_ids, record.testimony_ids, record.created_at)
             changes = {"assembly": expected}
-            if expected.expelled:
+            if expected.expelled and expected.suspect_id != "player":
                 changes["expelled_npc_ids"] = (*state.expelled_npc_ids, expected.suspect_id)
             if expected.outcome == "werewolf":
                 changes.update(status="won", phase="finished", ending_method="assembly")
+            elif expected.outcome == "player_expelled":
+                changes.update(status="lost", phase="finished", ending_method="player_expelled")
             if result.state != state.model_copy(update=changes):
                 raise ValueError("Transição de assembleia inválida.")
-        confession = self._validated_confession(state, result, game) or (assembly and result.state.status == "won")
+        confession = self._validated_confession(state, result, game)
         if (result.state.game_id != state.game_id or result.state.day != state.day
-                or (not confession and not starts_night
+                or (not confession and not assembly and not starts_night
                     and (result.state.phase != state.phase or result.state.status != state.status))
-                or (result.state.phase_ends_at != state.phase_ends_at and not starts_night)):
+                or (result.state.phase_ends_at != state.phase_ends_at and not starts_night and not session_change)):
             raise ValueError("Uma ação diurna não pode mudar o relógio ou o resultado.")
         if result.state == state and not result.events:
             return state
@@ -299,9 +317,9 @@ class TurnService:
             updated_world = world.model_copy(update={"revision": world.revision + 1,
                 "npcs": tuple(npc for npc in world.npcs if npc.npc_id != updated.detained_npc_id and npc.npc_id not in updated.expelled_npc_ids),
                 "player": world.player.model_copy(update={"direction": "idle", "last_updated_at": self.now()})})
-        if assembly and result.state.assembly.expelled:
-            updated_world = updated_world.model_copy(update={"revision": world.revision + 1, "npcs": tuple(
-                n for n in updated_world.npcs if n.npc_id not in updated.expelled_npc_ids)})
+        if assembly:
+            from memorias_licantropicas.modules.investigation.assembly import apply_assembly_effects
+            updated, updated_game, updated_world = apply_assembly_effects(updated, game, updated_world, occurred_at)
         await self._repository.commit(
             previous=state, state=updated, previous_game=game, game=updated_game,
             previous_world=world, world=updated_world, events=events, occurred_at=occurred_at,

@@ -13,7 +13,10 @@ from memorias_licantropicas.modules.investigation.schema import (
 )
 
 
-class InvestigationService:
+from memorias_licantropicas.modules.investigation.assembly_service import AssemblyServiceMixin
+
+
+class InvestigationService(AssemblyServiceMixin):
     def __init__(self, turns, characters, memory=None):
         self._turns = turns
         self._characters = characters
@@ -30,7 +33,8 @@ class InvestigationService:
                 raise ConflictError("O desfecho desta investigação está incompleto.")
             ending = EndingPublic(result=state.status, werewolf_id=state.crimes[0].killer_id,
                 method=state.ending_method or ("detention" if state.status == "won" else "survival"),
-                message=("A assembleia expulsou o lobisomem. A cidade venceu a investigação." if state.ending_method == "assembly" else
+                message=("A cidade expulsou Floriano. A investigação terminou em derrota." if state.ending_method == "player_expelled" else
+                         "A assembleia expulsou o lobisomem. A cidade venceu a investigação." if state.ending_method == "assembly" else
                          "Confrontado com as provas, o lobisomem confessou e entregou-se ao delegado. "
                          "Floriano venceu a investigação." if state.ending_method == "confession" else
                          "A transformação na cela confirmou a acusação. A cidade expulsa o lobisomem. "
@@ -59,6 +63,8 @@ class InvestigationService:
                 testimony_ids=record.testimony_ids, accepted=record.accepted, reason=record.reason)
                 for record in state.accusations),
             detained_npc_id=state.detained_npc_id, ending=ending,
+            assembly_session=({key:value for key,value in state.assembly_session.model_dump(mode="json").items()
+                if key not in {"relationships", "argument_strength", "remaining_day_seconds"}} if state.assembly_session else None),
             assembly=state.assembly.model_dump(mode="json") if state.assembly else None,
             expelled_npc_ids=state.expelled_npc_ids,
             interrogations=tuple(InterrogationPublic(id=record.id, npc_id=record.npc_id,
@@ -130,10 +136,12 @@ class InvestigationService:
             record = convene(state, game, suspect_id, tuple(dict.fromkeys(evidence_ids)),
                              tuple(dict.fromkeys(testimony_ids)), self._turns.now())
             changes = {"assembly": record}
-            if record.expelled:
-                changes["expelled_npc_ids"] = (*state.expelled_npc_ids, suspect_id)
+            if record.expelled and record.suspect_id != "player":
+                changes["expelled_npc_ids"] = (*state.expelled_npc_ids, record.suspect_id)
             if record.outcome == "werewolf":
                 changes.update(status="won", phase="finished", ending_method="assembly")
+            elif record.outcome == "player_expelled":
+                changes.update(status="lost", phase="finished", ending_method="player_expelled")
             return CaseTransition(state=state.model_copy(update=changes), events=(CaseEvent(
                 type="assembly.resolved", data=record.model_dump(mode="json")),))
         return await self.public(await self._turns.act(game_id, transition))
