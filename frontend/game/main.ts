@@ -427,11 +427,25 @@ function npcName(id: string) {return cast.find(member => member.character.id ===
 function portraitPath(id: string) {return manifest?.characters.find(asset => asset.id === id)?.portraitPath ?? `/assets/portraits/${id}.png`;}
 function periodLabel(day: number, period: 'night' | 'day') {return `${period === 'night' ? 'noite' : 'dia'} ${day}`;}
 function itemKind(evidence: CaseEvidence) {return {unique: 'Exclusivo', singular: 'Singular', common: 'Comum'}[evidence.kind];}
+function stackEvidence(inventory: CaseEvidence[]) {
+  const stacks = new Map<string, {item: CaseEvidence; copies: CaseEvidence[]}>();
+  for (const evidence of inventory) {
+    const stack = stacks.get(evidence.item_id);
+    if (stack) stack.copies.push(evidence);
+    else stacks.set(evidence.item_id, {item: evidence, copies: [evidence]});
+  }
+  return [...stacks.values()];
+}
 function itemArt(itemId: string, kind: CaseEvidence['kind']) {
   const wrapper = document.createElement('span'); wrapper.className = `item-art item-art-${kind}`; wrapper.setAttribute('aria-hidden', 'true');
-  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('viewBox', '0 0 64 64');
-  const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
-  use.setAttribute('href', `/assets/items/item-icons.svg?v=2#${itemId}`); svg.append(use); wrapper.append(svg);
+  if (itemId !== 'botao') {
+    const image = document.createElement('img'); image.src = `/assets/items/detail/${itemId}.png`;
+    image.alt = ''; image.width = 64; image.height = 64; image.decoding = 'async'; wrapper.append(image);
+  } else {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('viewBox', '0 0 64 64');
+    const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+    use.setAttribute('href', `/assets/items/item-icons.svg?v=2#${itemId}`); svg.append(use); wrapper.append(svg);
+  }
   return wrapper;
 }
 
@@ -566,12 +580,26 @@ function renderCase() {
 function renderNotebook() {
   if (!caseState) return;
   const inventory = $('#evidence-list'); inventory.replaceChildren();
-  for (const evidence of caseState.inventory) {
-    const item = document.createElement('article'); item.className = 'evidence-card'; item.dataset.evidenceId = evidence.id;
-    item.append(itemArt(evidence.item_id, evidence.kind));
+  for (const {item: evidence, copies} of stackEvidence(caseState.inventory)) {
+    const item = document.createElement('article'); item.className = 'evidence-card'; item.dataset.itemId = evidence.item_id;
+    const art = itemArt(evidence.item_id, evidence.kind);
+    if (copies.length > 1) addText(art, 'span', `×${copies.length}`, 'item-stack-count');
+    item.append(art);
     const details = document.createElement('div'); details.className = 'evidence-details';
     addText(details, 'span', itemKind(evidence), 'evidence-kind'); addText(details, 'h4', evidence.name);
-    addText(details, 'p', evidence.description); item.append(details); inventory.append(item);
+    addText(details, 'p', copies.length > 1 ? `Você recolheu ${copies.length} exemplares deste objeto.` : evidence.description);
+    if (copies.length > 1) {
+      const sources = document.createElement('details'); sources.className = 'evidence-stack-sources';
+      addText(sources, 'summary', `Procedência dos ${copies.length} vestígios`);
+      const list = document.createElement('ul');
+      for (const copy of copies) {
+        const crime = caseState.crimes.find(record => record.id === copy.crime_id);
+        const source = crime ? `Dia ${crime.day + 1} · ${locationName(crime.location_id)}` : 'Cena do crime';
+        addText(list, 'li', `${source}: ${copy.description}`);
+      }
+      sources.append(list); details.append(sources);
+    }
+    item.append(details); inventory.append(item);
   }
   if (!caseState.inventory.length) addText(inventory, 'p', 'Nenhum vestígio recolhido. Procure as marcas de cena do crime no cenário.', 'empty-case');
   const testimonyList = $('#testimony-list'); testimonyList.replaceChildren();
@@ -619,7 +647,10 @@ function renderPresentation() {
   if (!preview) {preview = document.createElement('span'); preview.id = 'presented-evidence-art'; preview.className = 'item-art-preview'; select.before(preview);}
   const selected = select.value; select.replaceChildren();
   for (const evidence of caseState?.inventory ?? []) {
-    const option = document.createElement('option'); option.value = evidence.id; option.textContent = evidence.name; select.append(option);
+    const option = document.createElement('option'); option.value = evidence.id;
+    const crime = caseState.crimes.find(record => record.id === evidence.crime_id);
+    option.textContent = crime ? `${evidence.name} · dia ${crime.day + 1}, ${locationName(crime.location_id)}` : evidence.name;
+    select.append(option);
   }
   if ([...select.options].some(option => option.value === selected)) select.value = selected;
   const selectedEvidence = caseState?.inventory.find(item => item.id === select.value);
@@ -710,7 +741,13 @@ function renderAccusation() {
     label.append(title); container.append(label);
   };
   const evidence = $('#accusation-evidence'); evidence.replaceChildren();
-  caseState.inventory.forEach(item => renderChoice(evidence, 'evidence', item.id, `${item.name} · ${itemKind(item)}`, item));
+  for (const {item, copies} of stackEvidence(caseState.inventory)) {
+    const label = document.createElement('label'); label.className = 'proof-choice';
+    const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.name = 'evidence'; checkbox.value = item.item_id;
+    checkbox.dataset.evidenceIds = copies.map(copy => copy.id).join(',');
+    const caption = document.createElement('span'); caption.textContent = `${item.name} · ${itemKind(item)}${copies.length > 1 ? ` ×${copies.length}` : ''}`;
+    label.append(checkbox, itemArt(item.item_id, item.kind), caption); evidence.append(label);
+  }
   if (!caseState.inventory.length) addText(evidence, 'p', 'Você ainda não recolheu vestígios.', 'empty-case');
   const testimonies = $('#accusation-testimonies'); testimonies.replaceChildren();
   const inventorySnapshot = caseState.inventory;
@@ -768,7 +805,8 @@ async function searchCrime(id?: string) {
     const result = await api.search(world.game_id, crime.id);
     await applyCase(result);
     const found = result.inventory.find(item => !before.has(item.id));
-    toast(found ? `Vestígio recolhido: ${found.name}. Você pode apresentá-lo aos moradores.` : 'A busca nesta cena foi concluída.');
+    const stackCount = found ? result.inventory.filter(item => item.item_id === found.item_id).length : 0;
+    toast(found ? `${found.name} recolhido · ${stackCount} ${stackCount === 1 ? 'unidade' : 'unidades'} no caderno.` : 'A busca nesta cena foi concluída.');
   } catch (error) {toast(explain(error));}
   finally {busy = false;}
 }
@@ -790,7 +828,8 @@ async function submitAccusation(event: Event) {
   event.preventDefault(); if (!world || busy || modal !== 'delegate' || caseClock.blocked()) return;
   const suspectID = $('#accused-npc').querySelector<HTMLInputElement>('input:checked:not(:disabled)')?.value;
   if (!suspectID) {status('#accusation-status', 'Selecione um suspeito antes de apresentar a acusação.', true); return;}
-  const evidence = [...document.querySelectorAll<HTMLInputElement>('#accusation-evidence input:checked')].map(input => input.value);
+  const evidence = [...document.querySelectorAll<HTMLInputElement>('#accusation-evidence input:checked')]
+    .flatMap(input => (input.dataset.evidenceIds ?? '').split(',').filter(Boolean));
   const testimony = [...document.querySelectorAll<HTMLInputElement>('#accusation-testimonies input:checked')].map(input => input.value);
   busy = true; $('#submit-accusation').setAttribute('disabled', ''); status('#accusation-status', 'O delegado examina os elementos apresentados…');
   try {

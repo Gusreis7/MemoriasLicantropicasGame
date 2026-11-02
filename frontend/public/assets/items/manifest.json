@@ -1,89 +1,109 @@
 {
-  "version": "2",
-  "generator": "SVG symbols authored for this project",
+  "version": "3",
+  "generator": "ImageGen-built transparent sprite sheet, cropped to 64px nearest-neighbor pixel art; button stays in SVG catalog",
   "path": "/assets/items/item-icons.svg",
-  "rendering": "Inline SVG use; crisp pixel-edge rendering at card size",
+  "rendering": "64px RGBA sprite icons with nearest-neighbor display; SVG symbol fallback for botao",
   "items": [
     {
       "id": "chave_santiago",
-      "kind": "unique"
+      "kind": "unique",
+      "asset": "/assets/items/detail/chave_santiago.png"
     },
     {
       "id": "estojo_cartas",
-      "kind": "unique"
+      "kind": "unique",
+      "asset": "/assets/items/detail/estojo_cartas.png"
     },
     {
       "id": "prendedor_ancora",
-      "kind": "unique"
+      "kind": "unique",
+      "asset": "/assets/items/detail/prendedor_ancora.png"
     },
     {
       "id": "relogio_quincas",
-      "kind": "unique"
+      "kind": "unique",
+      "asset": "/assets/items/detail/relogio_quincas.png"
     },
     {
       "id": "leque_vn",
-      "kind": "unique"
+      "kind": "unique",
+      "asset": "/assets/items/detail/leque_vn.png"
     },
     {
       "id": "broche_andorinha",
-      "kind": "unique"
+      "kind": "unique",
+      "asset": "/assets/items/detail/broche_andorinha.png"
     },
     {
       "id": "lente_hexagonal",
-      "kind": "unique"
+      "kind": "unique",
+      "asset": "/assets/items/detail/lente_hexagonal.png"
     },
     {
       "id": "luvas_couro",
-      "kind": "singular"
+      "kind": "singular",
+      "asset": "/assets/items/detail/luvas_couro.png"
     },
     {
       "id": "fita_veludo",
-      "kind": "singular"
+      "kind": "singular",
+      "asset": "/assets/items/detail/fita_veludo.png"
     },
     {
       "id": "caderneta_verde",
-      "kind": "singular"
+      "kind": "singular",
+      "asset": "/assets/items/detail/caderneta_verde.png"
     },
     {
       "id": "lenco",
-      "kind": "common"
+      "kind": "common",
+      "asset": "/assets/items/detail/lenco.png"
     },
     {
       "id": "botao",
-      "kind": "common"
+      "kind": "common",
+      "asset": "/assets/items/item-icons.svg#botao"
     },
     {
       "id": "pena",
-      "kind": "common"
+      "kind": "common",
+      "asset": "/assets/items/detail/pena.png"
     },
     {
       "id": "linha",
-      "kind": "common"
+      "kind": "common",
+      "asset": "/assets/items/detail/linha.png"
     },
     {
       "id": "cera",
-      "kind": "common"
+      "kind": "common",
+      "asset": "/assets/items/detail/cera.png"
     },
     {
       "id": "cordel",
-      "kind": "common"
+      "kind": "common",
+      "asset": "/assets/items/detail/cordel.png"
     },
     {
       "id": "moeda",
-      "kind": "common"
+      "kind": "common",
+      "asset": "/assets/items/detail/moeda.png"
     },
     {
       "id": "fosforo",
-      "kind": "common"
+      "kind": "common",
+      "asset": "/assets/items/detail/fosforo.png"
     },
     {
       "id": "papel",
-      "kind": "common"
+      "kind": "common",
+      "asset": "/assets/items/detail/papel.png"
     },
     {
       "id": "remendo",
-      "kind": "common"
+      "kind": "common",
+      "asset": "/assets/items/detail/remendo.png"
     }
   ],
-  "style": "pixel art; grade 32x32, contornos em degraus e paleta de cores limitada"
+  "style": "transparent pixel-art icons, downsampled to 64x64 with nearest-neighbor; item identity and kind remain stable"
 }
