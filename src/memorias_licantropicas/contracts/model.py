@@ -70,6 +70,7 @@ class Conversation(Contract):
 
 
 class ConversationMessage(Contract):
+    narrative_authorized: bool = False
     id: UUID
     sender_id: str
     content: str = Field(min_length=1, max_length=8000)
