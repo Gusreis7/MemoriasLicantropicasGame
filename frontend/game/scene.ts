@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import type {CasePublic, CharacterAsset, CharacterManifest, Direction, Location, LocationID, WorldSnapshot} from '../shared/api';
-import {CITIZEN_TYPES, POPULATION, type CitizenPlacement} from './population';
+import {POPULATION} from './population';
 
 interface SceneHooks {
   frame: (delta: number, direction: Direction) => {x: number; facing: 'left' | 'right'};
@@ -46,7 +46,6 @@ export class CityScene extends Phaser.Scene {
   private npcs: Phaser.GameObjects.GameObject[] = [];
   private ambient: Phaser.GameObjects.GameObject[] = [];
   private wanderers: Array<{image: Phaser.GameObjects.Image | Phaser.GameObjects.Sprite; placement: AmbientPlacement}> = [];
-  private citizens: Array<{sprite: Phaser.GameObjects.Sprite; label: Phaser.GameObjects.Text; placement: CitizenPlacement}> = [];
   private background?: Phaser.GameObjects.Image;
   private currentLocation = '';
   private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
@@ -92,7 +91,6 @@ export class CityScene extends Phaser.Scene {
       }
     }
     for(const kind of ['dog','cat','bird']) this.anims.create({key:`${kind}-move`,frames:[0,1,2,3].map(i=>({key:'animals-walk',frame:`${kind}-${i}`})),frameRate:kind==='bird'?8:6,repeat:-1});
-    for(const kind of CITIZEN_TYPES) this.anims.create({key:`citizen-${kind}-walk`,frames:[0,1,2,3].map(i=>({key:'citizens',frame:`${kind}-${i}`})),frameRate:6,repeat:-1});
     this.cursors = this.input.keyboard?.createCursorKeys();
     this.keys = this.input.keyboard?.addKeys('A,D,E,M') as Record<string, Phaser.Input.Keyboard.Key>;
     this.input.keyboard?.on('keydown-E', () => {
@@ -136,7 +134,7 @@ export class CityScene extends Phaser.Scene {
   }
 
   private dressLocation(id: LocationID, groundY: number) {
-    this.ambient.forEach(object => object.destroy()); this.ambient = []; this.wanderers = []; this.citizens = [];
+    this.ambient.forEach(object => object.destroy()); this.ambient = []; this.wanderers = [];
     if (!this.textures.exists('scene-life')) return;
     this.textures.get('scene-life').setFilter(Phaser.Textures.FilterMode.NEAREST);
     this.textures.get('citizens').setFilter(Phaser.Textures.FilterMode.NEAREST);
@@ -144,12 +142,11 @@ export class CityScene extends Phaser.Scene {
       const sprite=this.add.sprite(placement.x,groundY,'citizens',`${placement.occupation}-0`)
         .setName(`citizen-${placement.id}`).setOrigin(.5,260/280).setDisplaySize(64,86).setDepth(0);
       sprite.setData('occupation',placement.occupation);
-      if(!this.reducedMotion)sprite.play(`citizen-${placement.occupation}-walk`);
       const label=this.add.text(placement.x,groundY-88,`${placement.name} · ${placement.occupation}`,{
         fontFamily:'Georgia,serif',fontSize:'11px',color:'#fff4d2',backgroundColor:'#183c33ee',padding:{x:6,y:4},
       }).setOrigin(.5,1).setDepth(5).setVisible(false);
       sprite.setInteractive().on('pointerover',()=>label.setVisible(true)).on('pointerout',()=>label.setVisible(false));
-      this.citizens.push({sprite,label,placement});this.ambient.push(sprite,label);
+      this.ambient.push(sprite,label);
     }
     for (const placement of AMBIENT[id]) {
       const animal=['dog','cat','bird'].includes(placement.frame);
@@ -297,12 +294,7 @@ export class CityScene extends Phaser.Scene {
       image.setFlipX(phase>=range);
       if (placement.frame === 'bird') image.y = Math.round(placement.y + Math.sin(time / 900 + placement.x) * 4);
     }
-    for(const {sprite,label,placement} of this.citizens) {
-      if(this.reducedMotion)continue;
-      const phase=(time/1000*placement.speed+placement.x)%(placement.range*2);
-      sprite.x=Math.round(placement.x-placement.range/2+(phase<placement.range?phase:placement.range*2-phase));
-      sprite.setFlipX(phase>=placement.range);label.x=sprite.x;
-    }
+    // Townspeople are ambient scenery. Only the seven game characters travel between places.
     const nearest = this.currentWorld.visible_npcs.find(npc => Math.abs(npc.x - position.x) <= 64);
     this.selected?.setVisible(Boolean(nearest) && !blocked);
     if (nearest) this.selected?.setX(nearest.x);

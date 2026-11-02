@@ -17,6 +17,7 @@ export class CustodyScene extends Phaser.Scene {
   constructor(private character: CharacterAsset, private onAdmissionStage?: (stage:AdmissionStage)=>void) {super('custody');}
   preload() {
     this.load.image('jail-room','/assets/cinematics/jail.png');
+    this.load.image('station-delegate','/assets/portraits/delegado.png');
     this.load.atlas('detainee',this.character.path,this.character.atlasPath!);
     this.load.atlas('wolf-reveal','/assets/cinematics/werewolf.png','/assets/cinematics/werewolf.json');
   }
@@ -31,8 +32,18 @@ export class CustodyScene extends Phaser.Scene {
     this.anims.create({key:'detainee-walk',frames:this.character.walkFrames.map(frame=>({key:'detainee',frame})),frameRate:7,repeat:-1});
     this.anims.create({key:'wolf-breathe',frames:['0','1','2','3'].map(frame=>({key:'wolf-reveal',frame})),frameRate:4,repeat:-1});
     this.gate=this.add.container(0,0).setDepth(5);
-    for (let x=324;x<=636;x+=26) this.gate.add(this.add.rectangle(x,210,6,328,0x253735).setName('gate-bar').setStrokeStyle(1,0x819080));
-    this.gate.add([this.add.rectangle(480,46,318,10,0x34463d).setName('gate-rail'),this.add.rectangle(480,374,318,10,0x34463d).setName('gate-rail')]);
+    for (let x=324;x<=636;x+=26) {
+      this.gate.add(this.add.rectangle(x,210,9,328,0x211d1a).setName('gate-bar').setStrokeStyle(1,0x171513));
+      this.gate.add(this.add.rectangle(x-2,210,2,326,0x98744c).setName('gate-bar-sheen'));
+    }
+    this.gate.add([
+      this.add.rectangle(480,46,318,12,0x30251d).setName('gate-rail').setStrokeStyle(2,0x98744c),
+      this.add.rectangle(480,374,318,12,0x30251d).setName('gate-rail').setStrokeStyle(2,0x98744c),
+    ]);
+    // The delegate remains at the desk throughout admission, the night and release.
+    this.add.image(215,289,'station-delegate').setName('delegate-at-desk')
+      .setOrigin(.5,1).setDisplaySize(105,105).setDepth(3);
+    this.add.rectangle(215,281,130,12,0x443023).setStrokeStyle(2,0x67452d).setDepth(4);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN,()=>this.clearTimers());
     this.events.once(Phaser.Scenes.Events.DESTROY,()=>this.clearTimers());
     this.ready=true;this.applyMode();
@@ -77,7 +88,7 @@ export class CustodyScene extends Phaser.Scene {
     // Offscreen bars slide behind the wall; rails shorten at the right jamb.
     const offset=this.gate.x;
     for(const child of this.gate.list as Phaser.GameObjects.Rectangle[]) {
-      if(child.name==='gate-bar')child.setVisible(child.x+offset<=639);
+      if(child.name==='gate-bar' || child.name==='gate-bar-sheen')child.setVisible(child.x+offset<=639);
       else {
         const width=Math.max(0,318-offset);
         child.setVisible(width>0).setX(480-offset/2).setDisplaySize(Math.max(1,width),10);
