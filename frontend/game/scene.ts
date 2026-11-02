@@ -80,7 +80,6 @@ export class CityScene extends Phaser.Scene {
     this.load.atlas('citizens', '/assets/ambient/citizens.png', '/assets/ambient/citizens.json');
     this.load.atlas('capoeira', '/assets/ambient/capoeira.png', '/assets/ambient/capoeira.json');
     this.load.atlas('clarim', '/assets/ambient/clarim.png', '/assets/ambient/clarim.json');
-    this.load.image('crime-scene-police', '/assets/crime-scene/policiais-1890.png');
     this.load.on('loaderror', () => {this.assetsFailed = true; this.hooks.failed();});
   }
 
@@ -109,7 +108,6 @@ export class CityScene extends Phaser.Scene {
       this.textures.get('capoeira').setFilter(Phaser.Textures.FilterMode.NEAREST);
       this.anims.create({key: 'capoeira-roda', frames: ['0', '1', '2', '3'].map(frame => ({key: 'capoeira', frame})), frameRate: 3, repeat: -1});
     }
-    if (this.textures.exists('crime-scene-police')) this.textures.get('crime-scene-police').setFilter(Phaser.Textures.FilterMode.NEAREST);
     this.ready = true;
     this.apply(this.currentWorld);
     if (this.assetsFailed) this.hooks.failed();
@@ -194,43 +192,6 @@ export class CityScene extends Phaser.Scene {
       this.caseMarkers.push(this.add.text(x, 315, count === 1 ? 'Cena do crime' : `${count} cenas · vestígios`, {
         fontFamily: 'Georgia, serif', fontSize: '10px', color: '#fff0c4', backgroundColor: '#1b342cdd', padding: {x: 5, y: 3},
       }).setOrigin(.5, 0).setDepth(4));
-      this.addCrimeScene(x, count, this.currentWorld.location.ground_y);
-    }
-  }
-
-  private addCrimeScene(crimeX: number, count: number, groundY: number) {
-    const worldWidth = this.currentWorld.location.width;
-    const policeX = Phaser.Math.Clamp(crimeX + (crimeX < worldWidth / 2 ? 178 : -178), 70, worldWidth - 70);
-    if (this.textures.exists('crime-scene-police')) {
-      const police = this.add.image(policeX, groundY, 'crime-scene-police')
-        .setOrigin(.5, 1).setDisplaySize(92, 118).setDepth(1);
-      this.caseMarkers.push(police);
-    }
-
-    // A small static cordon frames the clue marker without changing its position or hit area.
-    const graphics = this.add.graphics().setDepth(2);
-    const cordonY = groundY - 34;
-    graphics.lineStyle(3, 0xb64f3c, .95);
-    graphics.lineBetween(crimeX - 82, cordonY, crimeX + 82, cordonY);
-    graphics.fillStyle(0xe3c58b, 1);
-    graphics.fillRect(crimeX - 83, cordonY - 3, 4, 9);
-    graphics.fillRect(crimeX + 79, cordonY - 3, 4, 9);
-    graphics.fillStyle(0xf2e4bd, .98);
-    graphics.fillRoundedRect(crimeX - 104, cordonY - 36, 208, 23, 3);
-    graphics.lineStyle(1, 0x604a31, 1);
-    graphics.strokeRoundedRect(crimeX - 104, cordonY - 36, 208, 23, 3);
-    this.caseMarkers.push(graphics);
-
-    const notice = this.add.text(crimeX, cordonY - 13, 'CENA DO CRIME · NÃO ULTRAPASSE', {
-      fontFamily: 'Georgia, serif', fontSize: '9px', fontStyle: 'bold', color: '#342b20',
-      align: 'center', fixedWidth: 202, fixedHeight: 19, padding: {x: 2, y: 2},
-    }).setOrigin(.5, 1).setDepth(3);
-    this.caseMarkers.push(notice);
-    if (count > 1) {
-      const countLabel = this.add.text(crimeX, cordonY + 4, `${count} ocorrências`, {
-        fontFamily: 'Georgia, serif', fontSize: '8px', color: '#f8e9c4', backgroundColor: '#583a31dd', padding: {x: 3, y: 2},
-      }).setOrigin(.5, 0).setDepth(3);
-      this.caseMarkers.push(countLabel);
     }
   }
 
