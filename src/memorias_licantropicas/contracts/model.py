@@ -27,6 +27,7 @@ class CharacterProfile(Contract):
     personality: str
     civil_objective: str
     werewolf_objective: str
+    protected_secrets: tuple[str, ...] = ()
     role_awareness: Literal["aware", "denial"] = "aware"
     dialogue_strategy: DialogueStrategy | None = None
 

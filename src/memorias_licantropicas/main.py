@@ -2,6 +2,7 @@
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+import logging
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -13,6 +14,7 @@ from memorias_licantropicas.contracts.errors import (
     LLMUnavailableError,
     NotFoundError,
     StorageUnavailableError,
+    LLM_PUBLIC_DETAILS,
 )
 from memorias_licantropicas.modules.characters.router import (
     get_character_service,
@@ -28,13 +30,18 @@ from memorias_licantropicas.modules.conversations.router import router as conver
 from memorias_licantropicas.modules.world.router import router as world_router
 from memorias_licantropicas.modules.admin.router import router as admin_router
 from memorias_licantropicas.modules.investigation.router import router as investigation_router
+from memorias_licantropicas.modules.social.router import router as social_router
 from memorias_licantropicas.settings import Settings
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     services = build_services(Settings())
     app.state.services = services
+    if services.social_worker is not None:
+        services.social_worker.start()
     try:
         yield
     finally:
@@ -65,6 +72,7 @@ def create_app() -> FastAPI:
     application.include_router(world_router)
     application.include_router(admin_router)
     application.include_router(investigation_router)
+    application.include_router(social_router)
 
     async def domain_error_handler(request: Request, exc: Exception) -> JSONResponse:
         errors = {
@@ -75,7 +83,11 @@ def create_app() -> FastAPI:
             LLMUnavailableError: (503, "Serviço de diálogo temporariamente indisponível."),
         }
         status_code, detail = errors[type(exc)]
-        return JSONResponse(status_code=status_code, content={"detail": detail})
+        body = {"detail": detail}
+        if isinstance(exc, LLMUnavailableError):
+            body = {"detail": LLM_PUBLIC_DETAILS[exc.code], "code": exc.code}
+            logger.warning("dialogue_unavailable code=%s", exc.code)
+        return JSONResponse(status_code=status_code, content=body)
 
     for error_type in (
         NotFoundError, AccessDeniedError, ConflictError,

@@ -36,6 +36,16 @@ export class MovementController {
     this.changed(world);
   }
 
+  /** Refresh NPC activity without cancelling the player's predicted walk. */
+  observe(world: WorldSnapshot): boolean {
+    if (this.disposed || this.pending || world.game_id !== this.world.game_id
+      || world.location.id !== this.world.location.id || world.revision < this.world.revision
+      || world.player.movement_seq !== this.world.player.movement_seq) return false;
+    this.world = world;
+    this.changed(world);
+    return true;
+  }
+
   update(delta: number, desired: Direction) {
     if (this.disposed) return;
     this.direction = desired;

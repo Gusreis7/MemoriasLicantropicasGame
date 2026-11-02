@@ -55,6 +55,18 @@ async function cityFixture(page: import('@playwright/test').Page) {
       state.accusations.push({id: 'accusation-ui', day: state.day, suspect_id: body.suspect_id, suspect_name: 'Capitu', evidence_ids: body.evidence_ids, testimony_ids: body.testimony_ids, accepted: true, reason: 'Há elementos suficientes para uma detenção nesta noite.'});
       state.detained_npc_id = 'capitu'; state.revision++; return json(route, state);
     }
+    if (path.endsWith('/interrogations')) {
+      state.interrogations = [{id: 'alibi-ui', npc_id: body.npc_id, npc_name: 'Rubião', day: body.day, period: body.period,
+        location_id: 'praca_verde', companion_ids: [], activity: 'Lia o jornal.', text: 'Estava na praça, sozinho, lendo o jornal.', observations: []}];
+      state.revision++; return json(route, state);
+    }
+    if (path.endsWith('/confrontations')) {
+      state.confrontations = [{id: 'confront-ui', npc_id: body.npc_id, day: state.day, evidence_ids: body.evidence_ids,
+        testimony_ids: body.testimony_ids, interrogation_ids: body.interrogation_ids, confessed: true, text: 'Admito minha condição.'}];
+      state.status = 'won'; state.phase = 'finished'; state.revision++;
+      state.ending = {result: 'won', werewolf_id: body.npc_id, method: 'confession', message: 'O morador confessou sua condição diante dos registros apresentados.'};
+      return json(route, state);
+    }
     return route.fulfill({status: 404, json: {detail: 'Rota não prevista no contrato do teste.'}});
   });
   return {state, world, cast, requests, movementCalls: () => movementCalls};
@@ -115,4 +127,23 @@ test('amanhecer retorna à banca e publica a morte sem manter o NPC no cenário'
   await expect(page.locator('#case-day')).toHaveText('DIA 2'); await expect(page.locator('#location-name')).toHaveText('Praça Verde');
   await page.locator('#read-journal').click(); await expect(page.locator('#phase-overlay')).toBeHidden();
   await expect(page.locator('#approach')).toBeHidden(); await expect(page.locator('#open-map')).toBeEnabled();
+});
+
+test('registra álibi, preserva no caderno e confronta com a seleção do jogador', async ({page}) => {
+  const city = await cityFixture(page); city.world.visible_npcs[0].x = 190; city.world.visible_npcs[0].can_approach = true;
+  await begin(page); await page.locator('#approach').click();
+  await expect(page.locator('#message-input')).toBeEnabled();
+  await page.locator('#interrogation-panel > summary').click();
+  await page.locator('#interrogate-button').click();
+  await expect(page.locator('#interrogation-status')).toContainText('Estava na praça');
+  await page.locator('#close-dialogue').click(); await page.locator('#open-notebook').click();
+  await expect(page.locator('#interrogation-list')).toContainText('Rubião · noite 0');
+  await page.locator('#close-notebook').click(); await page.locator('#approach').click();
+  await expect(page.locator('#message-input')).toBeEnabled();
+  await page.locator('#interrogation-panel details > summary').click();
+  await page.locator('input[name="confront-interrogation"]').check();
+  await page.locator('#confront-button').click();
+  await expect(page.locator('#phase-overlay')).toBeVisible();
+  await expect(page.locator('#phase-description')).toContainText('confessou');
+  expect(city.requests.find(request => request.path.endsWith('/confrontations'))?.body).toEqual({npc_id: 'rubiao', evidence_ids: [], testimony_ids: [], interrogation_ids: ['alibi-ui']});
 });

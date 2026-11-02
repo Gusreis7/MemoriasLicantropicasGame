@@ -40,9 +40,13 @@ def make_crime(game, day, victim_id, location_id, now) -> Crime:
 
 
 def make_initial_investigation(game, now, day_seconds=300) -> InvestigationState:
+    from memorias_licantropicas.modules.investigation.interrogation import record_activities
+    from memorias_licantropicas.modules.world.catalog import make_initial_world
     initial = make_crime(game, 0, "bras_cubas", "praca_verde", now)
     return InvestigationState(
         game_id=game.id, phase_ends_at=now + timedelta(seconds=day_seconds), crimes=(initial,),
+        activity_records=record_activities(game, make_initial_world(game.id), 0, "night", now,
+                                          source="initial_scenario", crime=initial),
         journal=(JournalEdition(day=1, headline="Brás Cubas encontrado morto",
                     body="A cidade amanhece sob o impacto da morte de Brás Cubas. "
                          "O detetive Floriano inicia a investigação na Praça Verde.",

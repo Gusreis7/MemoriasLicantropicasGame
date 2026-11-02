@@ -67,6 +67,40 @@ async def test_bootstrap_is_insert_only_and_independent_of_roles(world_context):
     assert len({npc.npc_id for npc in world_context.initial.npcs}) == 7
 
 
+async def test_travelling_npc_is_not_visible_or_approachable(world_context):
+    context = world_context
+    world = context.initial.model_copy(update={"revision": 1, "npcs": tuple(
+        npc.model_copy(update={"activity": "travelling", "travel_destination_id": "casa_verde",
+                               "travel_arrives_at": context.clock[0] + timedelta(seconds=8)})
+        if npc.npc_id == "rubiao" else npc for npc in context.initial.npcs),
+        "player": context.initial.player.model_copy(update={"x": 440})})
+    assert await context.repository.save(world, expected_revision=0)
+    assert (await context.service.get(context.game.id)).visible_npcs == ()
+    with pytest.raises(AccessDeniedError):
+        await context.service.assert_can_talk(context.game.id, "rubiao")
+
+
+async def test_approach_interrupts_only_after_validating_range(world_context, catalog):
+    context = world_context
+    callback = AsyncMock()
+    service = WorldService(context.games, catalog, context.repository, context.gate, on_approach=callback)
+    with pytest.raises(AccessDeniedError):
+        await service.assert_can_talk(context.game.id, "rubiao")
+    callback.assert_not_awaited()
+    world = context.initial.model_copy(update={"revision": 1,
+        "player": context.initial.player.model_copy(update={"x": 440}),
+        "npcs": tuple(npc.model_copy(update={"activity": "talking", "social_partner_id": "capitu"})
+                      if npc.npc_id == "rubiao" else npc for npc in context.initial.npcs)})
+    assert await context.repository.save(world, expected_revision=0)
+    snapshot = await service.get(context.game.id)
+    assert snapshot.visible_npcs[0].activity == "talking"
+    assert snapshot.visible_npcs[0].can_approach
+    # Não revelar que Capitu está em outro local ou envolvida num encontro oculto.
+    assert snapshot.visible_npcs[0].social_partner_id is None
+    await service.assert_can_talk(context.game.id, "rubiao")
+    callback.assert_awaited_once_with(context.game.id, "rubiao")
+
+
 async def test_server_time_and_previous_direction_determine_movement(world_context):
     service, clock, game_id = world_context.service, world_context.clock, world_context.game.id
     snapshot = await service.get(game_id)

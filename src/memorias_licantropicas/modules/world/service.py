@@ -1,6 +1,6 @@
 """Regras da exploração: o cliente envia intenção, o servidor calcula deslocamento."""
 
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
@@ -26,13 +26,15 @@ ARRIVAL_INSET = 96
 class WorldService:
     def __init__(self, games: GameRepository, characters: CharacterRepository,
                  repository: RedisWorldRepository, gate: RedisPlayerGate,
-                 clock: Callable[[], datetime] | None = None, day_policy: DayPolicy | None = None):
+                 clock: Callable[[], datetime] | None = None, day_policy: DayPolicy | None = None,
+                 on_approach: Callable[[UUID, str], Awaitable[None]] | None = None):
         self._games = games
         self._characters = characters
         self._repository = repository
         self._gate = gate
         self._clock = clock or (lambda: datetime.now(UTC))
         self._day_policy = day_policy
+        self._on_approach = on_approach
 
     async def _load(self, game_id: UUID) -> tuple[GameState, WorldState]:
         game = await self._games.get(game_id)
@@ -48,10 +50,16 @@ class WorldService:
     async def _snapshot(self, game: GameState, world: WorldState,
                         case: InvestigationState | None = None) -> WorldSnapshot:
         cast = {character.character_id: character for character in game.characters}
+        visible_ids = {placement.npc_id for placement in world.npcs
+                       if placement.location_id == world.player.location_id
+                       and placement.activity != "travelling"
+                       and placement.npc_id in cast and cast[placement.npc_id].alive
+                       and (case is None or placement.npc_id != case.detained_npc_id)}
         visible = []
         for placement in world.npcs:
             member = cast.get(placement.npc_id)
-            if placement.location_id != world.player.location_id or member is None or not member.alive:
+            if (placement.location_id != world.player.location_id or member is None or not member.alive
+                    or placement.activity == "travelling"):
                 continue
             if case is not None and placement.npc_id == case.detained_npc_id:
                 continue
@@ -61,6 +69,9 @@ class WorldService:
             visible.append(VisibleNPC(
                 npc_id=profile.id, name=profile.name, x=placement.x, sprite_id=profile.id,
                 can_approach=(case is None or case.phase == "day") and abs(placement.x - world.player.x) <= APPROACH_DISTANCE,
+                activity=placement.activity,
+                social_partner_id=(placement.social_partner_id if placement.activity == "talking"
+                                   and placement.social_partner_id in visible_ids else None),
             ))
         return WorldSnapshot(
             game_id=world.game_id, world_version=world.world_version, revision=world.revision,
@@ -160,5 +171,9 @@ class WorldService:
         placement = next((member for member in world.npcs if member.npc_id == npc_id), None)
         if placement is None or placement.location_id != world.player.location_id:
             raise AccessDeniedError("A persona está em outro local.")
+        if placement.activity == "travelling":
+            raise AccessDeniedError("Esta persona está a caminho de outro local.")
         if abs(placement.x - world.player.x) > APPROACH_DISTANCE:
             raise AccessDeniedError("Aproxime-se da persona para conversar.")
+        if self._on_approach is not None:
+            await self._on_approach(game_id, npc_id)

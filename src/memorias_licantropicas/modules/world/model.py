@@ -25,6 +25,11 @@ class WorldNPC(Contract):
     npc_id: str
     location_id: LocationID
     x: float = Field(ge=32, le=1888)
+    activity: Literal["idle", "travelling", "talking"] = "idle"
+    social_encounter_id: UUID | None = None
+    travel_destination_id: LocationID | None = None
+    travel_arrives_at: AwareDatetime | None = None
+    social_partner_id: str | None = None
 
 
 class WorldState(Contract):

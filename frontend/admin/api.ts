@@ -14,6 +14,34 @@ export interface Message { id: string; sender_id: string; content: string; creat
 export interface GraphNode { id: string; name: string }
 export interface GraphEdge { source: string; target: string; message_count: number; last_at?: string | null; conversation_id: string }
 export interface Interactions { nodes: GraphNode[]; edges: GraphEdge[] }
+export interface SocialKnowledge {
+  id: string; owner_id: string; root_id: string; source_message_id: string; speaker_id: string;
+  claimed_source_id: string | null; source_span: string; proposition: string; subject_ids: string[];
+  parent_ids: string[]; kind: string; confidence: string; stance: string; day: number | null; created_at: string;
+}
+export interface SocialEncounter {
+  id: string; day: number; slot: number; participant_ids: string[]; phase: string; location_id: string;
+  reason: string | null; messages: Array<{id: string; sender_id: string; content: string; created_at: string; intent: string; claim_ids: string[]}>;
+}
+export interface SocialState {
+  game_id: string; revision: number; knowledge: SocialKnowledge[]; encounters: SocialEncounter[];
+  relationships: Array<{actor_id: string; target_id: string; affinity: number; trust: number; resentment: number; causes: string[]}>;
+  days: Array<{day: number; slots: number[]; speech_calls: number; extraction_calls: number}>;
+}
+
+export interface UsageTotals {
+  calls: number; completed_calls: number; failed_calls: number; cancelled_calls: number;
+  known_input_tokens: number; known_output_tokens: number; calls_with_missing_tokens: number;
+  unpriced_calls: number; known_estimated_cost_usd: string; cost_complete: boolean; duration_ms: number;
+}
+export interface UsageSummary {
+  game_id: string; coverage: 'recorded_calls_only' | 'not_recorded';
+  first_recorded_at: string | null; last_recorded_at: string | null; totals: UsageTotals;
+  by_purpose: Array<UsageTotals & {key: string}>; by_model: Array<UsageTotals & {key: string}>;
+  pricing_snapshots: Array<{model: string; input_usd_per_million: string | null; output_usd_per_million: string | null;
+    currency: string; source: string; checked_at: string | null}>;
+  currency: string; note: string;
+}
 
 export class ApiError extends Error {
   constructor(public readonly status: number, message: string) { super(message); this.name = 'ApiError'; }
@@ -72,7 +100,10 @@ export const eventLabels: Record<string, string> = {
   'night.started': 'Anoiteceu', 'night.resolved': 'Noite resolvida',
   'journal.published': 'Jornal publicado', 'evidence.collected': 'Vestígio recolhido',
   'evidence.presented': 'Vestígio apresentado', 'accusation.decided': 'Acusação avaliada',
-  'game.won': 'Lobisomem confirmado e expulso', 'game.lost': 'Investigação encerrada',
+  'game.won': 'Investigação vencida', 'game.lost': 'Investigação encerrada',
+  'werewolf.confessed': 'Lobisomem confessou e entregou-se', 'werewolf.expelled': 'Lobisomem expulso após transformação',
+  'social.encounter_started': 'Encontro entre moradores', 'social.message_committed': 'Fala entre moradores',
+  'social.encounter_interrupted': 'Encontro interrompido', 'social.knowledge_extracted': 'Relato incorporado à memória',
 };
 
 export function eventDetails(event: EventRecord): string {
@@ -86,5 +117,6 @@ export function eventDetails(event: EventRecord): string {
   if (Array.isArray(data.participant_ids)) parts.push(data.participant_ids.filter((id): id is string => typeof id === 'string').map(nameOf).join(' ↔ '));
   if (typeof data.conversation_id === 'string') parts.push(`Encontro ${data.conversation_id.slice(0, 8)}`);
   if (typeof data.message_count === 'number') parts.push(`${data.message_count} mensagens`);
+  if (data.method === 'confession') parts.push('Confissão registrada e custódia voluntária');
   return parts.join(' · ') || 'Acontecimento efetivado no registro da partida.';
 }

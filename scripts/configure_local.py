@@ -23,6 +23,9 @@ def main() -> None:
     path.chmod(0o600)
     print("Configuração local pronta. Usuário e senha estão em ADMIN_USERNAME/ADMIN_PASSWORD no .env.")
     print("O arquivo não é versionado. Reinicie a API depois de alterar as credenciais.")
+    if values.get("AWS_PROFILE", "").strip().strip("\"'") and not values.get("AWS_BEARER_TOKEN_BEDROCK", "").strip().strip("\"'"):
+        print("Para usar o perfil AWS no Docker, inclua o overlay de credenciais:")
+        print("docker compose -f compose.yaml -f compose.aws-local.yaml up -d --build")
 
 
 if __name__ == "__main__":

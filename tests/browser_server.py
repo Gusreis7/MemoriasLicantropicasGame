@@ -28,6 +28,7 @@ settings = Settings(
     redis_prefix="ml:browser-test", admin_password="browser-test-password",
     admin_allowed_origins="http://127.0.0.1:7081,http://localhost:7081",
     aws_profile=None, bedrock_api_key=None,
+    social_enabled=False,
 )
 
 

@@ -200,16 +200,19 @@ export class CityScene extends Phaser.Scene {
       this.cameras.main.setBounds(0, 0, world.location.width, world.location.height);
       this.cameras.main.setScroll(0, 0);
     }
-    const signature = world.visible_npcs.map(npc => `${npc.npc_id}:${npc.x}:${npc.name}`).join('|');
+    const signature = world.visible_npcs.map(npc => `${npc.npc_id}:${npc.x}:${npc.name}:${npc.activity}:${npc.social_partner_id}`).join('|');
     if (signature !== this.npcSignature) {
       this.npcSignature = signature;
       this.npcs.forEach(npc => npc.destroy()); this.npcs = [];
       for (const npc of world.visible_npcs) {
         const shadow = this.add.ellipse(npc.x, world.location.ground_y + 1, 34, 7, 0x173e31, .3);
         const sprite = this.sprite(npc.sprite_id, npc.x, world.location.ground_y);
+        const partner = world.visible_npcs.find(other => other.npc_id === npc.social_partner_id);
+        if (npc.activity === 'talking' && partner) sprite?.setFlipX(partner.x < npc.x);
         if (sprite) this.npcs.push(sprite);
         this.npcs.push(shadow);
-        const label = this.add.text(npc.x, world.location.ground_y - 96, npc.name, {fontFamily: 'Georgia, serif', fontSize: '11px', color: '#fff4d2', backgroundColor: '#183c33cc', padding: {x: 5, y: 3}}).setOrigin(.5, 1).setDepth(4);
+        const caption = npc.activity === 'talking' ? `${npc.name}\n${partner ? `Com ${partner.name}` : 'Conversando'}` : npc.name;
+        const label = this.add.text(npc.x, world.location.ground_y - 96, caption, {fontFamily: 'Georgia, serif', fontSize: '11px', align: 'center', color: '#fff4d2', backgroundColor: '#183c33cc', padding: {x: 5, y: 3}}).setOrigin(.5, 1).setDepth(4);
         this.npcs.push(label);
       }
       this.addExitSigns(world);

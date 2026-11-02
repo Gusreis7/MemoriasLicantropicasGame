@@ -24,6 +24,19 @@ class AccuseRequest(Contract):
     testimony_ids: tuple[UUID, ...] = Field(default=(), max_length=100)
 
 
+class InterrogateRequest(Contract):
+    npc_id: str = Field(min_length=1, max_length=40)
+    day: int = Field(ge=0)
+    period: Literal["night", "day"] = "night"
+
+
+class ConfrontRequest(Contract):
+    npc_id: str = Field(min_length=1, max_length=40)
+    evidence_ids: tuple[UUID, ...] = Field(default=(), max_length=100)
+    testimony_ids: tuple[UUID, ...] = Field(default=(), max_length=100)
+    interrogation_ids: tuple[UUID, ...] = Field(default=(), max_length=100)
+
+
 class JournalPublic(Contract):
     day: int
     title: str = "O Clarim do Rio"
@@ -80,6 +93,39 @@ class EndingPublic(Contract):
     result: Literal["won", "lost"]
     message: str
     werewolf_id: str
+    method: Literal["detention", "confession", "survival"] = "detention"
+
+
+class ActivityClaimPublic(Contract):
+    npc_id: str
+    location_id: LocationID
+    companion_ids: tuple[str, ...]
+    activity: str
+    source: Literal["observed", "heard"]
+
+
+class InterrogationPublic(Contract):
+    id: UUID
+    npc_id: str
+    npc_name: str
+    day: int
+    period: Literal["day", "night"]
+    location_id: LocationID | None
+    companion_ids: tuple[str, ...]
+    activity: str
+    text: str
+    observations: tuple[ActivityClaimPublic, ...]
+
+
+class ConfrontationPublic(Contract):
+    id: UUID
+    npc_id: str
+    day: int
+    evidence_ids: tuple[UUID, ...]
+    testimony_ids: tuple[UUID, ...]
+    interrogation_ids: tuple[UUID, ...]
+    confessed: bool
+    text: str
 
 
 class CasePublic(Contract):
@@ -98,3 +144,5 @@ class CasePublic(Contract):
     accusations: tuple[AccusationPublic, ...]
     detained_npc_id: str | None
     ending: EndingPublic | None
+    interrogations: tuple[InterrogationPublic, ...] = ()
+    confrontations: tuple[ConfrontationPublic, ...] = ()

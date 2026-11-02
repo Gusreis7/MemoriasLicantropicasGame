@@ -9,11 +9,13 @@ export interface Location {
 export interface WorldSnapshot {
   game_id: string; world_version: string; revision: number; location: Location;
   player: {location_id: LocationID; x: number; facing: 'left' | 'right'; movement_seq: number};
-  visible_npcs: Array<{npc_id: string; name: string; x: number; sprite_id: string; can_approach: boolean}>;
+  visible_npcs: Array<{npc_id: string; name: string; x: number; sprite_id: string; can_approach: boolean;
+    activity?: 'idle' | 'talking'; social_partner_id?: string | null}>;
   travel_targets: LocationID[];
 }
 export interface Conversation {id: string; game_id: string; npc_id: string; created_at: string}
 export interface Message {id: string; speaker: 'player' | 'npc'; content: string; created_at: string}
+export interface HeardReport {id: string; speaker_id: string; speaker_name: string; content: string; created_at: string; source_name: string | null}
 export interface CharacterAsset {
   id: string; type: 'atlas' | 'spritesheet' | 'image'; path: string; atlasPath?: string;
   frameWidth: number; frameHeight: number; frames: number; frameNames?: string[];
@@ -26,17 +28,24 @@ export interface CaseCrime {id: string; day: number; victim_id: string; victim_n
 export interface CaseEvidence {id: string; crime_id: string; item_id: string; name: string; kind: 'unique' | 'singular' | 'common'; description: string}
 export interface CaseTestimony {id: string; day: number; evidence_id: string; witness_id: string; witness_name: string; recognition: 'recognizes' | 'denies' | 'unknown'; claimed_owner_id: string | null; text: string}
 export interface CaseAccusation {id: string; day: number; suspect_id: string; suspect_name: string; evidence_ids: string[]; testimony_ids: string[]; accepted: boolean; reason: string}
+export interface CaseInterrogation {
+  id: string; npc_id: string; npc_name: string; day: number; period: 'night' | 'day';
+  location_id: LocationID | null; companion_ids: string[]; activity: string; text: string;
+  observations: Array<{npc_id: string; location_id: LocationID | null; companion_ids: string[]; activity: string; source: 'observed' | 'heard'}>;
+}
+export interface CaseConfrontation {id: string; npc_id: string; day: number; evidence_ids: string[]; testimony_ids: string[]; interrogation_ids: string[]; confessed: boolean; text: string}
 export interface JournalEdition {day: number; title: string; headline: string; body: string; victim_id: string | null; victim_name: string | null; location_id: LocationID | null; detention_outcome: 'none' | 'released' | 'transformed'}
 export interface CasePublic {
   game_id: string; revision: number; day: number; phase: 'day' | 'night' | 'finished'; status: 'active' | 'won' | 'lost';
   server_time: string; phase_ends_at: string; seconds_remaining: number;
   journal: JournalEdition[]; crimes: CaseCrime[]; inventory: CaseEvidence[]; testimonies: CaseTestimony[];
   accusations: CaseAccusation[]; detained_npc_id: string | null;
-  ending: {result: 'won' | 'lost'; message: string; werewolf_id: string} | null;
+  interrogations?: CaseInterrogation[]; confrontations?: CaseConfrontation[];
+  ending: {result: 'won' | 'lost'; message: string; werewolf_id: string; method?: 'detention' | 'confession' | 'survival'} | null;
 }
 
 export class ApiError extends Error {
-  constructor(public status: number, message: string) {super(message); this.name = 'ApiError';}
+  constructor(public status: number, message: string, public code?: string) {super(message); this.name = 'ApiError';}
 }
 
 export async function request<T>(path: string, body?: unknown, method?: string): Promise<T> {
@@ -54,7 +63,7 @@ export async function request<T>(path: string, body?: unknown, method?: string):
   if (!response.ok) {
     const error = await response.json().catch(() => null);
     const detail = typeof error?.detail === 'string' ? error.detail : 'Confira os dados e tente novamente.';
-    throw new ApiError(response.status, detail);
+    throw new ApiError(response.status, detail, typeof error?.code === 'string' ? error.code : undefined);
   }
   if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
@@ -65,10 +74,15 @@ export const api = {
   createGame: () => request<{id: string}>('/api/v1/games', {}),
   game: (id: string) => request<GamePublic>(base(id)),
   investigation: (id: string) => request<CasePublic>(`${base(id)}/investigation`),
+  reports: (id: string) => request<{reports: HeardReport[]}>(`${base(id)}/social/reports`),
   search: (id: string, crimeID: string) => request<CasePublic>(`${base(id)}/crime-scenes/${encodeURIComponent(crimeID)}/search`, {}),
   present: (id: string, evidenceID: string, npcID: string) => request<CasePublic>(`${base(id)}/evidence/${encodeURIComponent(evidenceID)}/present`, {npc_id: npcID}),
   accuse: (id: string, suspectID: string, evidenceIDs: string[], testimonyIDs: string[]) => request<CasePublic>(`${base(id)}/accusations`, {
     suspect_id: suspectID, evidence_ids: evidenceIDs, testimony_ids: testimonyIDs,
+  }),
+  interrogate: (id: string, npcID: string, day: number, period: 'night' | 'day') => request<CasePublic>(`${base(id)}/interrogations`, {npc_id: npcID, day, period}),
+  confront: (id: string, npcID: string, evidenceIDs: string[], testimonyIDs: string[], interrogationIDs: string[]) => request<CasePublic>(`${base(id)}/confrontations`, {
+    npc_id: npcID, evidence_ids: evidenceIDs, testimony_ids: testimonyIDs, interrogation_ids: interrogationIDs,
   }),
   world: (id: string) => request<WorldSnapshot>(`${base(id)}/world`),
   locations: () => request<Location[]>('/api/v1/world/locations'),

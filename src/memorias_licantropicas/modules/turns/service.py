@@ -83,9 +83,15 @@ class TurnService:
                 return state
             boundary = state.phase_ends_at
             if state.phase == "day":
+                from memorias_licantropicas.modules.investigation.interrogation import record_activities
+                records = state.activity_records
+                if not any(record.day == state.day and record.period == "day" for record in records):
+                    records += record_activities(game, world, state.day, "day", boundary,
+                        excluded_ids=(state.detained_npc_id,) if state.detained_npc_id else ())
                 updated = state.model_copy(update={
                     "revision": state.revision + 1, "phase": "night",
                     "phase_ends_at": boundary + timedelta(seconds=self._night_seconds),
+                    "activity_records": records,
                 })
                 updated_world = world.model_copy(update={"revision": world.revision + 1,
                     "player": world.player.model_copy(update={"direction": "idle", "last_updated_at": boundary})})
@@ -109,6 +115,7 @@ class TurnService:
         victim_id = None
         location_id = None
         crimes = state.crimes
+        activity_records = state.activity_records
         events = []
         if state.detained_npc_id == werewolf:
             status = "won"
@@ -127,6 +134,10 @@ class TurnService:
                 placement = next((npc for npc in world.npcs if npc.npc_id == victim_id), None)
                 location_id = placement.location_id if placement else "praca_verde"
                 crime = make_crime(game, state.day, victim_id, location_id, boundary)
+                from memorias_licantropicas.modules.investigation.interrogation import record_activities
+                activity_records += record_activities(game, world, state.day, "night", boundary,
+                    source="night_resolution", crime=crime,
+                    excluded_ids=(state.detained_npc_id,) if state.detained_npc_id else ())
                 crimes += (crime,)
                 game = game.model_copy(update={"characters": tuple(
                     member.model_copy(update={"alive": False}) if member.character_id == victim_id else member
@@ -159,6 +170,8 @@ class TurnService:
             "phase": "day" if status == "active" else "finished", "status": status,
             "phase_ends_at": boundary + timedelta(seconds=self._day_seconds) if status == "active" else boundary,
             "crimes": crimes, "journal": state.journal + (edition,), "detained_npc_id": None,
+            "activity_records": activity_records,
+            "ending_method": "detention" if status == "won" else "survival" if status == "lost" else None,
         })
         world = world.model_copy(update={"revision": world.revision + 1,
             "npcs": tuple(placement for placement in world.npcs
@@ -195,15 +208,46 @@ class TurnService:
             result = transition(state, game, world)
             if not isinstance(result, CaseTransition):
                 raise TypeError("A ação exige uma transição de investigação.")
+            confession = self._validated_confession(state, result, game)
             if (result.state.game_id != state.game_id or result.state.day != state.day
-                    or result.state.phase != state.phase or result.state.status != state.status
+                    or (not confession and (result.state.phase != state.phase or result.state.status != state.status))
                     or result.state.phase_ends_at != state.phase_ends_at):
                 raise ValueError("Uma ação diurna não pode mudar o relógio ou o resultado.")
             if result.state == state and not result.events:
                 return state
             updated = result.state.model_copy(update={"revision": state.revision + 1})
+            updated_game = game.model_copy(update={"status": "won"}) if confession else game
+            updated_world = world
+            if confession:
+                updated_world = world.model_copy(update={"revision": world.revision + 1,
+                    "npcs": tuple(npc for npc in world.npcs if npc.npc_id != updated.detained_npc_id),
+                    "player": world.player.model_copy(update={"direction": "idle", "last_updated_at": self.now()})})
             await self._repository.commit(
-                previous=state, state=updated, previous_game=game, game=game,
-                previous_world=world, world=world, events=result.events, occurred_at=self.now(),
+                previous=state, state=updated, previous_game=game, game=updated_game,
+                previous_world=world, world=updated_world, events=result.events, occurred_at=self.now(),
             )
             return updated
+
+    @staticmethod
+    def _validated_confession(state, result, game):
+        """Exceção estreita: reavaliar as provas antes de permitir fim diurno."""
+        candidate = result.state
+        if candidate.status == state.status and candidate.phase == state.phase:
+            return False
+        if not (candidate.status == "won" and candidate.phase == "finished"
+                and candidate.ending_method == "confession"
+                and len(candidate.confrontations) == len(state.confrontations) + 1):
+            return False
+        record = candidate.confrontations[-1]
+        if not record.confessed or candidate.detained_npc_id != record.npc_id:
+            return False
+        from memorias_licantropicas.modules.investigation.interrogation import make_confrontation
+        expected = make_confrontation(state, game, record.npc_id, record.evidence_ids,
+            record.testimony_ids, record.interrogation_ids, record.created_at)
+        if expected.model_dump(exclude={"id"}) != record.model_dump(exclude={"id"}):
+            return False
+        canonical = state.model_copy(update={"status": "won", "phase": "finished",
+            "ending_method": "confession", "detained_npc_id": record.npc_id,
+            "confrontations": (*state.confrontations, record)})
+        return candidate == canonical and any(event.type == "werewolf.confessed"
+            and event.data.get("character_id") == record.npc_id for event in result.events)

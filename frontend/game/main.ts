@@ -1,8 +1,9 @@
-import {api, ApiError, type CasePublic, type CaseEvidence, type GamePublic, type CharacterManifest, type Conversation, type ExitSide, type Location, type LocationID, type Message, type WorldSnapshot} from '../shared/api';
+import {api, ApiError, type CasePublic, type CaseEvidence, type GamePublic, type CharacterManifest, type Conversation, type ExitSide, type Location, type LocationID, type Message, type HeardReport, type WorldSnapshot} from '../shared/api';
 import {closestNPC, MovementController} from './movement';
 import {ExitBoundary} from './exits';
 import {CaseClock, CasePoller, closestCrime, formatClock} from './case';
 import {CityScene, makeGame} from './scene';
+import {sendDialogue} from './dialogue';
 import './style.css';
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
@@ -34,9 +35,9 @@ app.innerHTML = `
 
   <div id="exit-overlay" class="overlay" hidden><section class="exit-modal" role="dialog" aria-modal="true" aria-labelledby="exit-title" aria-describedby="exit-description"><header class="modal-heading"><div><p class="eyebrow">NO FIM DESTA RUA</p><h2 id="exit-title">Por onde seguimos?</h2></div><button class="icon-button" id="close-exit" aria-label="Ficar neste local" type="button">×</button></header><p id="exit-description">Escolha um caminho para continuar a investigação.</p><div id="exit-destinations" class="exit-destinations"></div><p id="exit-status" class="status" role="status" aria-live="polite"></p><button id="stay-here" class="button secondary" type="button">Ficar neste local</button></section></div>
 
-  <div id="dialogue-overlay" class="overlay dialogue-overlay" hidden><section class="dialogue-modal" role="dialog" aria-modal="true" aria-labelledby="dialogue-name"><aside class="persona-panel"><div class="persona-frame"><img id="persona-portrait" src="" alt=""/></div><p class="eyebrow">DEPOIMENTO</p><h2 id="dialogue-name"></h2><span class="persona-flourish" aria-hidden="true">— ✦ —</span><p>Nem toda verdade vem à primeira pergunta.</p></aside><div class="conversation-panel"><header class="conversation-heading"><div><span class="conversation-dot"></span><span>Conversa com Floriano</span></div><button id="close-dialogue" class="icon-button" type="button" aria-label="Encerrar conversa">×</button></header><div id="messages" class="messages" role="log" aria-live="polite"></div><div id="dialogue-status" class="status dialogue-status" role="status" aria-live="polite"></div><div id="evidence-presenter" class="evidence-presenter" hidden><label for="present-evidence">Mostrar um vestígio</label><div><select id="present-evidence"></select><button id="present-button" class="button small" type="button">Apresentar</button></div><p id="presentation-status" role="status" aria-live="polite"></p></div><form id="message-form" class="message-form"><label class="sr-only" for="message-input">Sua pergunta</label><textarea id="message-input" rows="2" maxlength="8000" placeholder="O que você gostaria de perguntar?" required></textarea><button id="send-message" class="button primary" type="submit" aria-label="Enviar pergunta">Enviar <span aria-hidden="true">→</span></button></form><p class="form-hint">Enter para enviar · Shift + Enter para uma nova linha</p></div></section></div>
+  <div id="dialogue-overlay" class="overlay dialogue-overlay" hidden><section class="dialogue-modal" role="dialog" aria-modal="true" aria-labelledby="dialogue-name"><aside class="persona-panel"><div class="persona-frame"><img id="persona-portrait" src="" alt=""/></div><p class="eyebrow">DEPOIMENTO</p><h2 id="dialogue-name"></h2><span class="persona-flourish" aria-hidden="true">— ✦ —</span><p>Nem toda verdade vem à primeira pergunta.</p></aside><div class="conversation-panel"><header class="conversation-heading"><div><span class="conversation-dot"></span><span>Conversa com Floriano</span></div><button id="close-dialogue" class="icon-button" type="button" aria-label="Encerrar conversa">×</button></header><div id="messages" class="messages" role="log" aria-live="polite"></div><div id="dialogue-status" class="status dialogue-status" role="status" aria-live="polite"></div><div id="evidence-presenter" class="evidence-presenter" hidden><label for="present-evidence">Mostrar um vestígio</label><div><select id="present-evidence"></select><button id="present-button" class="button small" type="button">Apresentar</button></div><p id="presentation-status" role="status" aria-live="polite"></p></div><details id="interrogation-panel" class="interrogation-panel"><summary>Interrogar e confrontar versões</summary><p class="case-note">Pergunte onde estava, com quem e o que fazia. Um álibi é uma declaração que pode ser confrontada.</p><div class="interrogation-controls"><label>Dia <input id="interrogation-day" type="number" min="0" value="0"/></label><label>Período <select id="interrogation-period"><option value="night">Noite</option><option value="day">Dia</option></select></label><button id="interrogate-button" class="button small" type="button">Perguntar sobre o álibi</button></div><p id="interrogation-status" role="status" aria-live="polite"></p><details><summary>Confrontar com registros do caderno</summary><p class="case-note">Selecione vestígios, seus depoimentos e versões contraditórias. Insistir sem novos elementos não força uma confissão.</p><div id="confrontation-proofs" class="confrontation-proofs"></div><button id="confront-button" class="button small" type="button">Confrontar e pedir que admita</button><p id="confrontation-status" role="status" aria-live="polite"></p></details></details><form id="message-form" class="message-form"><label class="sr-only" for="message-input">Sua pergunta</label><textarea id="message-input" rows="2" maxlength="8000" placeholder="O que você gostaria de perguntar?" required></textarea><button id="send-message" class="button primary" type="submit" aria-label="Enviar pergunta">Enviar <span aria-hidden="true">→</span></button></form><p class="form-hint">Enter para enviar · Shift + Enter para uma nova linha</p></div></section></div>
   <div id="journal-overlay" class="overlay" hidden><section class="journal-modal case-modal" role="dialog" aria-modal="true" aria-labelledby="journal-title"><header class="newspaper-masthead"><div class="newspaper-dateline"><span>RIO DE JANEIRO</span><span>EDIÇÃO DA MANHÃ</span><button id="close-journal" class="icon-button" type="button" aria-label="Fechar jornal">×</button></div><h2 id="journal-title">O Clarim do Rio</h2><div class="newspaper-edition"><span>NOTÍCIAS DA CIDADE · 1890</span><span id="journal-day"></span></div></header><article class="newspaper-story"><p class="journal-motto">Os acontecimentos da cidade, à luz do dia.</p><h3 id="journal-headline"></h3><figure id="journal-snapshot" class="journal-snapshot" hidden><img src="/assets/press/crime-scene-snapshot.png" alt="Registro monocromático de uma rua carioca à noite, com um chapéu caído e pegadas no calçamento."/><figcaption id="journal-snapshot-caption"></figcaption></figure><p id="journal-body"></p><p id="journal-location" class="journal-location"></p></article><button id="read-journal" class="button primary" type="button">Continuar a investigação</button></section></div>
-  <div id="notebook-overlay" class="overlay" hidden><section class="case-modal notebook-modal" role="dialog" aria-modal="true" aria-labelledby="notebook-title"><header class="modal-heading"><div><p class="eyebrow">O CADERNO DE FLORIANO</p><h2 id="notebook-title">Vestígios e versões</h2></div><button id="close-notebook" class="icon-button" type="button" aria-label="Fechar caderno">×</button></header><p class="case-note">Um objeto pode ter muitos donos. Um depoimento registra uma versão, não uma certeza.</p><h3>Vestígios recolhidos</h3><div id="evidence-list" class="evidence-list"></div><h3>Depoimentos sobre objetos</h3><div id="testimony-list" class="testimony-list"></div><h3>Cenas conhecidas</h3><div id="crime-list" class="crime-list"></div></section></div>
+  <div id="notebook-overlay" class="overlay" hidden><section class="case-modal notebook-modal" role="dialog" aria-modal="true" aria-labelledby="notebook-title"><header class="modal-heading"><div><p class="eyebrow">O CADERNO DE FLORIANO</p><h2 id="notebook-title">Vestígios e versões</h2></div><button id="close-notebook" class="icon-button" type="button" aria-label="Fechar caderno">×</button></header><p class="case-note">Um objeto pode ter muitos donos. Um depoimento registra uma versão, não uma certeza.</p><h3>Vestígios recolhidos</h3><div id="evidence-list" class="evidence-list"></div><h3>Depoimentos sobre objetos</h3><div id="testimony-list" class="testimony-list"></div><h3>Álibis e interrogatórios</h3><div id="interrogation-list" class="testimony-list"></div><h3>Confrontos</h3><div id="confrontation-list" class="testimony-list"></div><h3>Cenas conhecidas</h3><div id="crime-list" class="crime-list"></div><h3>Relatos ouvidos por Floriano</h3><p class="case-note">Fofocas conservam a fonte de quem contou. Repetir uma história não a torna prova.</p><p id="reports-status" class="status" role="status" aria-live="polite"></p><div id="heard-report-list" class="testimony-list"></div></section></div>
   <div id="delegate-overlay" class="overlay" hidden><section class="case-modal delegate-modal" role="dialog" aria-modal="true" aria-labelledby="delegate-title"><header class="modal-heading"><div><p class="eyebrow">UM PEDIDO DE PRISÃO</p><h2 id="delegate-title">Na presença do delegado</h2></div><button id="close-delegate" class="icon-button" type="button" aria-label="Dispensar delegado">×</button></header><p class="case-note">Apresente objetos e depoimentos que sustentem sua suspeita. Se o delegado aceitar, haverá detenção nesta noite. A transformação na cela será a prova final.</p><form id="accusation-form"><label class="field-label" for="accused-npc">Quem você acusa?</label><select id="accused-npc" required></select><fieldset><legend>Vestígios</legend><div id="accusation-evidence"></div></fieldset><fieldset><legend>Depoimentos registrados</legend><div id="accusation-testimonies"></div></fieldset><p id="accusation-status" class="status" role="status" aria-live="polite"></p><button id="submit-accusation" class="button primary" type="submit">Apresentar acusação</button></form><div id="accusation-history"></div></section></div>
   <div id="phase-overlay" class="overlay phase-overlay" hidden><section class="case-modal phase-modal" role="dialog" aria-modal="true" aria-labelledby="phase-title" aria-describedby="phase-description"><span class="phase-moon" aria-hidden="true">☾</span><p class="eyebrow" id="phase-eyebrow">A CIDADE RECOLHE-SE</p><h2 id="phase-title">A noite guarda seus segredos.</h2><p id="phase-description">Floriano aguarda a manhã. Os acontecimentos serão publicados no Clarim do Rio.</p><p id="phase-countdown" role="status" aria-live="polite"></p><button id="ending-new-case" class="button primary" type="button" hidden>Iniciar outro caso</button></section></div>
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
@@ -72,11 +73,15 @@ let busy = false;
 let transitioning = false;
 let pendingWorldSync = false;
 let caseState: CasePublic | null = null;
+let heardReports: HeardReport[] = [];
 let cast: GamePublic['characters'] = [];
 const caseClock = new CaseClock();
 const casePoller = new CasePoller();
 let starting = false;
 let conversation: Conversation | null = null;
+let conversationMessages: Message[] = [];
+let historyReady = false;
+const dialogueDrafts = new Map<string, string>();
 let dialogueNPC: {npc_id: string; name: string} | null = null;
 let lastNearest = '';
 let toastTimer: ReturnType<typeof setTimeout> | undefined;
@@ -86,7 +91,6 @@ function saveGame(id: string) { try { localStorage.setItem(STORAGE_KEY, id); } c
 function status(selector: string, text: string, error = false) {const el = $(selector); el.textContent = text; el.classList.toggle('error', error);}
 function explain(error: unknown) {
   if (error instanceof ApiError) {
-    if (error.status === 503) return 'A resposta não pôde chegar agora. Confira o histórico antes de reenviar sua pergunta.';
     if (error.status === 409) return 'O estado da investigação mudou. Aguarde um instante e tente novamente.';
     return error.message;
   }
@@ -130,7 +134,7 @@ async function launch(resume: boolean) {
     casePoller.stop();
     const investigation = await api.investigation(id);
     const [snapshot, places, characters, publicGame] = await Promise.all([api.world(id), api.locations(), api.manifest(), api.game(id)]);
-    caseState = null; pendingWorldSync = false; transitioning = false; cast = publicGame.characters;
+    caseState = null; heardReports = []; pendingWorldSync = false; transitioning = false; cast = publicGame.characters;
     locations = places; manifest = characters;
     controller?.dispose(); game?.destroy(true);
     exitBoundary = new ExitBoundary();
@@ -168,7 +172,11 @@ async function launch(resume: boolean) {
     await applyCase(investigation, true);
     casePoller.start(async () => {
       if (!world || world.game_id !== id || $('#investigation').hidden) return;
-      try {await applyCase(await api.investigation(id));}
+      try {
+        const [next, snapshot] = await Promise.all([api.investigation(id), api.world(id)]);
+        await applyCase(next);
+        if (world?.game_id === id && !transitioning && !pendingWorldSync) controller?.observe(snapshot);
+      }
       catch (error) {if (!(error instanceof ApiError && error.status === 409)) $('#case-phase').textContent = 'Sincronizando com a cidade…';}
     });
     document.body.classList.add('case-active');
@@ -263,7 +271,8 @@ async function approach() {
   if (!npc) {toast('Aproxime-se de um morador para conversar.'); return;}
   busy = true;
   await settleMovement();
-  busy = true; dialogueNPC = npc; conversation = null; renderPresentation(); status('#presentation-status', '');
+  busy = true; dialogueNPC = npc; conversation = null; conversationMessages = []; historyReady = false;
+  $<HTMLTextAreaElement>('#message-input').value = ''; renderPresentation(); renderInterrogation(); status('#presentation-status', ''); status('#interrogation-status', ''); status('#confrontation-status', '');
   setModal('dialogue');
   $('#dialogue-name').textContent = npc.name;
   const image = $('#persona-portrait') as HTMLImageElement;
@@ -273,6 +282,7 @@ async function approach() {
   setSending(true);
   try {
     conversation = await api.approach(world.game_id, npc.npc_id);
+    $<HTMLTextAreaElement>('#message-input').value = dialogueDrafts.get(`${world.game_id}:${conversation.id}`) ?? '';
     await refreshHistory(); status('#dialogue-status', '');
   } catch (error) {status('#dialogue-status', explain(error), true);}
   finally {busy = false; setSending(false); if (modal === 'dialogue' && !caseClock.blocked()) $('#message-input').focus();}
@@ -288,36 +298,56 @@ function appendMessage(message: Message) {
 
 async function refreshHistory() {
   if (!conversation || !world) return;
-  const history = await api.history(world.game_id, conversation.id);
+  const gameID = world.game_id, conversationID = conversation.id;
+  const history = await api.history(gameID, conversationID);
+  if (world?.game_id !== gameID || conversation?.id !== conversationID) return;
+  historyReady = true;
+  renderConversation(history.messages);
+}
+
+function renderConversation(messages: Message[]) {
+  conversationMessages = messages;
   $('#messages').replaceChildren();
-  if (!history.messages.length) {
+  if (!messages.length) {
     const empty = document.createElement('div'); empty.className = 'conversation-opening';
     empty.textContent = 'O primeiro passo de uma investigação é saber escutar. Faça sua pergunta.';
     $('#messages').append(empty);
-  } else history.messages.forEach(appendMessage);
+  } else messages.forEach(appendMessage);
   $('#messages').scrollTop = $('#messages').scrollHeight;
 }
 
 function setSending(sending: boolean) {
-  $('#send-message').toggleAttribute('disabled', sending || !conversation || caseClock.blocked());
-  $('#message-input').toggleAttribute('disabled', sending || !conversation || caseClock.blocked());
+  $('#send-message').toggleAttribute('disabled', sending || !conversation || !historyReady || caseClock.blocked());
+  $('#message-input').toggleAttribute('disabled', sending || !conversation || !historyReady || caseClock.blocked());
   $('#close-dialogue').toggleAttribute('disabled', sending);
   $('#present-button').toggleAttribute('disabled', sending || caseClock.blocked());
+  for (const id of ['interrogate-button', 'confront-button']) $(`#${id}`).toggleAttribute('disabled', sending || !conversation || caseClock.blocked());
 }
 
 async function sendMessage(event: Event) {
   event.preventDefault();
-  if (!conversation || !world || busy || caseClock.blocked()) return;
+  if (!conversation || !world || !historyReady || busy || caseClock.blocked()) return;
   const input = $('#message-input') as HTMLTextAreaElement;
   const content = input.value.trim(); if (!content) return;
+  const gameID = world.game_id, conversationID = conversation.id;
+  const draftKey = `${gameID}:${conversationID}`;
+  dialogueDrafts.set(draftKey, input.value);
+  const isCurrent = () => world?.game_id === gameID && conversation?.id === conversationID;
   busy = true; setSending(true); status('#dialogue-status', `${dialogueNPC?.name ?? 'A persona'} está respondendo…`);
   try {
-    await api.send(world.game_id, conversation.id, content);
-    input.value = ''; await refreshHistory(); status('#dialogue-status', '');
-  } catch (error) {
-    // A confirmação pode ter se perdido; ler é seguro, reenviar automaticamente não é.
-    try {await refreshHistory();} catch { /* mantém a mensagem original de erro */ }
-    status('#dialogue-status', explain(error), true);
+    const result = await sendDialogue({content, baseline: [...conversationMessages],
+      send: async () => (await api.send(gameID, conversationID, content)).message,
+      history: async () => (await api.history(gameID, conversationID)).messages,
+      onConfirmed: messages => {
+        dialogueDrafts.delete(draftKey);
+        if (isCurrent()) {input.value = ''; renderConversation(messages);}
+      }});
+    if (result.clearDraft) dialogueDrafts.delete(draftKey);
+    if (!isCurrent()) return;
+    if (result.clearDraft) input.value = '';
+    if (result.outcome === 'uncertain') historyReady = false;
+    renderConversation(result.messages);
+    status('#dialogue-status', result.status, result.outcome !== 'confirmed');
   } finally {busy = false; setSending(false); if (modal === 'dialogue' && !caseClock.blocked()) input.focus();}
 }
 
@@ -327,7 +357,9 @@ function addText(parent: HTMLElement, tag: string, text: string, className?: str
   parent.append(element); return element;
 }
 
-function locationName(id: LocationID) {return locations.find(location => location.id === id)?.name ?? id;}
+function locationName(id: string) {return locations.find(location => location.id === id)?.name ?? id;}
+function npcName(id: string) {return cast.find(member => member.character.id === id)?.character.name ?? id;}
+function periodLabel(day: number, period: 'night' | 'day') {return `${period === 'night' ? 'noite' : 'dia'} ${day}`;}
 function itemKind(evidence: CaseEvidence) {return {unique: 'Exclusivo', singular: 'Singular', common: 'Comum'}[evidence.kind];}
 function itemArt(itemId: string, kind: CaseEvidence['kind']) {
   const wrapper = document.createElement('span'); wrapper.className = `item-art item-art-${kind}`; wrapper.setAttribute('aria-hidden', 'true');
@@ -415,7 +447,7 @@ function renderCase() {
   $('#case-hint').textContent = caseState.detained_npc_id
     ? 'O acusado ficará na cela esta noite. O jornal trará os acontecimentos da manhã.'
     : 'Recolha vestígios nas cenas do crime. Mostre-os aos moradores e confronte versões antes de chamar o delegado.';
-  renderJournal(); renderPresentation(); renderNotebook();
+  renderJournal(); renderPresentation(); renderInterrogation(); renderNotebook();
   if (modal !== 'delegate') renderAccusation();
 }
 
@@ -441,6 +473,32 @@ function renderNotebook() {
   if (!caseState.testimonies.length) addText(testimonyList, 'p', 'Apresente um objeto durante uma conversa para registrar um depoimento.', 'empty-case');
   const crimes = $('#crime-list'); crimes.replaceChildren();
   for (const crime of caseState.crimes) addText(crimes, 'p', `${crime.victim_name} · ${locationName(crime.location_id)} · ${crime.remaining_clues ? `${crime.remaining_clues} vestígio(s) por encontrar` : 'busca concluída'}`);
+  const alibis = $('#interrogation-list'); alibis.replaceChildren();
+  for (const record of caseState.interrogations ?? []) {
+    const card = document.createElement('article'); card.className = 'testimony-card';
+    addText(card, 'h4', `${record.npc_name} · ${periodLabel(record.day, record.period)}`);
+    addText(card, 'p', record.text);
+    for (const observation of record.observations) addText(card, 'small', `${observation.source === 'observed' ? 'Diz ter visto' : 'Diz ter ouvido sobre'} ${npcName(observation.npc_id)} em ${locationName(observation.location_id ?? '')}: ${observation.activity}`);
+    alibis.append(card);
+  }
+  if (!alibis.childElementCount) addText(alibis, 'p', 'Interrogue os moradores sobre onde estavam, o que faziam e quem os acompanhava.', 'empty-case');
+  const confrontations = $('#confrontation-list'); confrontations.replaceChildren();
+  for (const record of caseState.confrontations ?? []) {
+    const card = document.createElement('article'); card.className = 'testimony-card';
+    addText(card, 'h4', `${npcName(record.npc_id)} · dia ${record.day}`); addText(card, 'p', record.text); confrontations.append(card);
+  }
+  renderReports();
+}
+
+function renderReports() {
+  const reports = $('#heard-report-list'); reports.replaceChildren();
+  for (const report of heardReports) {
+    const item = document.createElement('article'); item.className = 'testimony-card';
+    addText(item, 'h4', report.speaker_name);
+    addText(item, 'small', report.source_name ? `Fonte atribuída: ${report.source_name}` : 'Versão ouvida em conversa');
+    addText(item, 'p', report.content); reports.append(item);
+  }
+  if (!heardReports.length) addText(reports, 'p', 'As versões que os moradores contarem a Floriano ficarão registradas aqui.', 'empty-case');
 }
 
 function renderPresentation() {
@@ -457,6 +515,55 @@ function renderPresentation() {
   if (selectedEvidence) preview.append(itemArt(selectedEvidence.item_id, selectedEvidence.kind));
   panel.hidden = !caseState?.inventory.length;
   $('#present-button').toggleAttribute('disabled', busy || caseClock.blocked());
+}
+
+function renderInterrogation() {
+  if (!caseState) return;
+  const day = $<HTMLInputElement>('#interrogation-day'); day.max = String(caseState.day);
+  const proofs = $('#confrontation-proofs');
+  const selected = new Set([...proofs.querySelectorAll<HTMLInputElement>('input:checked')].map(input => input.value));
+  proofs.replaceChildren();
+  const choice = (kind: string, id: string, text: string) => {
+    const label = document.createElement('label'); label.className = 'proof-choice';
+    const input = document.createElement('input'); input.type = 'checkbox'; input.name = kind; input.value = id;
+    input.checked = selected.has(id); const caption = document.createElement('span'); caption.textContent = text;
+    label.append(input, caption); proofs.append(label);
+  };
+  for (const evidence of caseState.inventory) choice('confront-evidence', evidence.id, evidence.name);
+  for (const testimony of caseState.testimonies) choice('confront-testimony', testimony.id, `${testimony.witness_name}: ${testimony.text}`);
+  for (const record of caseState.interrogations ?? []) choice('confront-interrogation', record.id, `${record.npc_name} · ${periodLabel(record.day, record.period)}: ${record.text}`);
+  if (!proofs.childElementCount) addText(proofs, 'p', 'Reúna provas e registre versões antes de confrontar.', 'empty-case');
+}
+
+async function interrogateNPC() {
+  if (!world || !dialogueNPC || !conversation || busy || modal !== 'dialogue' || caseClock.blocked()) return;
+  const day = $<HTMLInputElement>('#interrogation-day');
+  if (!day.reportValidity()) return;
+  const period = $<HTMLSelectElement>('#interrogation-period').value as 'night' | 'day';
+  const gameID = world.game_id, npcID = dialogueNPC.npc_id;
+  busy = true; setSending(true); status('#interrogation-status', 'Registrando a versão do morador…');
+  try {
+    const result = await api.interrogate(gameID, npcID, Number(day.value), period);
+    if (world?.game_id !== gameID) return;
+    await applyCase(result);
+    const record = result.interrogations?.find(item => item.npc_id === npcID && item.day === Number(day.value) && item.period === period);
+    status('#interrogation-status', record?.text ?? 'Versão registrada no caderno.');
+  } catch (error) {status('#interrogation-status', explain(error), true);}
+  finally {busy = false; setSending(false);}
+}
+
+async function confrontNPC() {
+  if (!world || !dialogueNPC || !conversation || busy || modal !== 'dialogue' || caseClock.blocked()) return;
+  const chosen = (kind: string) => [...$('#confrontation-proofs').querySelectorAll<HTMLInputElement>(`input[name="${kind}"]:checked`)].map(input => input.value);
+  const gameID = world.game_id, npcID = dialogueNPC.npc_id;
+  busy = true; setSending(true); status('#confrontation-status', 'O morador examina os elementos apresentados…');
+  try {
+    const result = await api.confront(gameID, npcID, chosen('confront-evidence'), chosen('confront-testimony'), chosen('confront-interrogation'));
+    if (world?.game_id !== gameID) return;
+    await applyCase(result);
+    status('#confrontation-status', result.confrontations?.filter(record => record.npc_id === npcID).at(-1)?.text ?? 'Confronto registrado.');
+  } catch (error) {status('#confrontation-status', explain(error), true);}
+  finally {busy = false; setSending(false);}
 }
 
 function renderAccusation() {
@@ -497,6 +604,17 @@ async function openCasePanel(panel: 'journal' | 'notebook' | 'delegate') {
   if (caseClock.blocked()) return;
   if (panel === 'delegate') {renderAccusation(); status('#accusation-status', '');}
   setModal(panel); $(`#close-${panel}`).focus();
+  if (panel === 'notebook') {
+    const gameID = world.game_id;
+    status('#reports-status', 'Consultando suas anotações…');
+    try {
+      const result = await api.reports(gameID);
+      if (world?.game_id !== gameID) return;
+      heardReports = result.reports; renderReports(); status('#reports-status', '');
+    } catch {
+      if (world?.game_id === gameID) status('#reports-status', 'Não foi possível atualizar os relatos. Tente reabrir o caderno.', true);
+    }
+  }
 }
 
 async function searchCrime(id?: string) {
@@ -546,6 +664,8 @@ setInterval(renderClock, 250);
 $('#inspect-crime').addEventListener('click', () => {void searchCrime();});
 $('#present-button').addEventListener('click', () => {void presentEvidence();});
 $('#present-evidence').addEventListener('change', () => renderPresentation());
+$('#interrogate-button').addEventListener('click', () => {void interrogateNPC();});
+$('#confront-button').addEventListener('click', () => {void confrontNPC();});
 $('#accusation-form').addEventListener('submit', event => {void submitAccusation(event);});
 for (const panel of ['journal', 'notebook', 'delegate'] as const) {
   $(`#open-${panel}`).addEventListener('click', () => {void openCasePanel(panel);});
@@ -580,6 +700,9 @@ $('#close-dialogue').addEventListener('click', () => {if (!busy) setModal(null);
 $('#message-form').addEventListener('submit', event => {void sendMessage(event);});
 $('#message-input').addEventListener('keydown', event => {
   if (event.key === 'Enter' && !event.shiftKey) {event.preventDefault(); $('#message-form').dispatchEvent(new Event('submit', {cancelable: true}));}
+});
+$('#message-input').addEventListener('input', () => {
+  if (world && conversation) dialogueDrafts.set(`${world.game_id}:${conversation.id}`, $<HTMLTextAreaElement>('#message-input').value);
 });
 document.addEventListener('keydown', event => {
   if (event.key === 'Escape' && modal && modal !== 'phase' && !busy) {event.preventDefault(); setModal(null);}

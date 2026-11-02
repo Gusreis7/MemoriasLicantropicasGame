@@ -21,6 +21,8 @@ from memorias_licantropicas.contracts.model import (
     ConversationMessage,
     GameState,
 )
+from memorias_licantropicas.contracts.social import ExchangeRecord
+from memorias_licantropicas.contracts.investigation import InvestigationState
 
 _Model = TypeVar("_Model", bound=Contract)
 _MAX_TRANSACTION_ATTEMPTS = 5
@@ -195,11 +197,13 @@ class RedisMemoryRepository(_RedisRepository):
         records_key = f"{key}:messages"
         order_key = f"{key}:order"
         events_key = f"{self._prefix}:game:{{{game_id}}}:events"
+        exchanges_key = f"{self._prefix}:game:{{{game_id}}}:social:exchanges"
+        case_key = f"{self._prefix}:game:{{{game_id}}}:investigation"
         try:
             for _ in range(_MAX_TRANSACTION_ATTEMPTS):
                 try:
                     async with self._client.pipeline(transaction=True) as pipe:
-                        await pipe.watch(key, records_key, order_key, events_key)
+                        await pipe.watch(key, records_key, order_key, events_key, exchanges_key, case_key)
                         conversation = self._read_conversation(
                             await pipe.get(key), game_id, conversation_id,
                         )
@@ -225,6 +229,22 @@ class RedisMemoryRepository(_RedisRepository):
                                 raise ConflictError("ID de mensagem reutilizado com conteúdo diferente.")
                         if not pending:
                             return
+                        # O histórico é também a origem durável da memória social.
+                        # Publicar o outbox no mesmo commit impede perder um relato
+                        # se o processo cair logo após responder ao detetive.
+                        case_raw = await pipe.get(case_key)
+                        case = _decode(case_raw, InvestigationState) if case_raw else None
+                        if case is not None and case.game_id != game_id:
+                            raise StorageUnavailableError("Identidade de investigação inválida.")
+                        fresh = [message for message in batch.values() if str(message.id) in pending]
+                        exchanges = [ExchangeRecord(
+                            conversation_id=conversation_id, npc_id=outgoing.sender_id,
+                            day=case.day if case else None,
+                            incoming=incoming, outgoing=outgoing,
+                        ).model_dump_json() for incoming, outgoing in zip(fresh, fresh[1:])
+                            if incoming.sender_id == "player" and outgoing.sender_id != "player"]
+                        if exchanges:
+                            await pipe.llen(exchanges_key)
                         pipe.multi()
                         pipe.hset(records_key, mapping=pending)
                         pipe.rpush(order_key, *pending)
@@ -232,6 +252,8 @@ class RedisMemoryRepository(_RedisRepository):
                             "conversation_id": str(conversation_id), "message_ids": list(pending),
                             "participant_ids": conversation.participant_ids,
                         }))
+                        if exchanges:
+                            pipe.rpush(exchanges_key, *exchanges)
                         await pipe.execute()
                         return
                 except WatchError:

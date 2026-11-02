@@ -63,7 +63,7 @@ Bacamarte em negação continua recebendo objetivo/tática civis e seus lapsos, 
 
 ## Versão do catálogo
 
-O catálogo passou de 1 para 2. Partidas novas são criadas com `content_version="2"`. Leitura pública e diálogo rejeitam versões anteriores com 409, em vez de reinterpretar fichas no meio da partida. Os dados antigos são preservados; crie outra partida. Ainda não há migração nem snapshots de versões antigas.
+O catálogo passou de 1 para 2 e para 3. A versão 3 declara segredos pessoais que devem ser preservados nas falas e reforça a atribuição de relatos no prompt. Partidas novas são criadas com `content_version="3"`. Leitura pública e diálogo rejeitam versões anteriores com 409, em vez de reinterpretar fichas no meio da partida. Os dados antigos são preservados; crie outra partida. Ainda não há migração nem snapshots de versões antigas.
 
 ## AWS local e uso
 

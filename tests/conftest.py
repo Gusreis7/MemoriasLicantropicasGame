@@ -93,7 +93,7 @@ def game():
         GameCharacter(character_id="bentinho", role="werewolf"),
         GameCharacter(character_id="capitu", role="civil"),
         GameCharacter(character_id="escobar", role="civil"),
-    ), content_version="2")
+    ), content_version="3")
 
 
 @pytest.fixture

@@ -30,13 +30,32 @@ def _text(value):
 
 
 class AdminService:
-    def __init__(self, client, prefix, games, characters, worldrepository, turns=None):
+    def __init__(self, client, prefix, games, characters, worldrepository, turns=None, social_repository=None,
+                 usage_repository=None):
         self._client = client
         self._prefix = prefix
         self._games = games
         self._characters = characters
         self._world = worldrepository
         self._turns = turns
+        self._social_repository = social_repository
+        if usage_repository is None:
+            from memorias_licantropicas.infrastructure.usage import RedisUsageRepository
+            usage_repository = RedisUsageRepository(client, prefix)
+        self._usage_repository = usage_repository
+
+    @storage_errors
+    async def usage(self, game_id):
+        await self._game(game_id)
+        return await self._usage_repository.summary(game_id)
+
+    @storage_errors
+    async def social(self, game_id):
+        await self._game(game_id)
+        if self._social_repository is None:
+            from memorias_licantropicas.contracts.social import SocialState
+            return SocialState(game_id=game_id)
+        return await self._social_repository.get(game_id)
 
     def _game_prefix(self, game_id):
         return f"{self._prefix}:game:{{{game_id}}}"

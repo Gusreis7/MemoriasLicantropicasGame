@@ -2,7 +2,7 @@ import './style.css';
 import {
   ApiError, request, nameOf, formatDate, locationNames, deathAuthor, eventDetails, eventLabels,
   type Page, type GameSummary, type GameState, type Conversation, type Message,
-  type EventRecord, type Interactions,
+  type EventRecord, type Interactions, type SocialState, type UsageSummary, type UsageTotals,
 } from './api';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string): T => {
@@ -149,14 +149,120 @@ async function selectGame(id: string): Promise<void> {
 async function loadOverview(version = selectionVersion): Promise<void> {
   const game = selectedGame;
   if (!game) return;
-  const [record, interactions] = await Promise.all([
+  const [record, interactions, social, usage] = await Promise.all([
     request<GameState>(`/games/${game}/state`), request<Interactions>(`/games/${game}/interactions`),
+    request<SocialState>(`/games/${game}/social`),
+    request<UsageSummary>(`/games/${game}/usage`).catch(error => {
+      if (error instanceof ApiError && error.status === 401) throw error;
+      return null;
+    }),
   ]);
   if (version !== selectionVersion || game !== selectedGame || !username) return;
   renderState(record);
   renderGraph(interactions);
+  renderSocial(social);
+  renderUsage(usage);
   $('game-content').hidden = false;
   $('empty-state').hidden = true;
+}
+
+const purposeNames: Record<string, string> = {
+  player_dialogue: 'Conversas com Floriano', social_speech: 'Conversas entre moradores',
+  knowledge_extraction: 'Extração de memórias', evaluation: 'Avaliação',
+};
+const tokenNumber = (value: number): string => new Intl.NumberFormat('pt-BR').format(value);
+const estimatedUSD = (value: string): string => new Intl.NumberFormat('pt-BR', {
+  style: 'currency', currency: 'USD', minimumFractionDigits: 6, maximumFractionDigits: 8,
+}).format(Number(value));
+
+function renderUsage(usage: UsageSummary | null): void {
+  let panel = document.getElementById('usage-section');
+  if (!panel) {
+    panel = make('section', 'paper-panel usage-panel'); panel.id = 'usage-section';
+    $('overview-panel').append(panel);
+  }
+  panel.replaceChildren(make('span', 'eyebrow', 'CONSUMO POR PARTIDA'), make('h2', '', 'Tokens e custo estimado.'));
+  if (!usage) {
+    panel.append(make('p', 'empty-copy', 'A medição está indisponível. Atualize para tentar consultar novamente.'));
+    return;
+  }
+  if (usage.coverage === 'not_recorded') {
+    panel.append(make('p', 'empty-copy', 'Ainda não há chamadas medidas nesta partida. O consumo de conversas anteriores à medição é desconhecido.'));
+    return;
+  }
+  const totals = usage.totals;
+  const cards = make('div', 'usage-stats');
+  cards.append(stat('TOKENS DE ENTRADA', tokenNumber(totals.known_input_tokens), 'Total conhecido informado pelo provedor'),
+    stat('TOKENS DE SAÍDA', tokenNumber(totals.known_output_tokens), 'Total conhecido informado pelo provedor'),
+    stat(totals.cost_complete ? 'CUSTO ESTIMADO' : 'SUBTOTAL ESTIMADO', estimatedUSD(totals.known_estimated_cost_usd),
+      totals.cost_complete ? 'Das chamadas registradas, antes de créditos e impostos' : 'Parcial: existem chamadas sem tokens ou tarifa'));
+  panel.append(cards, make('p', 'panel-description', `${totals.calls} chamada(s) · ${totals.completed_calls} concluída(s) · ${totals.failed_calls} falha(s) · ${totals.cancelled_calls} cancelada(s) · ${totals.calls_with_missing_tokens} sem contagem completa · ${totals.unpriced_calls} sem tarifa · ${(totals.duration_ms / 1000).toFixed(1)}s de inferência acumulada`));
+  const breakdown = (heading: string, rows: Array<UsageTotals & {key: string}>, names: Record<string, string>) => {
+    panel!.append(make('h3', '', heading));
+    const scroll = make('div', 'usage-table-scroll'); const table = make('table', 'usage-table');
+    const head = make('thead'); const header = make('tr');
+    for (const label of ['Finalidade / modelo', 'Chamadas', 'Entrada', 'Saída', 'Estimativa USD']) header.append(make('th', '', label));
+    head.append(header); table.append(head); const body = make('tbody');
+    for (const row of rows) {
+      const tr = make('tr');
+      for (const text of [names[row.key] ?? row.key, String(row.calls), tokenNumber(row.known_input_tokens),
+        tokenNumber(row.known_output_tokens), `${estimatedUSD(row.known_estimated_cost_usd)}${row.cost_complete ? '' : ' (parcial)'}`]) tr.append(make('td', '', text));
+      body.append(tr);
+    }
+    table.append(body); scroll.append(table); panel!.append(scroll);
+  };
+  breakdown('Por finalidade', usage.by_purpose, purposeNames);
+  breakdown('Por modelo configurado', usage.by_model, {});
+  panel.append(make('p', 'panel-description', usage.note), make('p', 'panel-description', `Medição registrada de ${usage.first_recorded_at ? formatDate(usage.first_recorded_at) : 'data desconhecida'} até ${usage.last_recorded_at ? formatDate(usage.last_recorded_at) : 'data desconhecida'}.`));
+  for (const rate of usage.pricing_snapshots) {
+    const line = make('p', 'panel-description', `${rate.model}: entrada ${rate.input_usd_per_million ?? 'desconhecida'}, saída ${rate.output_usd_per_million ?? 'desconhecida'} USD por milhão de tokens · tarifa verificada em ${rate.checked_at ?? 'data não registrada'} · `);
+    if (rate.source.startsWith('https://')) {
+      const source = make('a', '', 'Fonte da tarifa'); source.href = rate.source; source.target = '_blank'; source.rel = 'noopener noreferrer'; line.append(source);
+    }
+    panel.append(line);
+  }
+}
+
+function renderSocial(state: SocialState): void {
+  let panel = document.getElementById('social-section');
+  if (!panel) {
+    panel = make('section', 'paper-panel social-panel'); panel.id = 'social-section';
+    $('overview-panel').append(panel);
+  }
+  const expanded = new Set([...panel.querySelectorAll<HTMLDetailsElement>('details[open]')].map(item => item.dataset.recordId));
+  panel.replaceChildren(make('span', 'eyebrow', 'CONVIVÊNCIA E PROVENIÊNCIA'), make('h2', '', 'As versões que circulam.'));
+  const usage = state.days.map(day => `Dia ${day.day}: ${day.speech_calls}/16 falas · ${day.extraction_calls}/8 extrações`).join(' | ');
+  panel.append(make('p', 'panel-description', `${state.knowledge.length} lembranças · ${state.encounters.length} encontros · revisão ${state.revision}${usage ? ` · ${usage}` : ''}`));
+
+  const relations = make('details', 'social-details'); relations.dataset.recordId = 'relations'; relations.open = expanded.has('relations');
+  relations.append(make('summary', '', 'Relações direcionais'));
+  for (const relation of state.relationships) {
+    relations.append(make('p', 'panel-description', `${nameOf(relation.actor_id)} → ${nameOf(relation.target_id)}: afinidade ${relation.affinity}, confiança ${relation.trust}, ressentimento ${relation.resentment} · ${relation.causes.length} causa(s)`));
+  }
+  panel.append(relations, make('h3', '', 'Encontros e falas confirmadas'));
+  if (!state.encounters.length) panel.append(make('p', 'empty-copy', 'Nenhum encontro social registrado.'));
+  for (const encounter of [...state.encounters].reverse()) {
+    const details = make('details', 'social-details'); details.dataset.recordId = encounter.id; details.open = expanded.has(encounter.id);
+    details.append(make('summary', '', `${encounter.participant_ids.map(nameOf).join(' ↔ ')} · dia ${encounter.day} · ${locationNames[encounter.location_id] ?? encounter.location_id} · ${encounter.phase}`));
+    if (encounter.reason) details.append(make('p', 'panel-description', encounter.reason));
+    for (const message of encounter.messages) {
+      const speech = make('article', 'message');
+      speech.append(make('strong', '', `${nameOf(message.sender_id)} · ${message.intent}`), make('p', 'message-content', message.content),
+        make('small', 'source-tag', `Relatos: ${message.claim_ids.map(id => id.slice(0, 8)).join(', ') || 'nenhum'} · ${formatDate(message.created_at)}`));
+      details.append(speech);
+    }
+    panel.append(details);
+  }
+  panel.append(make('h3', '', 'Memórias e cadeias de transmissão'));
+  if (!state.knowledge.length) panel.append(make('p', 'empty-copy', 'Nenhum relato processado.'));
+  for (const entry of [...state.knowledge].reverse()) {
+    const details = make('details', 'social-details'); details.dataset.recordId = entry.id; details.open = expanded.has(entry.id);
+    details.append(make('summary', '', `${nameOf(entry.owner_id)} ouviu ${nameOf(entry.speaker_id)} · ${entry.kind} · ${entry.day === null ? 'dia não registrado' : `dia ${entry.day}`}`));
+    details.append(make('p', 'message-content', entry.proposition), make('blockquote', 'panel-description', entry.source_span));
+    details.append(make('p', 'panel-description', `Fonte alegada: ${entry.claimed_source_id ? nameOf(entry.claimed_source_id) : 'não indicada'} · posição: ${entry.stance} · confiança: ${entry.confidence}`),
+      make('p', 'social-identifiers', `ID ${entry.id} · raiz ${entry.root_id} · mensagem ${entry.source_message_id} · deriva de ${entry.parent_ids.join(', ') || 'origem'}`));
+    panel.append(details);
+  }
 }
 
 function stat(label: string, value: string, note: string, highlighted = false): HTMLElement {
@@ -191,10 +297,12 @@ function renderState(record: GameState): void {
     const details = make('div', 'character-details');
     const title = make('h3', '', character.name);
     const role = make('span', `role-badge ${character.role === 'werewolf' ? 'wolf' : ''}`, character.role === 'werewolf' ? 'Lobisomem' : 'Civil');
-    const expelled = record.status === 'won' && character.character_id === record.werewolf_id;
-    const place = expelled ? 'Expulso da cidade' : locationNames[character.location_id || ''] || 'Local não registrado';
+    const confirmedWolf = record.status === 'won' && character.character_id === record.werewolf_id;
+    const confessed = confirmedWolf && cycle?.ending_method === 'confession';
+    const expelled = confirmedWolf && !confessed;
+    const place = confessed ? 'Delegacia · confissão registrada' : expelled ? 'Expulso da cidade' : locationNames[character.location_id || ''] || 'Local não registrado';
     details.append(title, role, make('p', 'character-location', place),
-      make('span', `life-status${character.alive ? '' : ' deceased'}`, expelled ? '↗ Expulso' : character.alive ? '● Vivo' : '○ Morto'));
+      make('span', `life-status${character.alive ? '' : ' deceased'}`, confessed ? '● Sob custódia · confessou' : expelled ? '↗ Expulso' : character.alive ? '● Vivo' : '○ Morto'));
     card.append(portrait, details); cards.append(card);
   }
   const deaths = $('deaths'); deaths.replaceChildren();

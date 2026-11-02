@@ -58,7 +58,7 @@ class FakeTurns:
 async def case():
     catalog = CatalogCharacterRepository()
     profiles = await catalog.list()
-    game = GameState(id=uuid4(), created_at=NOW, content_version="2", characters=tuple(
+    game = GameState(id=uuid4(), created_at=NOW, content_version="3", characters=tuple(
         GameCharacter(character_id=profile.id, role="werewolf" if profile.id == "capitu" else "civil")
         for profile in profiles))
     turns = FakeTurns(game)

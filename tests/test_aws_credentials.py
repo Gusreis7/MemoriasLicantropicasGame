@@ -1,4 +1,5 @@
 from datetime import timedelta
+import traceback
 
 import pytest
 from botocore.exceptions import ProfileNotFound
@@ -38,6 +39,10 @@ async def test_missing_profile_is_sanitized(monkeypatch, failure):
     def fail(**kwargs):
         raise failure
     monkeypatch.setattr(module, "provide_token", fail)
+    provider = module.ProfileTokenProvider("terraform", "us-east-1")
     with pytest.raises(LLMUnavailableError) as error:
-        await module.ProfileTokenProvider("terraform", "us-east-1").get_token()
+        await provider.get_token()
+    assert error.value.code == "llm_credentials_unavailable"
     assert "private-profile" not in str(error.value)
+    formatted = "".join(traceback.format_exception(error.value))
+    assert all(secret not in formatted for secret in ("private-profile", "private-cache", "terraform"))

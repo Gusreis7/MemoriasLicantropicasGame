@@ -3,7 +3,9 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Request
 
-from memorias_licantropicas.modules.investigation.schema import AccuseRequest, CasePublic, PresentRequest, SearchRequest
+from memorias_licantropicas.modules.investigation.schema import (
+    AccuseRequest, CasePublic, PresentRequest, SearchRequest, InterrogateRequest, ConfrontRequest,
+)
 from memorias_licantropicas.modules.investigation.service import InvestigationService
 
 router = APIRouter(prefix="/api/v1/games/{game_id}", tags=["investigation"])
@@ -34,3 +36,14 @@ async def present(game_id: UUID, evidence_id: UUID, body: PresentRequest, servic
 @router.post("/accusations", response_model=CasePublic)
 async def accuse(game_id: UUID, body: AccuseRequest, service: Service):
     return await service.accuse(game_id, body.suspect_id, body.evidence_ids, body.testimony_ids)
+
+
+@router.post("/interrogations", response_model=CasePublic)
+async def interrogate(game_id: UUID, body: InterrogateRequest, service: Service):
+    return await service.interrogate(game_id, body.npc_id, body.day, body.period)
+
+
+@router.post("/confrontations", response_model=CasePublic)
+async def confront(game_id: UUID, body: ConfrontRequest, service: Service):
+    return await service.confront(game_id, body.npc_id, body.evidence_ids, body.testimony_ids,
+                                 body.interrogation_ids)

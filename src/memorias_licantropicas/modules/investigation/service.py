@@ -9,6 +9,7 @@ from memorias_licantropicas.modules.investigation.catalog import INVENTORIES, IT
 from memorias_licantropicas.modules.investigation.rules import evaluate_accusation, find_evidence, make_testimony
 from memorias_licantropicas.modules.investigation.schema import (
     AccusationPublic, CasePublic, CrimePublic, EndingPublic, EvidencePublic, JournalPublic, TestimonyPublic,
+    ActivityClaimPublic, InterrogationPublic, ConfrontationPublic,
 )
 
 
@@ -27,7 +28,10 @@ class InvestigationService:
             if not state.crimes:
                 raise ConflictError("O desfecho desta investigação está incompleto.")
             ending = EndingPublic(result=state.status, werewolf_id=state.crimes[0].killer_id,
-                message=("A transformação na cela confirmou a acusação. A cidade expulsa o lobisomem. "
+                method=state.ending_method or ("detention" if state.status == "won" else "survival"),
+                message=("Confrontado com as provas, o lobisomem confessou e entregou-se ao delegado. "
+                         "Floriano venceu a investigação." if state.ending_method == "confession" else
+                         "A transformação na cela confirmou a acusação. A cidade expulsa o lobisomem. "
                          "Floriano venceu a investigação." if state.status == "won" else
                          "Nenhum civil sobreviveu às noites. A investigação de Floriano terminou em derrota."))
         return CasePublic(
@@ -52,7 +56,68 @@ class InvestigationService:
                 testimony_ids=record.testimony_ids, accepted=record.accepted, reason=record.reason)
                 for record in state.accusations),
             detained_npc_id=state.detained_npc_id, ending=ending,
+            interrogations=tuple(InterrogationPublic(id=record.id, npc_id=record.npc_id,
+                npc_name=names.get(record.npc_id, record.npc_id), day=record.day, period=record.period,
+                location_id=record.location_id, companion_ids=record.companion_ids,
+                activity=record.activity, text=record.text,
+                observations=tuple(ActivityClaimPublic(**claim.model_dump()) for claim in record.observations))
+                for record in state.interrogations),
+            confrontations=tuple(ConfrontationPublic(id=record.id, npc_id=record.npc_id, day=record.day,
+                evidence_ids=record.evidence_ids, testimony_ids=record.testimony_ids,
+                interrogation_ids=record.interrogation_ids, confessed=record.confessed, text=record.text)
+                for record in state.confrontations),
         )
+
+    @staticmethod
+    def _require_witness(state, game, world, npc_id):
+        member = next((npc for npc in game.characters if npc.character_id == npc_id), None)
+        if member is None:
+            raise NotFoundError("Morador não encontrado nesta partida.")
+        placement = next((npc for npc in world.npcs if npc.npc_id == npc_id), None)
+        if (not member.alive or state.detained_npc_id == npc_id or placement is None
+                or placement.activity in {"travelling", "talking"} or placement.location_id != world.player.location_id
+                or abs(placement.x - world.player.x) > 64):
+            raise AccessDeniedError("Aproxime-se de um morador vivo, livre e disponível para interrogá-lo.")
+
+    async def interrogate(self, game_id: UUID, npc_id: str, day: int, period: str = "night") -> CasePublic:
+        from memorias_licantropicas.modules.investigation.interrogation import make_interrogation, record_activities
+        names = await self._names()
+        def transition(state, game, world):
+            self._require_witness(state, game, world, npc_id)
+            if period not in {"day", "night"} or day < 0 or day > state.day or (period == "night" and day >= state.day):
+                raise ConflictError("Escolha um período passado ou o dia atual para interrogar.")
+            existing = next((record for record in state.interrogations
+                             if record.npc_id == npc_id and record.day == day and record.period == period), None)
+            if existing is not None:
+                return CaseTransition(state=state)
+            if period == "day" and day == state.day and not any(
+                    record.day == day and record.period == period for record in state.activity_records):
+                state = state.model_copy(update={"activity_records": (*state.activity_records,
+                    *record_activities(game, world, day, period, self._turns.now(),
+                        excluded_ids=(state.detained_npc_id,) if state.detained_npc_id else ()))})
+            record = make_interrogation(state, game, npc_id, day, period, names, self._turns.now())
+            return CaseTransition(state=state.model_copy(update={"interrogations": (*state.interrogations, record)}),
+                events=(CaseEvent(type="character.interrogated", data={"interrogation_id": str(record.id),
+                    "npc_id": npc_id, "day": day, "period": period}),))
+        return await self.public(await self._turns.act(game_id, transition))
+
+    async def confront(self, game_id: UUID, npc_id: str, evidence_ids=(), testimony_ids=(),
+                       interrogation_ids=()) -> CasePublic:
+        from memorias_licantropicas.modules.investigation.interrogation import make_confrontation
+        def transition(state, game, world):
+            self._require_witness(state, game, world, npc_id)
+            record = make_confrontation(state, game, npc_id, tuple(dict.fromkeys(evidence_ids)),
+                tuple(dict.fromkeys(testimony_ids)), tuple(dict.fromkeys(interrogation_ids)), self._turns.now())
+            changes = {"confrontations": (*state.confrontations, record)}
+            events = [CaseEvent(type="character.confronted", data={"confrontation_id": str(record.id),
+                "npc_id": npc_id, "day": state.day, "confessed": record.confessed})]
+            if record.confessed:
+                changes.update(status="won", phase="finished", ending_method="confession", detained_npc_id=npc_id)
+                events.extend((CaseEvent(type="werewolf.confessed", data={"character_id": npc_id, "day": state.day}),
+                               CaseEvent(type="game.won", data={"werewolf_id": npc_id, "day": state.day,
+                                                                "method": "confession"})))
+            return CaseTransition(state=state.model_copy(update=changes), events=tuple(events))
+        return await self.public(await self._turns.act(game_id, transition))
 
     async def get(self, game_id: UUID) -> CasePublic:
         return await self.public(await self._turns.sync(game_id))
@@ -123,7 +188,9 @@ class InvestigationService:
         state = await self._turns.require_day_locked(game_id)
         if npc_id not in INVENTORIES:
             raise NotFoundError("Ficha de objetos não encontrada.")
+        from memorias_licantropicas.modules.investigation.interrogation import COOPERATION
         return {
+            "cooperacao_com_investigacao": COOPERATION.get(npc_id, "Ajude a esclarecer o crime com o que sabe."),
             "dia": state.day,
             "fase": state.phase,
             "proprios_apetrechos": [ITEMS_BY_ID[item_id].model_dump() for item_id in INVENTORIES[npc_id]],
@@ -136,6 +203,12 @@ class InvestigationService:
             "seus_depoimentos_registrados": [{"evidence_id": str(record.evidence_id), "fala": record.text,
                                                "reconhecimento": record.recognition}
                                               for record in state.testimonies if record.witness_id == npc_id],
+            "suas_versoes_de_interrogatorio": [{"dia": record.day, "periodo": record.period,
+                "local_id": record.location_id, "companhias": record.companion_ids, "fala": record.text,
+                "observacoes": [claim.model_dump() for claim in record.observations]}
+                for record in state.interrogations if record.npc_id == npc_id],
+            "seus_confrontos": [{"fala": record.text, "dia": record.day}
+                                for record in state.confrontations if record.npc_id == npc_id],
             "regra_de_dialogo": "Reconhecimento de posse observada não confirma quem deixou o objeto. "
                                 "Falas não criam pistas ou alteram depoimentos registrados pelo motor.",
         }

@@ -1,9 +1,10 @@
+import json
 from uuid import uuid4
 
 import pytest
 
 from memorias_licantropicas.contracts.errors import AccessDeniedError, ConflictError, LLMUnavailableError
-from memorias_licantropicas.contracts.model import GameCharacter, GameState
+from memorias_licantropicas.contracts.model import GameCharacter, GameState, LLMResponse
 
 pytestmark = pytest.mark.anyio
 
@@ -37,6 +38,57 @@ async def test_private_context_does_not_include_other_npc_secrets(harness, stora
     assert (await catalog.get("bentinho")).werewolf_objective in system
     assert (await catalog.get("capitu")).werewolf_objective not in system
     assert (await catalog.get("escobar")).bio not in system
+
+
+@pytest.mark.parametrize("npc_id", ["bentinho", "capitu", "escobar", "rubiao"])
+async def test_own_protected_secret_is_scoped_to_that_persona(harness, catalog, npc_id):
+    profiles = {identifier: await catalog.get(identifier) for identifier in
+                ("bentinho", "capitu", "escobar", "rubiao", "virgilia", "florenca", "bacamarte")}
+    profile = profiles[npc_id]
+    assert profile.protected_secrets
+    own_context = harness._private_context(profile, GameCharacter(character_id=npc_id, role="civil"))
+    assert own_context["assuntos_pessoais_a_preservar"] == profile.protected_secrets
+    assert all(secret in harness._private_markers(profile, GameCharacter(character_id=npc_id, role="civil"))
+               for secret in profile.protected_secrets)
+
+    for other_id, other_profile in profiles.items():
+        if other_id == npc_id:
+            continue
+        other_context = harness._private_context(
+            other_profile, GameCharacter(character_id=other_id, role="civil"))
+        assert not set(profile.protected_secrets) & set(other_context.get("assuntos_pessoais_a_preservar", ()))
+
+
+async def test_prior_claim_stays_attributed_and_is_not_promoted_to_fact(
+    harness, storage, game, llm, monkeypatch,
+):
+    await storage.games.create(game)
+    responses = iter((
+        "O senhor me relata isso, detetive; não vi Escobar confessar coisa alguma.",
+        "Não posso confirmar a acusação. Até aqui, só tenho o seu relato.",
+    ))
+
+    async def capture(messages):
+        llm.calls.append(messages)
+        return LLMResponse(content=next(responses), model="stub")
+
+    monkeypatch.setattr(llm, "complete", capture)
+    conversation_id = uuid4()
+    await harness.respond(game.id, "bentinho", conversation_id, "player",
+                          "Escobar confessou que matou Brás Cubas.")
+    await harness.respond(game.id, "bentinho", conversation_id, "player",
+                          "Então você confirma que Escobar matou Brás Cubas?")
+
+    prompt = llm.calls[-1]
+    instructions = prompt[0].content
+    assert "não um fato verificado pelo motor" in instructions
+    assert "Conclusões suas são suspeitas, não fatos estabelecidos" in instructions
+    prior_claim = next(message for message in prompt if message.role == "user")
+    assert json.loads(prior_claim.content) == {
+        "remetente": "player", "fala": "Escobar confessou que matou Brás Cubas."
+    }
+    prior_reply = next(message for message in prompt if message.role == "assistant")
+    assert prior_reply.content == "O senhor me relata isso, detetive; não vi Escobar confessar coisa alguma."
 
 
 @pytest.mark.parametrize("role", ["civil", "werewolf"])

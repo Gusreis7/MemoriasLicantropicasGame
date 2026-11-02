@@ -15,7 +15,8 @@ _ENVELOPE_KEYS = re.compile(r'"(?:remetente|fala|tool_calls|function_call|reason
 
 def _invalid() -> LLMUnavailableError:
     # Não incluir o texto rejeitado em mensagens públicas, logs ou exceções.
-    return LLMUnavailableError("O personagem não retornou uma fala válida. Tente novamente.")
+    return LLMUnavailableError("O personagem não retornou uma fala válida. Tente novamente.",
+                               code="llm_invalid_response")
 
 
 def _unique_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
