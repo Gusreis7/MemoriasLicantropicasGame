@@ -659,7 +659,7 @@ function renderPresentation() {
   const selected = select.value; select.replaceChildren();
   for (const evidence of caseState?.inventory ?? []) {
     const option = document.createElement('option'); option.value = evidence.id;
-    const crime = caseState.crimes.find(record => record.id === evidence.crime_id);
+    const crime = caseState?.crimes.find(record => record.id === evidence.crime_id);
     option.textContent = crime ? `${evidence.name} · dia ${crime.day + 1}, ${locationName(crime.location_id)}` : evidence.name;
     select.append(option);
   }
