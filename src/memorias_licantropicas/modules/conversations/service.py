@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
-from memorias_licantropicas.contracts.errors import AccessDeniedError, ConflictError, LLMUnavailableError, NotFoundError
+from memorias_licantropicas.contracts.errors import InteractionUnavailableError, AccessDeniedError, ConflictError, LLMUnavailableError, NotFoundError
 from memorias_licantropicas.contracts.model import Conversation, ConversationMessage
 from memorias_licantropicas.contracts.repository import (
     CharacterRepository, ConversationGate, GameRepository, MemoryRepository, InteractionPolicy, PlayerActionGate,
@@ -40,7 +40,7 @@ class ConversationService:
         self._world = world
         self._player_gate = player_gate
 
-    async def _validate_target(self, game_id: UUID, npc_id: str) -> None:
+    async def _validate_target(self, game_id: UUID, npc_id: str, allow_unavailable=False) -> None:
         game = await self._games.get(game_id)
         if game is None:
             raise NotFoundError("Partida não encontrada.")
@@ -49,8 +49,8 @@ class ConversationService:
         target = next((npc for npc in game.characters if npc.character_id == npc_id), None)
         if target is None or await self._characters.get(npc_id) is None:
             raise NotFoundError("Persona não encontrada nesta partida.")
-        if not target.alive:
-            raise AccessDeniedError("Esta persona não pode conversar.")
+        if not target.alive and not allow_unavailable:
+            raise InteractionUnavailableError("npc_unavailable")
 
     async def create(self, game_id: UUID, npc_id: str) -> ConversationPublic:
         async with self._player_gate.hold(game_id):
@@ -69,14 +69,14 @@ class ConversationService:
         return ConversationPublic(id=conversation.id, game_id=game_id, npc_id=npc_id,
                                   created_at=conversation.created_at)
 
-    async def get(self, game_id: UUID, conversation_id: UUID) -> ConversationPublic:
+    async def get(self, game_id: UUID, conversation_id: UUID, allow_unavailable=False) -> ConversationPublic:
         conversation = await self._memory.get_conversation(game_id, conversation_id)
         if conversation is None:
             raise NotFoundError("Conversa não encontrada.")
         if PLAYER_ID not in conversation.participant_ids:
             raise AccessDeniedError("Conversa privada entre outros participantes.")
         npc_id = next(participant for participant in conversation.participant_ids if participant != PLAYER_ID)
-        await self._validate_target(game_id, npc_id)
+        await self._validate_target(game_id, npc_id, allow_unavailable=allow_unavailable)
         return ConversationPublic(id=conversation.id, game_id=game_id, npc_id=npc_id,
                                   created_at=conversation.created_at)
 
@@ -93,7 +93,7 @@ class ConversationService:
             return MessageReply(conversation_id=conversation_id, message=public_message(reply.message))
 
     async def history(self, game_id: UUID, conversation_id: UUID, limit: int = 50) -> ConversationHistory:
-        conversation = await self.get(game_id, conversation_id)
+        conversation = await self.get(game_id, conversation_id, allow_unavailable=True)
         game = await self._games.get(game_id)
         profile = await self._characters.get(conversation.npc_id)
         if game is None or profile is None:
@@ -103,3 +103,8 @@ class ConversationService:
         messages = await self._memory.list_messages(game_id, conversation_id, PLAYER_ID, limit=limit)
         return ConversationHistory(conversation_id=conversation_id,
                                    messages=tuple(public_message(message, private_markers) for message in messages))
+
+    async def close(self, game_id, conversation_id):
+        async with self._player_gate.hold(game_id):
+            conversation = await self.get(game_id, conversation_id, allow_unavailable=True)
+            await self._world.release_dialogue(game_id, conversation.npc_id)

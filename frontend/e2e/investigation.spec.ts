@@ -204,3 +204,23 @@ test('assembleia apresenta resultado único e o mapa acompanha moradores em viag
   await page.locator('#close-delegate').click(); await expect(page.locator('#open-assembly')).toBeDisabled();
   expect(city.requests.filter(r => r.path.endsWith('/assembly'))).toHaveLength(1);
 });
+
+test('rejeição de disponibilidade preserva rascunho e bloqueia envios repetidos até nova abordagem', async ({page}) => {
+  const city=await cityFixture(page); city.world.visible_npcs[0].x=190;
+  let sends=0;
+  await page.route(/\/conversations\/[^/]+\/messages(?:\?.*)?$/,route=> {
+    if(route.request().method()==='POST'){sends++;return route.fulfill({status:403,json:{detail:'O personagem saiu deste local. Feche a conversa e procure-o no mapa.',code:'npc_away'}});}
+    return route.fulfill({json:{conversation_id:'conversation-ui',messages:[]}});
+  });
+  await begin(page);await page.locator('#approach').click();
+  await expect(page.locator('#message-input')).toBeEnabled();
+  await page.locator('#message-input').fill('O que aconteceu no cais?');await page.locator('#send-message').click();
+  await expect(page.locator('#dialogue-status')).toContainText('saiu deste local');
+  await expect(page.locator('#dialogue-status')).not.toContainText('Ainda não há resposta');
+  await expect(page.locator('#send-message')).toBeDisabled();
+  await expect(page.locator('#message-input')).toHaveValue('O que aconteceu no cais?');
+  expect(sends).toBe(1);
+  await page.locator('#close-dialogue').click();await page.locator('#approach').click();
+  await expect(page.locator('#message-input')).toBeEnabled();
+  await expect(page.locator('#message-input')).toHaveValue('O que aconteceu no cais?');
+});

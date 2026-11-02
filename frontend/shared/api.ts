@@ -98,6 +98,7 @@ export const api = {
     target_location_id: target, revision: world.revision, ...(exitSide ? {exit_side: exitSide} : {}),
   }),
   approach: (id: string, npcID: string) => request<Conversation>(`${base(id)}/approaches`, {npc_id: npcID}),
+  closeConversation: (id: string, conversationID: string) => request<void>(`${base(id)}/conversations/${encodeURIComponent(conversationID)}/close`, {}),
   history: (id: string, conversationID: string) => request<{conversation_id: string; messages: Message[]}>(
     `${base(id)}/conversations/${encodeURIComponent(conversationID)}/messages?limit=200`,
   ),

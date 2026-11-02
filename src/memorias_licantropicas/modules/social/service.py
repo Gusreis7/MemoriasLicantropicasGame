@@ -179,7 +179,9 @@ class SocialService:
                          if member.alive and member.character_id != case.detained_npc_id
                          and member.character_id not in pending
                          and member.character_id in positions
-                         and getattr(positions[member.character_id], "activity", "idle") == "idle")
+                         and getattr(positions[member.character_id], "activity", "idle") == "idle"
+                         and (positions[member.character_id].player_engaged_until is None
+                              or positions[member.character_id].player_engaged_until <= now))
         chosen = select_pair(candidate, eligible, world, case.day, due, now)
         if chosen is None:
             return await self._save(state, candidate, require_day=case.day, require_player_idle=True)

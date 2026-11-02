@@ -100,6 +100,8 @@ let starting = false;
 let conversation: Conversation | null = null;
 let conversationMessages: Message[] = [];
 let historyReady = false;
+let dialogueUnavailable = false;
+let renewingDialogue = false;
 const dialogueDrafts = new Map<string, string>();
 let dialogueNPC: {npc_id: string; name: string} | null = null;
 let lastNearest = '';
@@ -121,6 +123,10 @@ function toast(message: string) {
 }
 
 function setModal(next: typeof modal) {
+  if (modal === 'dialogue' && next !== 'dialogue' && world && conversation) {
+    dialogueDrafts.set(`${world.game_id}:${conversation.id}`, $<HTMLTextAreaElement>('#message-input').value);
+    void api.closeConversation(world.game_id, conversation.id).catch(() => { /* Reserva expira automaticamente. */ });
+  }
   modal = next;
   for (const name of ['map', 'dialogue', 'exit', 'journal', 'notebook', 'delegate', 'phase']) $(`#${name}-overlay`).hidden = next !== name;
   scene?.setInputEnabled(next === null && !caseClock.blocked());
@@ -321,7 +327,7 @@ async function approach() {
   if (!npc) {toast('Aproxime-se de um morador para conversar.'); return;}
   busy = true;
   await settleMovement();
-  busy = true; dialogueNPC = npc; conversation = null; conversationMessages = []; historyReady = false;
+  busy = true; dialogueUnavailable = false; dialogueNPC = npc; conversation = null; conversationMessages = []; historyReady = false;
   $<HTMLTextAreaElement>('#message-input').value = ''; renderPresentation(); renderInterrogation(); status('#presentation-status', ''); status('#interrogation-status', ''); status('#confrontation-status', '');
   setModal('dialogue');
   $('#dialogue-name').textContent = npc.name;
@@ -367,16 +373,16 @@ function renderConversation(messages: Message[]) {
 }
 
 function setSending(sending: boolean) {
-  $('#send-message').toggleAttribute('disabled', sending || !conversation || !historyReady || caseClock.blocked());
-  $('#message-input').toggleAttribute('disabled', sending || !conversation || !historyReady || caseClock.blocked());
+  $('#send-message').toggleAttribute('disabled', sending || dialogueUnavailable || !conversation || !historyReady || caseClock.blocked());
+  $('#message-input').toggleAttribute('disabled', sending || dialogueUnavailable || !conversation || !historyReady || caseClock.blocked());
   $('#close-dialogue').toggleAttribute('disabled', sending);
-  $('#present-button').toggleAttribute('disabled', sending || caseClock.blocked());
-  for (const id of ['interrogate-button', 'confront-button']) $(`#${id}`).toggleAttribute('disabled', sending || !conversation || caseClock.blocked());
+  $('#present-button').toggleAttribute('disabled', sending || dialogueUnavailable || caseClock.blocked());
+  for (const id of ['interrogate-button', 'confront-button']) $(`#${id}`).toggleAttribute('disabled', sending || dialogueUnavailable || !conversation || caseClock.blocked());
 }
 
 async function sendMessage(event: Event) {
   event.preventDefault();
-  if (!conversation || !world || !historyReady || busy || caseClock.blocked()) return;
+  if (!conversation || !world || !historyReady || dialogueUnavailable || busy || caseClock.blocked()) return;
   const input = $('#message-input') as HTMLTextAreaElement;
   const content = input.value.trim(); if (!content) return;
   const gameID = world.game_id, conversationID = conversation.id;
@@ -396,6 +402,7 @@ async function sendMessage(event: Event) {
     if (!isCurrent()) return;
     if (result.clearDraft) input.value = '';
     if (result.outcome === 'uncertain') historyReady = false;
+    if (result.blocked) dialogueUnavailable = true;
     renderConversation(result.messages);
     status('#dialogue-status', result.status, result.outcome !== 'confirmed');
   } finally {busy = false; setSending(false); if (modal === 'dialogue' && !caseClock.blocked()) input.focus();}
@@ -566,7 +573,7 @@ function renderPresentation() {
   preview.replaceChildren();
   if (selectedEvidence) preview.append(itemArt(selectedEvidence.item_id, selectedEvidence.kind));
   panel.hidden = !caseState?.inventory.length;
-  $('#present-button').toggleAttribute('disabled', busy || caseClock.blocked());
+  $('#present-button').toggleAttribute('disabled', busy || dialogueUnavailable || caseClock.blocked());
 }
 
 function renderInterrogation() {
@@ -588,7 +595,7 @@ function renderInterrogation() {
 }
 
 async function interrogateNPC() {
-  if (!world || !dialogueNPC || !conversation || busy || modal !== 'dialogue' || caseClock.blocked()) return;
+  if (!world || !dialogueNPC || !conversation || dialogueUnavailable || busy || modal !== 'dialogue' || caseClock.blocked()) return;
   const day = $<HTMLInputElement>('#interrogation-day');
   if (!day.reportValidity()) return;
   const period = $<HTMLSelectElement>('#interrogation-period').value as 'night' | 'day';
@@ -605,7 +612,7 @@ async function interrogateNPC() {
 }
 
 async function confrontNPC() {
-  if (!world || !dialogueNPC || !conversation || busy || modal !== 'dialogue' || caseClock.blocked()) return;
+  if (!world || !dialogueNPC || !conversation || dialogueUnavailable || busy || modal !== 'dialogue' || caseClock.blocked()) return;
   const chosen = (kind: string) => [...$('#confrontation-proofs').querySelectorAll<HTMLInputElement>(`input[name="${kind}"]:checked`)].map(input => input.value);
   const gameID = world.game_id, npcID = dialogueNPC.npc_id;
   busy = true; setSending(true); status('#confrontation-status', 'O morador examina os elementos apresentados…');
@@ -713,7 +720,7 @@ async function searchCrime(id?: string) {
 }
 
 async function presentEvidence() {
-  if (!world || !dialogueNPC || busy || modal !== 'dialogue' || caseClock.blocked()) return;
+  if (!world || !dialogueNPC || dialogueUnavailable || busy || modal !== 'dialogue' || caseClock.blocked()) return;
   const evidenceID = $<HTMLSelectElement>('#present-evidence').value; if (!evidenceID) return;
   busy = true; setSending(true); status('#presentation-status', 'O morador examina o objeto…');
   try {
@@ -742,6 +749,19 @@ async function submitAccusation(event: Event) {
 }
 
 setInterval(renderClock, 250);
+setInterval(async () => {
+  if (modal !== 'dialogue' || !world || !conversation || !dialogueNPC || busy || renewingDialogue || dialogueUnavailable || caseClock.blocked()) return;
+  const gameID = world.game_id, conversationID = conversation.id, npcID = dialogueNPC.npc_id;
+  renewingDialogue = true;
+  try {await api.approach(gameID, npcID);}
+  catch (error) {
+    if (world?.game_id === gameID && conversation?.id === conversationID && modal === 'dialogue'
+        && error instanceof ApiError && (error.status === 403 || error.status === 404)) {
+      dialogueUnavailable = true; setSending(false);
+      status('#dialogue-status', `${explain(error)} Seu rascunho será preservado ao fechar a conversa.`, true);
+    }
+  } finally {renewingDialogue = false;}
+}, 15000);
 $('#inspect-crime').addEventListener('click', () => {void searchCrime();});
 $('#present-button').addEventListener('click', () => {void presentEvidence();});
 $('#present-evidence').addEventListener('change', () => renderPresentation());

@@ -1,4 +1,5 @@
 """Ponto de entrada da API do jogo."""
+from memorias_licantropicas.contracts.errors import InteractionUnavailableError, INTERACTION_DETAILS
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -82,6 +83,8 @@ def create_app() -> FastAPI:
             StorageUnavailableError: (503, "Persistência temporariamente indisponível."),
             LLMUnavailableError: (503, "Serviço de diálogo temporariamente indisponível."),
         }
+        if isinstance(exc, InteractionUnavailableError):
+            return JSONResponse(status_code=403, content={"detail": INTERACTION_DETAILS[exc.code], "code": exc.code})
         status_code, detail = errors[type(exc)]
         body = {"detail": detail}
         if isinstance(exc, LLMUnavailableError):
