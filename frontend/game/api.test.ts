@@ -4,6 +4,17 @@ import {api, ApiError, request, type WorldSnapshot} from '../shared/api';
 afterEach(() => vi.unstubAllGlobals());
 
 describe('contratos HTTP do jogo', () => {
+  it('abre debate com discurso e referências, e conclui sem permitir votos escolhidos pelo cliente', async () => {
+    const fetch = vi.fn().mockImplementation(() => Promise.resolve(new Response('{}', {status: 200})));
+    vi.stubGlobal('fetch', fetch);
+    await api.openAssembly('case', 'capitu', ['ev'], ['statement'], 'Ouçam o que encontrei.');
+    expect(fetch.mock.calls[0][0]).toBe('/api/v1/games/case/assembly/open');
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({suspect_id: 'capitu', evidence_ids: ['ev'], testimony_ids: ['statement'], speech: 'Ouçam o que encontrei.'});
+    await api.resolveAssembly('case', 'Peço que reconsiderem.');
+    expect(fetch.mock.calls[1][0]).toBe('/api/v1/games/case/assembly/resolve');
+    expect(JSON.parse(fetch.mock.calls[1][1].body)).toEqual({reply: 'Peço que reconsiderem.'});
+  });
+
   it('interroga um período e confronta com referências sem escolher confissão ou culpa', async () => {
     const fetch = vi.fn().mockImplementation(() => Promise.resolve(new Response('{}', {status: 200})));
     vi.stubGlobal('fetch', fetch);
