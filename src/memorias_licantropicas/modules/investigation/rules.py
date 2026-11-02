@@ -117,10 +117,10 @@ def evaluate_accusation(state, suspect_id, evidence_ids, testimony_ids, now) -> 
         points += 1
     accepted = len(item_ids) >= 2 and points >= 4
     if accepted:
-        reason = ("Há ao menos dois tipos de vestígio ligados ao acusado por depoimentos registrados. "
+        reason = ("Há ao menos dois tipos de vestígio ligados à pessoa acusada por depoimentos registrados. "
                   "A corroboração justifica a custódia desta noite; ainda não é uma confirmação de culpa.")
     elif len(item_ids) < 2:
-        reason = ("São necessários ao menos dois tipos de vestígio ligados ao acusado por depoimentos. "
+        reason = ("São necessários ao menos dois tipos de vestígio ligados à pessoa acusada por depoimentos. "
                   "Repetir o mesmo objeto ou apresentar apenas uma suspeita não basta.")
     else:
         reason = ("Os objetos apresentados são comuns demais para justificar a custódia. "

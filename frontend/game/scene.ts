@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import type {CasePublic, CharacterAsset, CharacterManifest, Direction, Location, LocationID, WorldSnapshot} from '../shared/api';
+import {CITIZEN_TYPES, POPULATION, type CitizenPlacement} from './population';
 
 interface SceneHooks {
   frame: (delta: number, direction: Direction) => {x: number; facing: 'left' | 'right'};
@@ -11,32 +12,30 @@ interface SceneHooks {
   failed: () => void;
 }
 
-type AmbientFrame = 'tree' | 'dog' | 'cat' | 'bird' | 'citizen-man' | 'citizen-woman';
+type AmbientFrame = 'tree' | 'dog' | 'cat' | 'bird';
 interface AmbientPlacement {frame: AmbientFrame; x: number; y: number; width: number; height: number; drift?: number}
 const AMBIENT: Record<LocationID, AmbientPlacement[]> = {
   praca_verde: [
     {frame: 'tree', x: 90, y: 279, width: 132, height: 170}, {frame: 'tree', x: 820, y: 285, width: 124, height: 158},
-    {frame: 'citizen-woman', x: 665, y: 294, width: 48, height: 76}, {frame: 'dog', x: 275, y: 307, width: 45, height: 31, drift: 12},
+    {frame: 'dog', x: 275, y: 307, width: 45, height: 31, drift: 12},
     {frame: 'cat', x: 750, y: 303, width: 32, height: 26}, {frame: 'bird', x: 355, y: 115, width: 18, height: 16, drift: 24},
   ],
   cabana_capitu: [
     {frame: 'tree', x: 105, y: 286, width: 134, height: 176}, {frame: 'tree', x: 790, y: 278, width: 115, height: 150},
-    {frame: 'citizen-man', x: 610, y: 295, width: 47, height: 76}, {frame: 'cat', x: 250, y: 306, width: 34, height: 27, drift: 8},
+    {frame: 'cat', x: 250, y: 306, width: 34, height: 27, drift: 8},
     {frame: 'bird', x: 670, y: 110, width: 17, height: 15, drift: 22},
   ],
   casa_verde: [
     {frame: 'tree', x: 115, y: 285, width: 132, height: 166}, {frame: 'tree', x: 845, y: 282, width: 120, height: 154},
-    {frame: 'citizen-woman', x: 680, y: 293, width: 47, height: 76}, {frame: 'dog', x: 275, y: 305, width: 45, height: 30},
+    {frame: 'dog', x: 275, y: 305, width: 45, height: 30},
     {frame: 'bird', x: 615, y: 105, width: 18, height: 16, drift: 26},
   ],
   cafe_largo: [
-    {frame: 'tree', x: 115, y: 280, width: 120, height: 156}, {frame: 'citizen-man', x: 670, y: 292, width: 48, height: 76},
-    {frame: 'citizen-woman', x: 730, y: 294, width: 47, height: 75}, {frame: 'dog', x: 280, y: 306, width: 44, height: 30, drift: 10},
+    {frame: 'tree', x: 115, y: 280, width: 120, height: 156}, {frame: 'dog', x: 280, y: 306, width: 44, height: 30, drift: 10},
     {frame: 'cat', x: 805, y: 307, width: 33, height: 27}, {frame: 'bird', x: 550, y: 120, width: 18, height: 16, drift: 18},
   ],
   cais_lanternas: [
     // Keep the gas lamp on the left readable; the backdrop already has a tree behind it.
-    {frame: 'citizen-man', x: 885, y: 293, width: 48, height: 76},
     {frame: 'cat', x: 320, y: 306, width: 34, height: 27, drift: 8}, {frame: 'dog', x: 570, y: 307, width: 44, height: 30},
     {frame: 'bird', x: 610, y: 118, width: 18, height: 16, drift: 30}, {frame: 'bird', x: 765, y: 85, width: 17, height: 15, drift: 26},
   ],
@@ -47,6 +46,7 @@ export class CityScene extends Phaser.Scene {
   private npcs: Phaser.GameObjects.GameObject[] = [];
   private ambient: Phaser.GameObjects.GameObject[] = [];
   private wanderers: Array<{image: Phaser.GameObjects.Image | Phaser.GameObjects.Sprite; placement: AmbientPlacement}> = [];
+  private citizens: Array<{sprite: Phaser.GameObjects.Sprite; label: Phaser.GameObjects.Text; placement: CitizenPlacement}> = [];
   private background?: Phaser.GameObjects.Image;
   private currentLocation = '';
   private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
@@ -78,6 +78,7 @@ export class CityScene extends Phaser.Scene {
     for (const location of this.locations) this.load.image(`location-${location.id}`, location.background);
     this.load.atlas('animals-walk','/assets/ambient/animals-walk.png','/assets/ambient/animals-walk.json');
     this.load.atlas('scene-life', '/assets/ambient/scene-life.png', '/assets/ambient/scene-life.json');
+    this.load.atlas('citizens', '/assets/ambient/citizens.png', '/assets/ambient/citizens.json');
     this.load.atlas('capoeira', '/assets/ambient/capoeira.png', '/assets/ambient/capoeira.json');
     this.load.atlas('clarim', '/assets/ambient/clarim.png', '/assets/ambient/clarim.json');
     this.load.on('loaderror', () => {this.assetsFailed = true; this.hooks.failed();});
@@ -91,6 +92,7 @@ export class CityScene extends Phaser.Scene {
       }
     }
     for(const kind of ['dog','cat','bird']) this.anims.create({key:`${kind}-move`,frames:[0,1,2,3].map(i=>({key:'animals-walk',frame:`${kind}-${i}`})),frameRate:kind==='bird'?8:6,repeat:-1});
+    for(const kind of CITIZEN_TYPES) this.anims.create({key:`citizen-${kind}-walk`,frames:[0,1,2,3].map(i=>({key:'citizens',frame:`${kind}-${i}`})),frameRate:6,repeat:-1});
     this.cursors = this.input.keyboard?.createCursorKeys();
     this.keys = this.input.keyboard?.addKeys('A,D,E,M') as Record<string, Phaser.Input.Keyboard.Key>;
     this.input.keyboard?.on('keydown-E', () => {
@@ -134,9 +136,21 @@ export class CityScene extends Phaser.Scene {
   }
 
   private dressLocation(id: LocationID, groundY: number) {
-    this.ambient.forEach(object => object.destroy()); this.ambient = []; this.wanderers = [];
+    this.ambient.forEach(object => object.destroy()); this.ambient = []; this.wanderers = []; this.citizens = [];
     if (!this.textures.exists('scene-life')) return;
     this.textures.get('scene-life').setFilter(Phaser.Textures.FilterMode.NEAREST);
+    this.textures.get('citizens').setFilter(Phaser.Textures.FilterMode.NEAREST);
+    for(const placement of POPULATION[id]) {
+      const sprite=this.add.sprite(placement.x,groundY,'citizens',`${placement.occupation}-0`)
+        .setName(`citizen-${placement.id}`).setOrigin(.5,260/280).setDisplaySize(64,86).setDepth(0);
+      sprite.setData('occupation',placement.occupation);
+      if(!this.reducedMotion)sprite.play(`citizen-${placement.occupation}-walk`);
+      const label=this.add.text(placement.x,groundY-88,`${placement.name} · ${placement.occupation}`,{
+        fontFamily:'Georgia,serif',fontSize:'11px',color:'#fff4d2',backgroundColor:'#183c33ee',padding:{x:6,y:4},
+      }).setOrigin(.5,1).setDepth(5).setVisible(false);
+      sprite.setInteractive().on('pointerover',()=>label.setVisible(true)).on('pointerout',()=>label.setVisible(false));
+      this.citizens.push({sprite,label,placement});this.ambient.push(sprite,label);
+    }
     for (const placement of AMBIENT[id]) {
       const animal=['dog','cat','bird'].includes(placement.frame);
       const image = (animal ? this.add.sprite(placement.x,placement.y,'animals-walk',`${placement.frame}-0`) : this.add.image(placement.x,placement.y,'scene-life',placement.frame))
@@ -282,6 +296,12 @@ export class CityScene extends Phaser.Scene {
       image.x=Math.round(placement.x-range/2+(phase<range?phase:range*2-phase));
       image.setFlipX(phase>=range);
       if (placement.frame === 'bird') image.y = Math.round(placement.y + Math.sin(time / 900 + placement.x) * 4);
+    }
+    for(const {sprite,label,placement} of this.citizens) {
+      if(this.reducedMotion)continue;
+      const phase=(time/1000*placement.speed+placement.x)%(placement.range*2);
+      sprite.x=Math.round(placement.x-placement.range/2+(phase<placement.range?phase:placement.range*2-phase));
+      sprite.setFlipX(phase>=placement.range);label.x=sprite.x;
     }
     const nearest = this.currentWorld.visible_npcs.find(npc => Math.abs(npc.x - position.x) <= 64);
     this.selected?.setVisible(Boolean(nearest) && !blocked);

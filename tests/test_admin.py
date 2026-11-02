@@ -162,6 +162,8 @@ async def test_observer_shows_truth_without_inventing_death_author(authorized_cl
                                        "attribution": "unknown", "source": "scenario"}]
     assert state["player"]["location_id"] == "praca_verde"
     assert len(state["characters"]) == 3
+    assert {character['character_id']: character['grammatical_gender'] for character in state['characters']} == {
+        'bentinho': 'masculine', 'capitu': 'feminine', 'escobar': 'masculine'}
     assert all("werewolf_objective" not in character for character in state["characters"])
     assert (await authorized_client.get("/admin/api/v1/health")).json() == {"redis": "ok"}
 

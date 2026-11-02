@@ -20,5 +20,6 @@ async def test_assembly_victory_persists_extraordinary_edition(inquiry):
     result=await inquiry.service.assemble(game.id,'capitu',evidence,testimony)
     assert result.journal[-1].illustration=='victory'
     assert 'Floriano' in result.journal[-1].headline and 'Capitu' in result.journal[-1].body
+    assert 'expulsa da cidade' in result.journal[-1].body
     restored=await inquiry.turns.sync(game.id)
     assert restored.journal[-1].body==result.journal[-1].body

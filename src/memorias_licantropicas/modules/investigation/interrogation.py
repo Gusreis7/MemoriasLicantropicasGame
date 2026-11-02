@@ -126,7 +126,7 @@ def npc_interrogation_context(state, npc_id):
 
 def make_confrontation(state, game, npc_id, evidence_ids, testimony_ids, interrogation_ids, now):
     if any(record.npc_id == npc_id and record.day == state.day for record in state.confrontations):
-        raise ConflictError("Este morador já foi confrontado hoje. Reúna novos elementos para outro dia.")
+        raise ConflictError("Já houve um confronto com esta pessoa hoje. Reúna novos elementos para outro dia.")
     by_interrogation = {record.id: record for record in state.interrogations}
     if any(identifier not in by_interrogation for identifier in interrogation_ids):
         raise NotFoundError("Interrogatório não encontrado nesta partida.")

@@ -1,0 +1,492 @@
+{
+  "frames": {
+    "quitandeira-0": {
+      "frame": {
+        "x": 62,
+        "y": 5,
+        "w": 154,
+        "h": 250
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 62,
+        "y": 10,
+        "w": 154,
+        "h": 250
+      },
+      "sourceSize": {
+        "w": 256,
+        "h": 280
+      }
+    },
+    "quitandeira-1": {
+      "frame": {
+        "x": 307,
+        "y": 5,
+        "w": 156,
+        "h": 250
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 51,
+        "y": 10,
+        "w": 156,
+        "h": 250
+      },
+      "sourceSize": {
+        "w": 256,
+        "h": 280
+      }
+    },
+    "quitandeira-2": {
+      "frame": {
+        "x": 563,
+        "y": 5,
+        "w": 161,
+        "h": 250
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 51,
+        "y": 10,
+        "w": 161,
+        "h": 250
+      },
+      "sourceSize": {
+        "w": 256,
+        "h": 280
+      }
+    },
+    "quitandeira-3": {
+      "frame": {
+        "x": 815,
+        "y": 5,
+        "w": 158,
+        "h": 250
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 47,
+        "y": 10,
+        "w": 158,
+        "h": 250
+      },
+      "sourceSize": {
+        "w": 256,
+        "h": 280
+      }
+    },
+    "estivador-0": {
+      "frame": {
+        "x": 57,
+        "y": 261,
+        "w": 162,
+        "h": 249
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 57,
+        "y": 11,
+        "w": 162,
+        "h": 249
+      },
+      "sourceSize": {
+        "w": 256,
+        "h": 280
+      }
+    },
+    "estivador-1": {
+      "frame": {
+        "x": 314,
+        "y": 261,
+        "w": 160,
+        "h": 249
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 58,
+        "y": 11,
+        "w": 160,
+        "h": 249
+      },
+      "sourceSize": {
+        "w": 256,
+        "h": 280
+      }
+    },
+    "estivador-2": {
+      "frame": {
+        "x": 562,
+        "y": 261,
+        "w": 164,
+        "h": 249
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 50,
+        "y": 11,
+        "w": 164,
+        "h": 249
+      },
+      "sourceSize": {
+        "w": 256,
+        "h": 280
+      }
+    },
+    "estivador-3": {
+      "frame": {
+        "x": 822,
+        "y": 261,
+        "w": 162,
+        "h": 249
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 54,
+        "y": 11,
+        "w": 162,
+        "h": 249
+      },
+      "sourceSize": {
+        "w": 256,
+        "h": 280
+      }
+    },
+    "costureira-0": {
+      "frame": {
+        "x": 57,
+        "y": 516,
+        "w": 163,
+        "h": 251
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 57,
+        "y": 9,
+        "w": 163,
+        "h": 251
+      },
+      "sourceSize": {
+        "w": 256,
+        "h": 280
+      }
+    },
+    "costureira-1": {
+      "frame": {
+        "x": 312,
+        "y": 516,
+        "w": 155,
+        "h": 251
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 56,
+        "y": 9,
+        "w": 155,
+        "h": 251
+      },
+      "sourceSize": {
+        "w": 256,
+        "h": 280
+      }
+    },
+    "costureira-2": {
+      "frame": {
+        "x": 559,
+        "y": 513,
+        "w": 170,
+        "h": 254
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 47,
+        "y": 6,
+        "w": 170,
+        "h": 254
+      },
+      "sourceSize": {
+        "w": 256,
+        "h": 280
+      }
+    },
+    "costureira-3": {
+      "frame": {
+        "x": 817,
+        "y": 516,
+        "w": 156,
+        "h": 251
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 49,
+        "y": 9,
+        "w": 156,
+        "h": 251
+      },
+      "sourceSize": {
+        "w": 256,
+        "h": 280
+      }
+    },
+    "jornaleiro-0": {
+      "frame": {
+        "x": 58,
+        "y": 773,
+        "w": 161,
+        "h": 249
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 58,
+        "y": 11,
+        "w": 161,
+        "h": 249
+      },
+      "sourceSize": {
+        "w": 256,
+        "h": 280
+      }
+    },
+    "jornaleiro-1": {
+      "frame": {
+        "x": 310,
+        "y": 773,
+        "w": 161,
+        "h": 248
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 54,
+        "y": 12,
+        "w": 161,
+        "h": 248
+      },
+      "sourceSize": {
+        "w": 256,
+        "h": 280
+      }
+    },
+    "jornaleiro-2": {
+      "frame": {
+        "x": 564,
+        "y": 773,
+        "w": 170,
+        "h": 248
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 52,
+        "y": 12,
+        "w": 170,
+        "h": 248
+      },
+      "sourceSize": {
+        "w": 256,
+        "h": 280
+      }
+    },
+    "jornaleiro-3": {
+      "frame": {
+        "x": 822,
+        "y": 773,
+        "w": 159,
+        "h": 248
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 54,
+        "y": 12,
+        "w": 159,
+        "h": 248
+      },
+      "sourceSize": {
+        "w": 256,
+        "h": 280
+      }
+    },
+    "caixeiro-0": {
+      "frame": {
+        "x": 54,
+        "y": 1025,
+        "w": 159,
+        "h": 255
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 54,
+        "y": 5,
+        "w": 159,
+        "h": 255
+      },
+      "sourceSize": {
+        "w": 256,
+        "h": 280
+      }
+    },
+    "caixeiro-1": {
+      "frame": {
+        "x": 310,
+        "y": 1024,
+        "w": 159,
+        "h": 256
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 54,
+        "y": 4,
+        "w": 159,
+        "h": 256
+      },
+      "sourceSize": {
+        "w": 256,
+        "h": 280
+      }
+    },
+    "caixeiro-2": {
+      "frame": {
+        "x": 564,
+        "y": 1024,
+        "w": 162,
+        "h": 256
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 52,
+        "y": 4,
+        "w": 162,
+        "h": 256
+      },
+      "sourceSize": {
+        "w": 256,
+        "h": 280
+      }
+    },
+    "caixeiro-3": {
+      "frame": {
+        "x": 826,
+        "y": 1024,
+        "w": 162,
+        "h": 256
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 58,
+        "y": 4,
+        "w": 162,
+        "h": 256
+      },
+      "sourceSize": {
+        "w": 256,
+        "h": 280
+      }
+    },
+    "cocheiro-0": {
+      "frame": {
+        "x": 56,
+        "y": 1283,
+        "w": 158,
+        "h": 250
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 56,
+        "y": 10,
+        "w": 158,
+        "h": 250
+      },
+      "sourceSize": {
+        "w": 256,
+        "h": 280
+      }
+    },
+    "cocheiro-1": {
+      "frame": {
+        "x": 316,
+        "y": 1283,
+        "w": 147,
+        "h": 250
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 60,
+        "y": 10,
+        "w": 147,
+        "h": 250
+      },
+      "sourceSize": {
+        "w": 256,
+        "h": 280
+      }
+    },
+    "cocheiro-2": {
+      "frame": {
+        "x": 569,
+        "y": 1282,
+        "w": 156,
+        "h": 251
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 57,
+        "y": 9,
+        "w": 156,
+        "h": 251
+      },
+      "sourceSize": {
+        "w": 256,
+        "h": 280
+      }
+    },
+    "cocheiro-3": {
+      "frame": {
+        "x": 827,
+        "y": 1283,
+        "w": 149,
+        "h": 250
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 59,
+        "y": 10,
+        "w": 149,
+        "h": 250
+      },
+      "sourceSize": {
+        "w": 256,
+        "h": 280
+      }
+    }
+  },
+  "meta": {
+    "image": "citizens.png",
+    "size": {
+      "w": 1024,
+      "h": 1536
+    },
+    "scale": "1"
+  }
+}

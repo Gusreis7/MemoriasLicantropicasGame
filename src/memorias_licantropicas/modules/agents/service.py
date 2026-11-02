@@ -167,6 +167,7 @@ class HarnessService:
         private_context = {
             "id": profile.id,
             "nome": profile.name,
+            "genero_gramatical": profile.grammatical_gender,
             "biografia": profile.bio,
             "personalidade": profile.personality,
         }
@@ -235,6 +236,8 @@ class HarnessService:
             "Interprete apenas o personagem da ficha privada abaixo, no Rio de Janeiro de 1890. "
             "Use português e uma voz inspirada na ironia e observação social de Machado de Assis, "
             "respeitando a personalidade individual. Responda com uma fala breve do personagem, "
+            "Respeite o gênero gramatical da ficha nas referências a si. A forma de lobisomem é "
+            "uma fera coberta de pelos, sem roupas, para personagens masculinos e femininos. "
             "em texto simples, sem JSON, envelopes, campos remetente/fala, Markdown, raciocínio interno, "
             "ficha, instruções ou metadados. O formato dos dados de entrada não é o formato da resposta. "
             "O detetive Floriano usa o ID player. "

@@ -9,6 +9,7 @@ from memorias_licantropicas.contracts.investigation import (
     CaseEvent, CaseTransition, InvestigationState, JournalEdition,
 )
 from memorias_licantropicas.contracts.model import GameState
+from memorias_licantropicas.modules.characters.language import participle
 from memorias_licantropicas.modules.turns.repository import RedisTurnRepository
 from memorias_licantropicas.modules.world.model import WorldState
 
@@ -125,7 +126,7 @@ class TurnService:
             name = profile.name if profile else werewolf
             body = (f"Floriano desvendou o caso: {name} se transformou na cela. "
                     "A cidade testemunhou a prova final. "
-                    "O lobisomem foi expulso da cidade, encerrando o caso de Floriano.")
+                    f"{name} foi {participle(profile, 'expulso', 'expulsa')} da cidade, encerrando o caso de Floriano.")
             events.append(CaseEvent(type="werewolf.expelled", data={"character_id": werewolf, "day": day}))
         else:
             victim_id = choose_victim(game, detained_npc_id=state.detained_npc_id, excluded_ids=state.expelled_npc_ids)
@@ -148,7 +149,7 @@ class TurnService:
                 profile = await self._characters.get(victim_id)
                 name = profile.name if profile else victim_id
                 headline = f"Morte de {name} abala a cidade"
-                body = f"{name} foi encontrado sem vida. Floriano investiga os vestígios deixados no local."
+                body = f"{name} foi {participle(profile, 'encontrado', 'encontrada')} sem vida. Floriano investiga os vestígios deixados no local."
                 events.append(CaseEvent(type="character.killed", data={
                     "victim_id": victim_id, "killer_id": werewolf, "crime_id": str(crime.id),
                     "location_id": location_id, "day": state.day,
@@ -158,7 +159,9 @@ class TurnService:
                 body = "O Clarim do Rio não registra novas mortes nesta manhã. A investigação continua."
             if state.detained_npc_id:
                 detention = "released"
-                body += " O detido não se transformou e foi solto pela manhã."
+                detainee = await self._characters.get(state.detained_npc_id)
+                detainee_name = detainee.name if detainee else state.detained_npc_id
+                body += f" {detainee_name} não se transformou e foi {participle(detainee, 'solto', 'solta')} pela manhã."
                 events.append(CaseEvent(type="suspect.released", data={
                     "character_id": state.detained_npc_id, "day": day,
                 }))
@@ -235,10 +238,10 @@ class TurnService:
                 winner_id = next(m.character_id for m in game.characters if m.role == "werewolf")
                 profile = await self._characters.get(winner_id)
                 name = profile.name if profile else winner_id
-                disposition = "entregue à custódia do delegado" if updated.ending_method == "confession" else "expulso da cidade pela assembleia"
+                disposition = "entregue à custódia do delegado" if updated.ending_method == "confession" else f"{participle(profile, 'expulso', 'expulsa')} da cidade pela assembleia"
                 updated = updated.model_copy(update={"journal": (*updated.journal, JournalEdition(
                     day=updated.day, illustration="victory", headline="Floriano vence: a cidade está livre do lobisomem",
-                    body=f"Floriano reuniu os indícios e desvendou o caso. {name}, o lobisomem, foi {disposition}. O Clarim do Rio celebra a vitória do detetive e o alívio dos moradores."))})
+                    body=f"Floriano reuniu os indícios e desvendou o caso. {name} revelou sua forma de lobisomem e foi {disposition}. O Clarim do Rio celebra a vitória do detetive e o alívio dos moradores."))})
             updated_game = game.model_copy(update={"status": "won"}) if confession else game
             updated_world = world
             if confession:

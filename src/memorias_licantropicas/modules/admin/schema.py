@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Generic, TypeVar
+from typing import Generic, Literal, TypeVar
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, SecretStr
@@ -35,6 +35,7 @@ class GameListItem(AdminSchema):
 class AdminCharacter(AdminSchema):
     character_id: str
     name: str
+    grammatical_gender: Literal["masculine", "feminine"] | None = None
     role: str
     alive: bool
     location_id: str | None

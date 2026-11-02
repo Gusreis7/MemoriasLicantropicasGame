@@ -1,4 +1,5 @@
 import './style.css';
+import {personWords} from '../shared/language';
 import {
   ApiError, request, nameOf, formatDate, locationNames, deathAuthor, eventDetails, eventLabels,
   type Page, type GameSummary, type GameState, type Conversation, type Message,
@@ -300,9 +301,10 @@ function renderState(record: GameState): void {
     const confirmedWolf = record.status === 'won' && character.character_id === record.werewolf_id;
     const confessed = confirmedWolf && cycle?.ending_method === 'confession';
     const expelled = confirmedWolf && !confessed;
-    const place = confessed ? 'Delegacia · confissão registrada' : expelled ? 'Expulso da cidade' : locationNames[character.location_id || ''] || 'Local não registrado';
+    const words=personWords(character);
+    const place = confessed ? 'Delegacia · confissão registrada' : expelled ? `${words.expelled} · expulsão confirmada` : locationNames[character.location_id || ''] || 'Local não registrado';
     details.append(title, role, make('p', 'character-location', place),
-      make('span', `life-status${character.alive ? '' : ' deceased'}`, confessed ? '● Sob custódia · confessou' : expelled ? '↗ Expulso' : character.alive ? '● Vivo' : '○ Morto'));
+      make('span', `life-status${character.alive ? '' : ' deceased'}`, confessed ? '● Sob custódia · confessou' : expelled ? `↗ ${words.expelled}` : character.alive ? `● ${words.alive}` : `○ ${words.deceased}`));
     card.append(portrait, details); cards.append(card);
   }
   const deaths = $('deaths'); deaths.replaceChildren();

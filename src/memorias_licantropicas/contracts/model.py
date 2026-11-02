@@ -23,6 +23,7 @@ class DialogueStrategy(Contract):
 class CharacterProfile(Contract):
     id: str
     name: str
+    grammatical_gender: Literal["masculine", "feminine"] = "masculine"
     bio: str
     personality: str
     civil_objective: str
