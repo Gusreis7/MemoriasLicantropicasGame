@@ -279,3 +279,44 @@ test('personagem masculino também se transforma na cela e chega à edição de 
   await page.screenshot({path:'../artifacts/delegacia-bentinho-feral.png',fullPage:true});
   await expect(page.locator('#victory-paper')).toBeVisible({timeout:10000});
 });
+
+for(const [id,name] of [['rubiao','Rubião'],['florenca','Florença']]) {
+  test(`${name} entra caminhando antes de a grade fechar e a sequência não se repete`,async({page})=>{
+    const city=await cityFixture(page);await begin(page);
+    city.state.detained_npc_id=id;city.state.revision++;
+    await expect(page.locator('#custody-caption')).toHaveText(`${name} caminha para dentro da cela.`);
+    const box=(await page.locator('#custody-canvas canvas').boundingBox())!;
+    const waitingRoom={x:Math.round(box.x+box.width*.70),y:Math.round(box.y+box.height*.1),width:Math.round(box.width*.27),height:Math.round(box.height*.65)};
+    const openRoom=await page.screenshot({clip:waitingRoom});
+    const entrance=await page.locator('#custody-canvas').screenshot({path:`../artifacts/cela-entrada-${id}.png`});
+    await expect(page.locator('#custody-caption')).toContainText('A grade se fecha');
+    await expect(page.locator('#custody-caption')).toContainText('A acusação ainda não confirma a culpa');
+    const held=await page.locator('#custody-canvas').screenshot();
+    expect(entrance.equals(held)).toBe(false);
+    // The sliding gate must not cover the benches or archive beside the cell.
+    expect((await page.screenshot({clip:waitingRoom})).equals(openRoom)).toBe(true);
+    await page.screenshot({path:`../artifacts/cela-fechada-${id}.png`,fullPage:true});
+    city.state.revision++;
+    await page.waitForResponse(response=>response.url().endsWith('/investigation'));
+    await expect(page.locator('#custody-caption')).toContainText('A acusação ainda não confirma a culpa');
+    expect(city.state.detained_npc_id).toBe(id);expect(city.state.status).toBe('active');
+  });
+}
+
+test('retomar um caso com pessoa já detida mostra a cela fechada diretamente',async({page})=>{
+  const city=await cityFixture(page);city.state.detained_npc_id='capitu';
+  await page.goto('/');await page.locator('#start').click();
+  await expect(page.locator('#scene-loading')).toBeHidden({timeout:30000});
+  await expect(page.locator('#custody-title')).toContainText('Capitu');
+  await expect(page.locator('#custody-caption')).toContainText('A acusação ainda não confirma a culpa');
+  await expect(page.locator('#leave-custody')).toBeVisible();
+});
+
+test('movimento reduzido mantém a pessoa dentro da cela sem animação de entrada',async({page})=>{
+  await page.emulateMedia({reducedMotion:'reduce'});
+  const city=await cityFixture(page);await begin(page);
+  city.state.detained_npc_id='florenca';city.state.revision++;
+  await expect(page.locator('#custody-title')).toContainText('Florença');
+  await expect(page.locator('#custody-caption')).toContainText('A acusação ainda não confirma a culpa');
+  await expect(page.locator('#leave-custody')).toBeVisible();
+});
