@@ -207,13 +207,24 @@ class TurnService:
                 or self.now() >= state.phase_ends_at):
             raise ConflictError("O dia terminou; consulte a próxima edição do jornal.")
 
-    async def act(self, game_id: UUID, transition) -> InvestigationState:
+    async def act(self, game_id: UUID, transition, *, start_night_on_detention: bool = False) -> InvestigationState:
         async with self._gate.hold(game_id):
             state = await self.require_day_locked(game_id)
             game, world, _ = await self._load(game_id)
             result = transition(state, game, world)
             if not isinstance(result, CaseTransition):
                 raise TypeError("A ação exige uma transição de investigação.")
+            starts_night = (start_night_on_detention and state.detained_npc_id is None
+                            and result.state.detained_npc_id is not None)
+            if starts_night:
+                new_accusations = result.state.accusations[len(state.accusations):]
+                detention = next((record for record in new_accusations
+                                  if record.day == state.day and record.suspect_id == result.state.detained_npc_id
+                                  and record.accepted), None)
+                if (len(new_accusations) != 1 or detention is None
+                        or result.state.phase != state.phase or result.state.status != state.status
+                        or result.state.phase_ends_at != state.phase_ends_at):
+                    raise ValueError("Somente uma acusação aceita pode adiantar a noite.")
             assembly = result.state.assembly is not None and state.assembly is None
             if assembly:
                 from memorias_licantropicas.modules.investigation.assembly import convene
@@ -228,12 +239,30 @@ class TurnService:
                     raise ValueError("Transição de assembleia inválida.")
             confession = self._validated_confession(state, result, game) or (assembly and result.state.status == "won")
             if (result.state.game_id != state.game_id or result.state.day != state.day
-                    or (not confession and (result.state.phase != state.phase or result.state.status != state.status))
-                    or result.state.phase_ends_at != state.phase_ends_at):
+                    or (not confession and not starts_night
+                        and (result.state.phase != state.phase or result.state.status != state.status))
+                    or (result.state.phase_ends_at != state.phase_ends_at and not starts_night)):
                 raise ValueError("Uma ação diurna não pode mudar o relógio ou o resultado.")
             if result.state == state and not result.events:
                 return state
             updated = result.state.model_copy(update={"revision": state.revision + 1})
+            updated_world = world
+            events = result.events
+            occurred_at = self.now()
+            if starts_night:
+                from memorias_licantropicas.modules.investigation.interrogation import record_activities
+                records = state.activity_records
+                if not any(record.day == state.day and record.period == "day" for record in records):
+                    records += record_activities(game, world, state.day, "day", occurred_at)
+                updated = updated.model_copy(update={
+                    "phase": "night", "phase_ends_at": occurred_at + timedelta(seconds=self._night_seconds),
+                    "activity_records": records,
+                })
+                updated_world = world.model_copy(update={
+                    "revision": world.revision + 1,
+                    "player": world.player.model_copy(update={"direction": "idle", "last_updated_at": occurred_at}),
+                })
+                events += (CaseEvent(type="night.started", data={"day": state.day, "reason": "accepted_detention"}),)
             if confession:
                 winner_id = next(m.character_id for m in game.characters if m.role == "werewolf")
                 profile = await self._characters.get(winner_id)
@@ -243,7 +272,6 @@ class TurnService:
                     day=updated.day, illustration="victory", headline="Floriano vence: a cidade está livre do lobisomem",
                     body=f"Floriano reuniu os indícios e desvendou o caso. {name} revelou sua forma de lobisomem e foi {disposition}. O Clarim do Rio celebra a vitória do detetive e o alívio dos moradores."))})
             updated_game = game.model_copy(update={"status": "won"}) if confession else game
-            updated_world = world
             if confession:
                 updated_world = world.model_copy(update={"revision": world.revision + 1,
                     "npcs": tuple(npc for npc in world.npcs if npc.npc_id != updated.detained_npc_id and npc.npc_id not in updated.expelled_npc_ids),
@@ -253,7 +281,7 @@ class TurnService:
                     n for n in updated_world.npcs if n.npc_id not in updated.expelled_npc_ids)})
             await self._repository.commit(
                 previous=state, state=updated, previous_game=game, game=updated_game,
-                previous_world=world, world=updated_world, events=result.events, occurred_at=self.now(),
+                previous_world=world, world=updated_world, events=events, occurred_at=occurred_at,
             )
             return updated
 

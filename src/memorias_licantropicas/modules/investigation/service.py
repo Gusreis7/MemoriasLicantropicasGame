@@ -198,7 +198,7 @@ class InvestigationService:
             if record.accepted:
                 events.append(CaseEvent(type="character.detained", data={"character_id": suspect_id, "day": state.day}))
             return CaseTransition(state=updated, events=tuple(events))
-        return await self.public(await self._turns.act(game_id, transition))
+        return await self.public(await self._turns.act(game_id, transition, start_night_on_detention=True))
 
     async def npc_context_locked(self, game_id: UUID, npc_id: str) -> dict:
         """Chamador mantém player_gate; não oferece informação privada de outros papéis."""

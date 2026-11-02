@@ -457,7 +457,7 @@ async function applyCase(next: CasePublic, initial = false) {
     if (next.status === 'won' && next.ending?.method === 'detention') {
       await showCustody(next.ending.werewolf_id,'transformed'); showPhase();
     } else if (next.phase === 'night' && next.detained_npc_id) {
-      void showCustody(next.detained_npc_id,'night');
+      void showCustody(next.detained_npc_id,'night',previous?.detained_npc_id!==next.detained_npc_id);
     } else if (next.phase !== 'day' || next.status !== 'active') showPhase();
     else if (initial && next.detained_npc_id) {void showCustody(next.detained_npc_id,'waiting');}
     else if (initial || previous?.day !== next.day) {
