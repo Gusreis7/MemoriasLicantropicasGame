@@ -51,8 +51,9 @@ class VisibleNPC(Contract):
     x: float
     sprite_id: str
     can_approach: bool
-    activity: Literal["idle", "talking"] = "idle"
+    activity: Literal["idle", "talking", "travelling"] = "idle"
     social_partner_id: str | None = None
+    speech: str | None = None
 
 
 class WorldSnapshot(Contract):
@@ -62,4 +63,5 @@ class WorldSnapshot(Contract):
     location: LocationPublic
     player: PlayerPublic
     visible_npcs: tuple[VisibleNPC, ...]
+    npc_presences: tuple[dict, ...] = ()
     travel_targets: tuple[LocationID, ...]

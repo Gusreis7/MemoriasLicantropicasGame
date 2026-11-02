@@ -59,6 +59,7 @@ export class CityScene extends Phaser.Scene {
   private caseState: CasePublic | null = null;
   private caseMarkers: Phaser.GameObjects.GameObject[] = [];
   private npcSignature = '';
+  private npcPositions = new Map<string, number>();
   private touchDirection: Direction = 'idle';
   private reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -84,8 +85,8 @@ export class CityScene extends Phaser.Scene {
   create() {
     for (const asset of this.manifest.characters) {
       if (this.textures.exists(asset.id)) this.textures.get(asset.id).setFilter(Phaser.Textures.FilterMode.NEAREST);
-      if (asset.id === 'player' && asset.walkFrames.length) {
-        this.anims.create({key: 'player-walk', frames: asset.walkFrames.map(frame => ({key: asset.id, frame})), frameRate: 7, repeat: -1});
+      if (asset.walkFrames.length) {
+        this.anims.create({key: `${asset.id}-walk`, frames: asset.walkFrames.map(frame => ({key: asset.id, frame})), frameRate: 7, repeat: -1});
       }
     }
     this.cursors = this.input.keyboard?.createCursorKeys();
@@ -183,7 +184,7 @@ export class CityScene extends Phaser.Scene {
     if (!this.ready) return;
     // The backdrop and decorations are built once per location, never per movement snapshot.
     if (world.location.id !== this.currentLocation) {
-      this.currentLocation = world.location.id;
+      this.currentLocation = world.location.id; this.npcPositions.clear();
       this.background?.destroy();
       this.background = this.add.image(0, 0, `location-${world.location.id}`).setOrigin(0)
         .setDisplaySize(world.location.width, world.location.height).setDepth(-10).setScrollFactor(0);
@@ -200,20 +201,29 @@ export class CityScene extends Phaser.Scene {
       this.cameras.main.setBounds(0, 0, world.location.width, world.location.height);
       this.cameras.main.setScroll(0, 0);
     }
-    const signature = world.visible_npcs.map(npc => `${npc.npc_id}:${npc.x}:${npc.name}:${npc.activity}:${npc.social_partner_id}`).join('|');
+    const signature = world.visible_npcs.map(npc => `${npc.npc_id}:${npc.x}:${npc.name}:${npc.activity}:${npc.social_partner_id}:${npc.speech ?? ""}`).join('|');
     if (signature !== this.npcSignature) {
       this.npcSignature = signature;
-      this.npcs.forEach(npc => npc.destroy()); this.npcs = [];
+      this.npcs.forEach(npc => {this.tweens.killTweensOf(npc); npc.destroy();}); this.npcs = [];
       for (const npc of world.visible_npcs) {
-        const shadow = this.add.ellipse(npc.x, world.location.ground_y + 1, 34, 7, 0x173e31, .3);
-        const sprite = this.sprite(npc.sprite_id, npc.x, world.location.ground_y);
+        const previousX = this.npcPositions.get(npc.npc_id) ?? npc.x;
+        this.npcPositions.set(npc.npc_id, npc.x);
+        const shadow = this.add.ellipse(previousX, world.location.ground_y + 1, 34, 7, 0x173e31, .3);
+        const sprite = this.sprite(npc.sprite_id, previousX, world.location.ground_y);
         const partner = world.visible_npcs.find(other => other.npc_id === npc.social_partner_id);
         if (npc.activity === 'talking' && partner) sprite?.setFlipX(partner.x < npc.x);
-        if (sprite) this.npcs.push(sprite);
+        if (sprite) {this.npcs.push(sprite); if (npc.activity === 'travelling') {sprite.setFlipX(npc.x < previousX); if (this.anims.exists(`${npc.sprite_id}-walk`)) sprite.anims.play(`${npc.sprite_id}-walk`, true);}}
         this.npcs.push(shadow);
-        const caption = npc.activity === 'talking' ? `${npc.name}\n${partner ? `Com ${partner.name}` : 'Conversando'}` : npc.name;
-        const label = this.add.text(npc.x, world.location.ground_y - 96, caption, {fontFamily: 'Georgia, serif', fontSize: '11px', align: 'center', color: '#fff4d2', backgroundColor: '#183c33cc', padding: {x: 5, y: 3}}).setOrigin(.5, 1).setDepth(4);
+        const caption = npc.activity === 'talking' ? `${npc.name}\n${partner ? `Com ${partner.name}` : 'Conversando'}` : npc.activity === 'travelling' ? `${npc.name}\nCaminhando` : npc.name;
+        const label = this.add.text(previousX, world.location.ground_y - 96, caption, {fontFamily: 'Georgia, serif', fontSize: '11px', align: 'center', color: '#fff4d2', backgroundColor: '#183c33cc', padding: {x: 5, y: 3}}).setOrigin(.5, 1).setDepth(4);
+        if (npc.speech) {
+          const bubble = this.add.text(npc.x, world.location.ground_y - 142, npc.speech.length > 160 ? `${npc.speech.slice(0,157)}…` : npc.speech,
+            {fontFamily:'Georgia,serif',fontSize:'12px',color:'#263f30',backgroundColor:'#f4ebce',wordWrap:{width:180},padding:{x:9,y:7}})
+            .setOrigin(npc.x > 750 ? 1 : npc.x < 180 ? 0 : .5,1).setDepth(6);
+          this.npcs.push(bubble);
+        }
         this.npcs.push(label);
+        this.tweens.add({targets: [shadow, label, ...(sprite ? [sprite] : [])], x: npc.x, duration: this.reducedMotion ? 0 : 950, ease: "Linear"});
       }
       this.addExitSigns(world);
     }

@@ -4,7 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Request
 
 from memorias_licantropicas.modules.investigation.schema import (
-    AccuseRequest, CasePublic, PresentRequest, SearchRequest, InterrogateRequest, ConfrontRequest,
+    AssemblyRequest, AccuseRequest, CasePublic, PresentRequest, SearchRequest, InterrogateRequest, ConfrontRequest,
 )
 from memorias_licantropicas.modules.investigation.service import InvestigationService
 
@@ -47,3 +47,8 @@ async def interrogate(game_id: UUID, body: InterrogateRequest, service: Service)
 async def confront(game_id: UUID, body: ConfrontRequest, service: Service):
     return await service.confront(game_id, body.npc_id, body.evidence_ids, body.testimony_ids,
                                  body.interrogation_ids)
+
+
+@router.post("/assembly", response_model=CasePublic)
+async def assembly(game_id: UUID, body: AssemblyRequest, service: Service):
+    return await service.assemble(game_id, body.suspect_id, body.evidence_ids, body.testimony_ids)

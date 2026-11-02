@@ -125,7 +125,7 @@ class TurnService:
                     "O lobisomem foi expulso da cidade, encerrando o caso de Floriano.")
             events.append(CaseEvent(type="werewolf.expelled", data={"character_id": werewolf, "day": day}))
         else:
-            victim_id = choose_victim(game, detained_npc_id=state.detained_npc_id)
+            victim_id = choose_victim(game, detained_npc_id=state.detained_npc_id, excluded_ids=state.expelled_npc_ids)
             if victim_id is not None:
                 victim = next((member for member in game.characters if member.character_id == victim_id), None)
                 if (victim is None or not victim.alive or victim.role != "civil"
@@ -159,7 +159,7 @@ class TurnService:
                 events.append(CaseEvent(type="suspect.released", data={
                     "character_id": state.detained_npc_id, "day": day,
                 }))
-            status = "active" if any(member.role == "civil" and member.alive for member in game.characters) else "lost"
+            status = "active" if any(member.role == "civil" and member.alive and member.character_id not in state.expelled_npc_ids for member in game.characters) else "lost"
             if status == "lost":
                 body += " Não restam civis vivos; o caso de Floriano terminou em derrota."
         edition = JournalEdition(day=day, headline=headline, body=body, victim_id=victim_id,
@@ -208,7 +208,19 @@ class TurnService:
             result = transition(state, game, world)
             if not isinstance(result, CaseTransition):
                 raise TypeError("A ação exige uma transição de investigação.")
-            confession = self._validated_confession(state, result, game)
+            assembly = result.state.assembly is not None and state.assembly is None
+            if assembly:
+                from memorias_licantropicas.modules.investigation.assembly import convene
+                record = result.state.assembly
+                expected = convene(state, game, record.suspect_id, record.evidence_ids, record.testimony_ids, record.created_at)
+                changes = {"assembly": expected}
+                if expected.expelled:
+                    changes["expelled_npc_ids"] = (*state.expelled_npc_ids, expected.suspect_id)
+                if expected.outcome == "werewolf":
+                    changes.update(status="won", phase="finished", ending_method="assembly")
+                if result.state != state.model_copy(update=changes):
+                    raise ValueError("Transição de assembleia inválida.")
+            confession = self._validated_confession(state, result, game) or (assembly and result.state.status == "won")
             if (result.state.game_id != state.game_id or result.state.day != state.day
                     or (not confession and (result.state.phase != state.phase or result.state.status != state.status))
                     or result.state.phase_ends_at != state.phase_ends_at):
@@ -220,8 +232,11 @@ class TurnService:
             updated_world = world
             if confession:
                 updated_world = world.model_copy(update={"revision": world.revision + 1,
-                    "npcs": tuple(npc for npc in world.npcs if npc.npc_id != updated.detained_npc_id),
+                    "npcs": tuple(npc for npc in world.npcs if npc.npc_id != updated.detained_npc_id and npc.npc_id not in updated.expelled_npc_ids),
                     "player": world.player.model_copy(update={"direction": "idle", "last_updated_at": self.now()})})
+            if assembly and result.state.assembly.expelled:
+                updated_world = updated_world.model_copy(update={"revision": world.revision + 1, "npcs": tuple(
+                    n for n in updated_world.npcs if n.npc_id not in updated.expelled_npc_ids)})
             await self._repository.commit(
                 previous=state, state=updated, previous_game=game, game=updated_game,
                 previous_world=world, world=updated_world, events=result.events, occurred_at=self.now(),

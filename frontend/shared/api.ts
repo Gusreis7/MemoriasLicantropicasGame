@@ -10,7 +10,8 @@ export interface WorldSnapshot {
   game_id: string; world_version: string; revision: number; location: Location;
   player: {location_id: LocationID; x: number; facing: 'left' | 'right'; movement_seq: number};
   visible_npcs: Array<{npc_id: string; name: string; x: number; sprite_id: string; can_approach: boolean;
-    activity?: 'idle' | 'talking'; social_partner_id?: string | null}>;
+    activity?: 'idle' | 'talking' | 'travelling'; social_partner_id?: string | null; speech?: string | null}>;
+  npc_presences?: Array<{npc_id: string; name: string; location_id: LocationID; activity: string; destination_id: LocationID | null}>;
   travel_targets: LocationID[];
 }
 export interface Conversation {id: string; game_id: string; npc_id: string; created_at: string}
@@ -40,8 +41,10 @@ export interface CasePublic {
   server_time: string; phase_ends_at: string; seconds_remaining: number;
   journal: JournalEdition[]; crimes: CaseCrime[]; inventory: CaseEvidence[]; testimonies: CaseTestimony[];
   accusations: CaseAccusation[]; detained_npc_id: string | null;
+  assembly?: {suspect_id: string; day: number; required_votes: number; expelled: boolean; outcome: 'werewolf' | 'innocent' | 'no_majority'; votes: Array<{voter_id: string; expel: boolean; reason: string}>} | null;
+  expelled_npc_ids?: string[];
   interrogations?: CaseInterrogation[]; confrontations?: CaseConfrontation[];
-  ending: {result: 'won' | 'lost'; message: string; werewolf_id: string; method?: 'detention' | 'confession' | 'survival'} | null;
+  ending: {result: 'won' | 'lost'; message: string; werewolf_id: string; method?: 'detention' | 'confession' | 'survival' | 'assembly'} | null;
 }
 
 export class ApiError extends Error {
@@ -84,6 +87,7 @@ export const api = {
   confront: (id: string, npcID: string, evidenceIDs: string[], testimonyIDs: string[], interrogationIDs: string[]) => request<CasePublic>(`${base(id)}/confrontations`, {
     npc_id: npcID, evidence_ids: evidenceIDs, testimony_ids: testimonyIDs, interrogation_ids: interrogationIDs,
   }),
+  assemble: (id: string, suspectID: string, evidenceIDs: string[], testimonyIDs: string[]) => request<CasePublic>(`${base(id)}/assembly`, {suspect_id: suspectID, evidence_ids: evidenceIDs, testimony_ids: testimonyIDs}),
   world: (id: string) => request<WorldSnapshot>(`${base(id)}/world`),
   locations: () => request<Location[]>('/api/v1/world/locations'),
   manifest: () => request<CharacterManifest>('/assets/characters/manifest.json'),

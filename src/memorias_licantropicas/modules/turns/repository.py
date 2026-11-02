@@ -103,7 +103,7 @@ class RedisTurnRepository:
             for _ in range(5):
                 try:
                     async with self._client.pipeline() as pipe:
-                        await pipe.watch(case_key, game_key, world_key, events_key)
+                        await pipe.watch(case_key, game_key, world_key, events_key, f"{base}:social")
                         current_case, current_game, current_world = await pipe.mget(case_key, game_key, world_key)
                         if current_game is None or current_world is None:
                             raise StorageUnavailableError("Estado do ciclo incompleto.")
@@ -125,7 +125,27 @@ class RedisTurnRepository:
                                 raise ConflictError("O ciclo mudou; consulte o estado atual.")
                         # LLEN antes de MULTI detecta chave corrompida sem gravar os estados.
                         await pipe.llen(events_key)
+                        social_update = None
+                        if state.assembly and (previous is None or previous.assembly is None) and state.assembly.outcome == "innocent":
+                            from memorias_licantropicas.contracts.social import SocialState
+                            from memorias_licantropicas.modules.knowledge.rules import apply_relationship, initial_relationships
+                            from uuid import uuid5, NAMESPACE_URL
+                            raw_social = await pipe.get(f"{base}:social")
+                            social_update = _decode(raw_social, SocialState) if raw_social else SocialState(game_id=game.id)
+                            if social_update.game_id != game.id:
+                                raise StorageUnavailableError("Identidade social inconsistente.")
+                            ids = tuple(m.character_id for m in game.characters if m.alive)
+                            if not social_update.relationships:
+                                social_update = social_update.model_copy(update={"relationships": initial_relationships(ids)})
+                            cause = uuid5(NAMESPACE_URL, f"{game.id}:assembly")
+                            for actor in ids:
+                                for target in (*ids, "player"):
+                                    if actor != target:
+                                        social_update = apply_relationship(social_update, actor, target, cause, resentment=5, trust=-3)
+                            social_update = social_update.model_copy(update={"revision": social_update.revision + 1})
                         pipe.multi()
+                        if social_update is not None:
+                            pipe.set(f"{base}:social", social_update.model_dump_json())
                         pipe.set(case_key, state.model_dump_json())
                         pipe.set(game_key, game.model_dump_json())
                         pipe.set(world_key, world.model_dump_json())
