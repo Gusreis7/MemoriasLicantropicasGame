@@ -255,8 +255,10 @@ async def test_extraction_preserves_attribution_and_owner_privacy(social, storag
     assert claim.confidence == "low" and claim.stance == "undecided"
     assert state.exchange_cursor == 1 and state.days[0].extraction_calls == 1
     assert not await knowledge.process_pending(game.id, 1)
-    assert (await knowledge.context(game.id, "bentinho"))["memorias_relevantes"] == []
-    assert len((await knowledge.context(game.id, "capitu"))["memorias_relevantes"]) == 2
+    bentinho_memory = (await knowledge.context(game.id, "bentinho"))["memorias_relevantes"]
+    assert all(item["quem_falou"] != "player" for item in bentinho_memory)
+    assert all(str(record.incoming.id) != item["claim_id"] for item in bentinho_memory)
+    assert len([m for m in (await knowledge.context(game.id, "capitu"))["memorias_relevantes"] if m["origem"] == "dialogue"]) == 2
     assert len(model.calls) == 1
 
 
@@ -486,3 +488,18 @@ async def test_unknown_claim_access_and_relationship_effects_are_bounded(game):
     relationship = relationship_for(changed, "capitu", "virgilia")
     assert relationship.trust == -5 and relationship.resentment == 5
     assert apply_relationship(changed, "capitu", "virgilia", cause, trust=-5) == changed
+
+
+@pytest.mark.parametrize('disposition,expected_trust,expected_resentment', [('cooperation',1,0),('insult',-2,3),('confidence_breach',-3,4)])
+async def test_player_social_reaction_is_limited_per_day(social, storage, game, catalog, disposition, expected_trust, expected_resentment):
+    text = {'cooperation':'Vou ajudá-la a encontrar quem espalhou isso.',
+            'insult':'Você é uma mentirosa desprezível.',
+            'confidence_breach':'Contei a todos a confidência que prometi guardar.'}[disposition]
+    for _ in range(2):
+        record = await enqueue(storage, game, incoming=text)
+        payload=json.dumps({'claims':[{'message_id':str(record.incoming.id),'source_span':text,
+            'proposition':text,'subject_ids':['capitu','player'],'disposition':disposition}]})
+        assert await KnowledgeService(social,catalog,Extractor(payload)).process_pending(game.id,1)
+    relation=relationship_for(await social.get(game.id),'capitu','player')
+    assert relation.trust==expected_trust and relation.resentment==expected_resentment
+    assert len(relation.causes)==1

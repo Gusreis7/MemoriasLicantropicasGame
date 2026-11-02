@@ -5,6 +5,7 @@ from datetime import timedelta
 
 from memorias_licantropicas.contracts.social import SocialDay
 from memorias_licantropicas.modules.knowledge.rules import relationship_for
+from memorias_licantropicas.modules.knowledge.mechanics import can_share
 from memorias_licantropicas.modules.world.catalog import LOCATIONS_BY_ID
 
 SLOT_SECONDS = (60, 120, 180, 240)
@@ -72,7 +73,8 @@ def select_pair(state, eligible_ids, world, day, slot, now):
             if not route:
                 continue
             known_roots = {entry.root_id for entry in state.knowledge if entry.owner_id == recipient}
-            topics = sorted(owned, key=lambda entry: (
+            topics = sorted((e for e in owned if can_share(e, state.relationships, actor, recipient)), key=lambda entry: (
+                entry.origin == "dialogue",
                 recipient in entry.subject_ids or recipient == entry.claimed_source_id,
                 entry.root_id not in known_roots,
                 entry.created_at,
@@ -83,6 +85,8 @@ def select_pair(state, eligible_ids, world, day, slot, now):
                          min(20, max(0, int((now - last_seen[identifier]).total_seconds() / 60)))
                          for identifier in (actor, recipient))
             score += 5 if len(route) == 1 else 0
+            score += sum(80 for entry in topics if entry.origin == "dialogue")
+            score += sum(100 for entry in topics if entry.origin == "dialogue" and (recipient in entry.subject_ids or recipient == entry.claimed_source_id))
             score += sum(15 for entry in topics if entry.root_id not in known_roots)
             score += sum(30 for entry in topics if recipient in entry.subject_ids or recipient == entry.claimed_source_id)
             score += min(10, abs(relation.affinity) // 10 + relation.resentment // 10)

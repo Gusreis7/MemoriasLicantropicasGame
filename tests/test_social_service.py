@@ -109,7 +109,7 @@ async def test_own_detective_claim_selects_target_and_each_tick_confirms_one_spe
     state = await case.repository.get(case.game.id)
     assert len(state.encounters[-1].messages) == 1
     message = state.encounters[-1].messages[0]
-    learned = next(entry for entry in state.knowledge if entry.owner_id == "virgilia")
+    learned = next(entry for entry in state.knowledge if entry.owner_id == "virgilia" and entry.root_id == claim.root_id)
     assert learned.root_id == claim.root_id and learned.source_message_id == message.id
     assert learned.speaker_id == "capitu" and learned.claimed_source_id == "player"
     assert learned.confidence == "low"
@@ -174,7 +174,7 @@ async def test_player_interrupt_wins_over_inflight_generation_without_lost_budge
     state = await case.repository.get(case.game.id)
     assert state.encounters[-1].phase == "interrupted" and state.encounters[-1].messages == ()
     assert state.days[-1].speech_calls == 1
-    assert not any(entry.owner_id == "virgilia" for entry in state.knowledge)
+    assert not any(entry.owner_id == "virgilia" and entry.origin == "dialogue" for entry in state.knowledge)
 
 
 async def test_sunset_discards_inflight_speech_and_next_tick_releases_participants(social_case):
@@ -205,20 +205,30 @@ async def test_invalid_generation_finishes_without_message_or_delivery(social_ca
     state = await case.repository.get(case.game.id)
     assert state.encounters[-1].phase == "failed" and state.encounters[-1].messages == ()
     assert state.days[-1].speech_calls == 1
-    assert not any(entry.owner_id == "virgilia" for entry in state.knowledge)
+    assert not any(entry.owner_id == "virgilia" and entry.origin == "dialogue" for entry in state.knowledge)
 
 
-async def test_selected_claim_is_composed_with_literal_source_before_transmission(social_case):
+async def test_unspoken_claim_is_not_injected_or_transmitted(social_case):
     case = social_case
     claim, _ = await start_encounter(case)
     case.speaker.payload = {"fala": "Floriano é um homem curioso.", "intent": "repeat", "claim_ids": [str(claim.id)]}
     assert await case.service.tick(case.game.id)
     state = await case.repository.get(case.game.id)
-    speech = state.encounters[-1].messages[-1]
-    assert claim.proposition in speech.content and "Floriano" in speech.content
-    assert "Isso é um relato" in speech.content
-    learned = next(entry for entry in state.knowledge if entry.owner_id == "virgilia")
-    assert learned.root_id == claim.root_id and learned.source_message_id == speech.id
+    assert state.encounters[-1].phase == "failed"
+    assert state.encounters[-1].messages == ()
+    assert not any(e.owner_id == "virgilia" and e.root_id == claim.root_id for e in state.knowledge)
+
+
+async def test_natural_paraphrase_keeps_provenance_without_robotic_suffix(social_case):
+    case = social_case
+    claim, _ = await start_encounter(case)
+    speech = "Virgília, soube por Floriano dessa denúncia. O que houve entre nós?"
+    case.speaker.payload = {"fala": speech, "intent": "ask", "claim_ids": [str(claim.id)]}
+    assert await case.service.tick(case.game.id)
+    state = await case.repository.get(case.game.id)
+    assert state.encounters[-1].messages[-1].content == speech
+    assert 'Isso é um relato' not in speech
+    assert any(e.owner_id == "virgilia" and e.root_id == claim.root_id for e in state.knowledge)
 
 
 async def test_missed_slots_are_consumed_without_historical_conversations(social_case):

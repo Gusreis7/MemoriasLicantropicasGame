@@ -112,7 +112,7 @@ async def test_detective_accusation_circulates_with_provenance_and_returns_to_hi
     assert [item.sender_id for item in encounter.messages] == ["capitu", "virgilia"]
     assert len(extraction_llm.calls) == 1 and len(social_llm.calls) == 2
     received = next(entry for entry in state.knowledge
-                    if entry.owner_id == "virgilia" and entry.kind == "report")
+                    if entry.owner_id == "virgilia" and entry.kind == "report" and entry.root_id == original.root_id)
     assert received.root_id == original.root_id and received.parent_ids == (original.id,)
     assert received.speaker_id == "capitu" and received.claimed_source_id == "player"
     own_denial = next(entry for entry in state.knowledge

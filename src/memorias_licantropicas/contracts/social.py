@@ -31,6 +31,9 @@ class KnowledgeEntry(Contract):
     confidence: Literal['low', 'medium', 'high'] = 'low'
     stance: Literal['undecided', 'believes', 'doubts', 'rejects'] = 'undecided'
     day: int | None = Field(default=None, ge=1)
+    origin: Literal['dialogue', 'authored'] = 'dialogue'
+    visibility: Literal['public', 'trusted', 'private'] = 'public'
+    disclosure_threshold: int = Field(default=0, ge=0, le=100)
     created_at: AwareDatetime
 
 
@@ -40,6 +43,8 @@ class Relationship(Contract):
     affinity: int = Field(default=0, ge=-100, le=100)
     trust: int = Field(default=0, ge=-100, le=100)
     resentment: int = Field(default=0, ge=0, le=100)
+    suspicion: int = Field(default=0, ge=0, le=100)
+    loyalty: int = Field(default=0, ge=0, le=100)
     causes: tuple[UUID, ...] = ()
 
 
@@ -49,7 +54,7 @@ class SocialMessage(Contract):
     content: str = Field(min_length=1, max_length=2400)
     created_at: AwareDatetime
     claim_ids: tuple[UUID, ...] = ()
-    intent: Literal['warn', 'ask', 'confront', 'repeat', 'interpret', 'deny', 'correct', 'withhold', 'end'] = 'ask'
+    intent: Literal['warn', 'ask', 'confront', 'repeat', 'interpret', 'deny', 'correct', 'withhold', 'end', 'accuse', 'defend', 'confide'] = 'ask'
 
 
 class Encounter(Contract):
@@ -81,6 +86,7 @@ class SocialState(Contract):
     version: Literal['1'] = '1'
     revision: int = Field(default=0, ge=0)
     exchange_cursor: int = Field(default=0, ge=0)
+    seeded_topics_version: int = Field(default=0, ge=0)
     knowledge: tuple[KnowledgeEntry, ...] = ()
     relationships: tuple[Relationship, ...] = ()
     encounters: tuple[Encounter, ...] = ()
