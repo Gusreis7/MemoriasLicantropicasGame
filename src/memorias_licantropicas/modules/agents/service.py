@@ -150,7 +150,18 @@ class HarnessService:
             draft = ConversationMessage(id=uuid4(), sender_id=npc_id, content=content, created_at=datetime.now(timezone.utc))
             allowed_role = False
             if self._session_master is not None:
-                assessment = await self._session_master.assess(game_id, npc_id, conversation_id, incoming, draft)
+                assessment = await self._session_master.assess(game_id, npc_id, conversation_id, incoming, draft,
+                    observations=observations, profile=profile)
+                if assessment.issues:
+                    if not assessment.corrected_reply:
+                        raise LLMUnavailableError('A resposta precisa de uma nova revisão antes de ser registrada.', code='llm_invalid_response')
+                    content = ground_dialogue_output(assessment.corrected_reply, observations, {
+                        item.id: item.name for item in await self._characters.list()})
+                    draft = draft.model_copy(update={'content': content})
+                    if assessment.quote and assessment.quote not in content:
+                        from memorias_licantropicas.modules.session_master.service import local_assessment
+                        assessment = local_assessment(incoming.content, content, (observations or {}).get('dia', 1)).model_copy(
+                            update={'issues': assessment.issues, 'corrected_reply': content})
                 allowed_role = await self._session_master.can_disclose_role(game_id, npc_id, incoming, draft, assessment)
             authorized = (observations or {}).get('memoria_social', {}).get('confidencias_autorizadas', ())
             decision = self._guard.inspect_output(content, self._private_markers(profile, npc, authorized), allow_role_disclosure=allowed_role)

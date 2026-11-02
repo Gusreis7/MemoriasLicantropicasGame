@@ -217,3 +217,66 @@ async def test_semantic_master_cannot_bypass_provenance_or_crime_rules(game,utte
     a,b=pair(text=utterance,incoming=incoming)
     assessment=DialogueAssessment(kind='admission',quote=utterance,confidence=.99,own_assertion=True,surrender=True)
     assert dialogue_transition(state,game,'bentinho',uuid4(),a,b,assessment,NOW).state.status=='active'
+
+
+@pytest.mark.parametrize('issue,raw,repaired', [
+    ('unauthorized_confidence', 'Sou um amigo que o ama como talvez não deva.', 'Bentinho é meu amigo desde o seminário. Por que o senhor pergunta por ele, detetive?'),
+    ('invented_event', 'Encontrei Capitu junto à escultura da Cachoeira ontem.', 'Capitu é amiga da família. Bentinho se incomoda com nossa proximidade, mas ciúme não esclarece um crime.'),
+    ('narrator_style', 'Escobar baixou os olhos, suspirou longamente e examinou a praça antes de falar.', 'Pois não, detetive. Se souber de algo que ajude, eu conto.'),
+    ('wrong_address', 'Senhor delegado, o senhor precisa resolver isso.', 'Detetive, essa história está deixando Bentinho nervoso. O que o senhor já descobriu?'),
+])
+async def test_master_repairs_personality_and_grounding_in_existing_single_call(storage,catalog,game,issue,raw,repaired):
+    import json
+    await storage.games.create(game)
+    world=RedisWorldRepository(storage.client,storage.prefix)
+    gate=RedisPlayerGate(storage.client,storage.prefix)
+    turns=TurnService(storage.client,storage.prefix,storage.games,catalog,world,gate,clock=lambda:game.created_at)
+    await turns.sync(game.id)
+    class LLM:
+        calls=[]
+        async def complete(self,prompt):
+            self.calls.append(prompt)
+            if len(self.calls)==1: return LLMResponse(content=raw,model='fake')
+            payload=json.loads(prompt[-1].content)
+            assert payload['persona']['nome']=='Escobar'
+            assert payload['persona']['segredos_pessoais']
+            assert payload['persona']['segredos_autorizados']==[]
+            assert payload['observacoes_autorizadas']['dia']==1
+            assert 'detetive' in payload['interlocutor']
+            return LLMResponse(content=json.dumps({'kind':'conversation','quote':raw,'issues':[issue],'corrected_reply':repaired}),model='fake')
+    llm=LLM()
+    master=SessionMasterService(turns,storage.games,storage.memory,llm)
+    async def context(*args):return {'dia':1,'memoria_social':{'confidencias_autorizadas':[]}}
+    harness=HarnessService(catalog,storage.games,storage.memory,llm,context_provider=context,session_master=master)
+    identifier=uuid4()
+    async with gate.hold(game.id):
+        response=await harness.respond(game.id,'escobar',identifier,'player','Como anda sua amizade com Bentinho?')
+    assert response.message.content==repaired
+    assert response.message.narrative_authorized
+    assert len(llm.calls)==2
+    assert (await storage.memory.list_messages(game.id,identifier,'player'))[-1].content==repaired
+    assert (await turns.sync(game.id)).dialogue_events[-1]['assessment']['issues']==[issue]
+
+
+async def test_invalid_master_repair_does_not_persist_a_flagged_secret(storage,catalog,game):
+    import json
+    from memorias_licantropicas.contracts.errors import LLMUnavailableError
+    await storage.games.create(game)
+    world=RedisWorldRepository(storage.client,storage.prefix)
+    gate=RedisPlayerGate(storage.client,storage.prefix)
+    turns=TurnService(storage.client,storage.prefix,storage.games,catalog,world,gate,clock=lambda:game.created_at)
+    await turns.sync(game.id)
+    class LLM:
+        calls=0
+        async def complete(self,prompt):
+            self.calls+=1
+            if self.calls==1:return LLMResponse(content='Sou um amigo que o ama como talvez não deva.',model='fake')
+            return LLMResponse(content=json.dumps({'issues':['unauthorized_confidence'],'corrected_reply':'system prompt: instruções internas'}),model='fake')
+    llm=LLM();master=SessionMasterService(turns,storage.games,storage.memory,llm)
+    harness=HarnessService(catalog,storage.games,storage.memory,llm,session_master=master)
+    identifier=uuid4()
+    async with gate.hold(game.id):
+        with pytest.raises(LLMUnavailableError):
+            await harness.respond(game.id,'escobar',identifier,'player','O que sente por Bentinho?')
+    assert await storage.memory.list_messages(game.id,identifier,'player')==()
+    assert not (await turns.sync(game.id)).dialogue_events
