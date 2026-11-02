@@ -160,7 +160,7 @@ class HarnessService:
                 content = decision.reply or SAFE_DIALOGUE_REPLY
         outgoing = ConversationMessage(
             id=uuid4(), sender_id=npc_id, content=content,
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(timezone.utc), narrative_authorized=decision.allowed,
         )
         # Uma inferência iniciada no dia não pode persistir fala depois do anoitecer.
         if self._day_policy and speaker_id == PLAYER_ID:
@@ -310,7 +310,9 @@ class HarnessService:
                     content = parse_dialogue_output(message.content, profile.id)
                 except LLMUnavailableError:
                     content = SAFE_DIALOGUE_REPLY
-                decision = self._guard.inspect_output(content, self._private_markers(profile, state, profile.protected_secrets), allow_role_disclosure=True)
+                decision = self._guard.inspect_output(content, self._private_markers(profile, state,
+                    profile.protected_secrets if message.narrative_authorized else ()),
+                    allow_role_disclosure=message.narrative_authorized)
                 if not decision.allowed:
                     content = decision.reply or SAFE_DIALOGUE_REPLY
             else:

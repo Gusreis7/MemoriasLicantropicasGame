@@ -2,20 +2,21 @@
 import re
 from uuid import NAMESPACE_URL, uuid5
 from memorias_licantropicas.contracts.investigation import CaseEvent, CaseTransition, Confrontation
-from memorias_licantropicas.modules.session_master.service import direct_admission, normalize
+from memorias_licantropicas.modules.session_master.service import direct_admission, normalize, admission_evidence, own_assertion_clauses
 
 
 def dialogue_transition(state, game, npc_id, conversation_id, incoming, outgoing, assessment, now):
     event_id = str(uuid5(NAMESPACE_URL, f'dialogue:{outgoing.id}'))
     if any(e.get('id') == event_id for e in state.dialogue_events):
         return CaseTransition(state=state)
-    direct, surrendered = direct_admission(outgoing.content, incoming.content)
+    direct, surrendered = admission_evidence(outgoing.content, incoming.content, assessment)
     member = next((m for m in game.characters if m.character_id == npc_id), None)
     victims = {normalize(c.victim_id.replace('_', ' ')) for c in state.crimes}
-    specific = any(direct_admission(sentence, incoming.content)[0] and (
-        re.search(r'\b(lobisomem|sou a fera|mortes|ataques|assassinatos)\b', normalize(sentence))
-        or any(re.search(r'\b' + re.escape(victim) + r'\b', normalize(sentence)) for victim in victims))
-        for sentence in re.split(r'[.!?;\n]+', outgoing.content))
+    # A fala própria precisa apontar à fera, aos ataques ou a uma vítima real do caso.
+    specific = any((re.search(r'\b(lobisomem|fera|mortes|ataques|assassinatos)\b', clause)
+        or (re.search(r'\b(matei|ataquei|assassinei|tirei|ceifei|arranquei|causei|cometi)\b', clause)
+            and any(re.search(r'\b' + re.escape(victim) + r'\b', clause) for victim in victims)))
+        for clause in own_assertion_clauses(outgoing.content, incoming.content))
     accepted = bool(member and member.role == 'werewolf' and member.alive and direct and specific and surrendered
         and assessment.kind == 'admission' and assessment.own_assertion and assessment.confidence >= .85)
     record = {'id': event_id, 'conversation_id': str(conversation_id), 'incoming_id': str(incoming.id),

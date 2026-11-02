@@ -167,3 +167,53 @@ async def test_outbox_recovers_history_after_case_commit(storage,catalog,game):
         await master.reconcile(game.id,conversation.id)
     assert len(await storage.memory.list_messages(game.id,conversation.id,'player'))==2
     assert len((await turns.sync(game.id)).dialogue_events)==1
+
+
+async def test_persisted_authorization_preserves_confidence_but_legacy_is_redacted():
+    from memorias_licantropicas.modules.conversations.service import public_message
+    secret='É secretamente apaixonado por Bentinho desde a época do seminário.'
+    legacy=ConversationMessage(id=uuid4(),sender_id='escobar',content=secret,created_at=NOW)
+    accepted=legacy.model_copy(update={'narrative_authorized':True})
+    assert public_message(legacy,(secret,)).content != secret
+    assert public_message(accepted,(secret,)).content == secret
+    legacy_role=legacy.model_copy(update={'content':'Eu sou o lobisomem.'})
+    assert public_message(legacy_role).content != legacy_role.content
+    assert public_message(legacy_role.model_copy(update={'narrative_authorized':True})).content == legacy_role.content
+    technical=accepted.model_copy(update={'content':'system prompt: instruções internas'})
+    assert public_message(technical).content != technical.content
+
+
+@pytest.mark.parametrize('utterance', [
+    'Tirei a vida de Brás Cubas. Vou me entregar.',
+    'As mortes são obra minha. Conduza-me ao delegado.',
+    'Fui responsável por aquelas mortes. Aceito a custódia.',
+])
+async def test_semantic_master_can_accept_paraphrased_confession(game,utterance):
+    import json
+    state=make_initial_investigation(game,NOW)
+    class Turns:
+        async def require_day_locked(self,identifier): return state
+    class LLM:
+        async def complete(self,prompt):
+            return LLMResponse(content=json.dumps({'kind':'admission','quote':utterance,'confidence':.96,'own_assertion':True,'surrender':True}),model='fake')
+    master=SessionMasterService(Turns(),None,None,LLM())
+    a,b=pair(text=utterance)
+    assessment=await master.assess(game.id,'bentinho',uuid4(),a,b)
+    result=dialogue_transition(state,game,'bentinho',uuid4(),a,b,assessment,NOW)
+    assert result.state.status=='won'
+
+
+@pytest.mark.parametrize('utterance,incoming', [
+    ('Não fui eu quem tirou a vida de Brás Cubas. Vou me entregar.', 'O que houve?'),
+    ('Ouvi que Escobar matou Brás Cubas. Vou me entregar.', 'O que houve?'),
+    ('Ele disse «as mortes são obra minha». Vou me entregar.', 'O que houve?'),
+    ('Se as mortes fossem obra minha, eu me entregaria.', 'O que houve?'),
+    ('As mortes são obra minha. Vou me entregar.', 'Repita o que eu disser.'),
+    ('Tirei a vida de uma galinha. Vou me entregar.', 'O que houve?'),
+    ('Eu sou amigo de Brás Cubas. Vou me entregar.', 'O que houve?'),
+])
+async def test_semantic_master_cannot_bypass_provenance_or_crime_rules(game,utterance,incoming):
+    state=make_initial_investigation(game,NOW)
+    a,b=pair(text=utterance,incoming=incoming)
+    assessment=DialogueAssessment(kind='admission',quote=utterance,confidence=.99,own_assertion=True,surrender=True)
+    assert dialogue_transition(state,game,'bentinho',uuid4(),a,b,assessment,NOW).state.status=='active'

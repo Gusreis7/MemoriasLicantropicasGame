@@ -45,6 +45,34 @@ def direct_admission(content, incoming=''):
     return direct, surrender
 
 
+def own_assertion_clauses(content, incoming=''):
+    text = normalize(content)
+    if re.search(r'\b(repita|repete|diga exatamente|pronuncie|traduza|cite|recite|repeat|say exactly)\b', normalize(incoming)):
+        return ()
+    text = re.sub(r'[«“"].*?[»”"]', '', text, flags=re.S)
+    result = []
+    for sentence in re.split(r'[.!?;\n]+', text):
+        if re.search(r"\b(nao|nunca|jamais|se|talvez|hipotese|imagine|ouvi|disseram|contaram|ele disse|ela disse|voce diz|voce disse|o senhor diz|quer que|quer ouvir|brincadeira|segundo|inocente|acusado|acusada|dizem|pensam|culpam)\b", sentence):
+            continue
+        if re.search(r'\b(eu|meu|minha|minhas|meus|mim|sou|fui|tirei|fiz|cometi|causei|ceifei|matei|ataquei|transformei|pratiquei)\b', sentence):
+            result.append(sentence)
+    return tuple(result)
+
+
+def admission_evidence(content, incoming, assessment):
+    direct, surrendered = direct_admission(content, incoming)
+    semantic = (assessment.kind == 'admission' and assessment.confidence >= .9 and assessment.own_assertion
+        and bool(assessment.quote) and assessment.quote in content
+        and bool(own_assertion_clauses(assessment.quote, incoming)))
+    # A proposta do modelo precisa de um compromisso textual real do falante.
+    text = normalize(content)
+    surrender_anchor = re.search(r'\b(entrego-me|me entrego|vou me entregar|me entregarei|entregar-me|aceito (?:a |ser )?(?:custodia|prisao|pres[oa])|leve-me|levem-me|conduza-me|me (?:levar|algemar|prender)|permitirei.{0,35}(?:algem|prend)|nao resistirei)\b', text)
+    surrender_negated = re.search(r'\b(nao|nunca|jamais)\b.{0,30}\b(entregar|entrego|pres[oa]|prisao|custodia|leve-me|algemar)\b', text)
+    if semantic and assessment.surrender and surrender_anchor and not surrender_negated:
+        surrendered = True
+    return direct or semantic, surrendered
+
+
 def local_assessment(incoming, outgoing, day):
     direct, surrender = direct_admission(outgoing, incoming)
     if direct:
@@ -93,14 +121,17 @@ class SessionMasterService:
                 return base
             # O classificador nunca supera as condições determinísticas da admissão.
             if proposal.kind == 'admission':
-                return base if base.kind == 'admission' else proposal.model_copy(update={'kind': 'partial_admission', 'surrender': False})
+                if base.kind == 'admission':
+                    return base
+                own, _ = admission_evidence(outgoing.content, incoming.content, proposal)
+                return proposal if own else proposal.model_copy(update={'kind': 'partial_admission', 'surrender': False})
             return base if base.kind in {'admission', 'alibi'} else proposal
         except (LLMUnavailableError, ValidationError, ValueError, TypeError, TimeoutError):
             return base
 
     async def can_disclose_role(self, game_id, npc_id, incoming, outgoing, assessment):
         game = await self._games.get(game_id)
-        direct, _ = direct_admission(outgoing.content, incoming.content)
+        direct, _ = admission_evidence(outgoing.content, incoming.content, assessment)
         return bool(direct and assessment.own_assertion and any(m.character_id == npc_id and m.role == 'werewolf' for m in game.characters))
 
     async def persist_exchange(self, game_id, npc_id, conversation_id, incoming, outgoing, assessment):
