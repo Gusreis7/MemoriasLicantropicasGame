@@ -1,0 +1,11 @@
+{
+  "id": "bras_cubas",
+  "path": "/assets/portraits/bras_cubas.png",
+  "width": 1254,
+  "height": 1254,
+  "role": "first_newspaper_edition_victim_portrait",
+  "generator": "image_gen built-in",
+  "transparent_background": true,
+  "style_reference": "/assets/portraits/bentinho.png",
+  "prompt": "Use case: illustration-story. Asset type: square portrait asset for the first in-game newspaper edition, O Clarim do Rio, set in Rio de Janeiro in 1890. Primary request: original, transparent-background pixel-art portrait of Brás Cubas, a tall, pale, imposing Brazilian aristocratic man in late middle age. Give him piercing clear blue eyes, swept-back gray hair, and a short, uneven white stubble beard. He wears a dignified dark 19th-century frock coat, high white collar and cravat. His expression is proud, sardonic, faintly haunted, as if his death has just become a city mystery. Style/medium: detailed hand-crafted pixel art, matching the existing project's character portraits, painterly pixel clusters and crisp edges, warm restrained colors, strong face/clothing contrast, historically grounded, not photorealistic. Composition: centered head-and-shoulders three-quarter portrait facing slightly right; make eyes, gray hair and white stubble legible at newspaper thumbnail size; show broad shoulders. Background must be genuinely transparent alpha, with no checkerboard pattern, no scenery, no vignette. Constraints: no text, no letters, no border, no frame, no props, no watermark; depict an original interpretation of the fictional character, not a photo."
+}
