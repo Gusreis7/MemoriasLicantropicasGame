@@ -38,12 +38,18 @@ export interface CaseInterrogation {
 }
 export interface CaseConfrontation {id: string; npc_id: string; day: number; evidence_ids: string[]; testimony_ids: string[]; interrogation_ids: string[]; confessed: boolean; text: string}
 export interface JournalEdition {illustration?: string; day: number; title: string; headline: string; body: string; victim_id: string | null; victim_name: string | null; suspicious_death_count?: number; location_id: LocationID | null; detention_outcome: 'none' | 'released' | 'transformed'}
+export interface AssemblySession {
+  id: string; suspect_id: string; phase: 'debate' | 'resolved'; deadline: string;
+  opening_speech: string; reply?: string | null; evidence_ids: string[]; testimony_ids: string[];
+  messages: Array<{speaker_id: string; text: string}>;
+}
 export interface CasePublic {
   game_id: string; revision: number; day: number; phase: 'day' | 'night' | 'finished'; status: 'active' | 'won' | 'lost';
   server_time: string; phase_ends_at: string; seconds_remaining: number;
   journal: JournalEdition[]; crimes: CaseCrime[]; inventory: CaseEvidence[]; testimonies: CaseTestimony[];
   accusations: CaseAccusation[]; detained_npc_id: string | null;
-  assembly?: {suspect_id: string; day: number; required_votes: number; expelled: boolean; outcome: 'werewolf' | 'innocent' | 'no_majority'; votes: Array<{voter_id: string; expel: boolean; reason: string}>} | null;
+  assembly?: {suspect_id: string; day: number; required_votes: number; expelled: boolean; outcome: 'werewolf' | 'innocent' | 'no_majority' | 'player_expelled'; votes: Array<{voter_id: string; target_id?: string | null; expel: boolean; reason: string}>} | null;
+  assembly_session?: AssemblySession | null;
   expelled_npc_ids?: string[];
   interrogations?: CaseInterrogation[]; confrontations?: CaseConfrontation[];
   ending: {result: 'won' | 'lost'; message: string; werewolf_id: string; method?: 'detention' | 'confession' | 'survival' | 'assembly'} | null;
@@ -85,11 +91,15 @@ export const api = {
   accuse: (id: string, suspectID: string, evidenceIDs: string[], testimonyIDs: string[]) => request<CasePublic>(`${base(id)}/accusations`, {
     suspect_id: suspectID, evidence_ids: evidenceIDs, testimony_ids: testimonyIDs,
   }),
+  // Kept for older clients; the game UI now asks and confronts in the dialogue.
   interrogate: (id: string, npcID: string, day: number, period: 'night' | 'day') => request<CasePublic>(`${base(id)}/interrogations`, {npc_id: npcID, day, period}),
   confront: (id: string, npcID: string, evidenceIDs: string[], testimonyIDs: string[], interrogationIDs: string[]) => request<CasePublic>(`${base(id)}/confrontations`, {
     npc_id: npcID, evidence_ids: evidenceIDs, testimony_ids: testimonyIDs, interrogation_ids: interrogationIDs,
   }),
-  assemble: (id: string, suspectID: string, evidenceIDs: string[], testimonyIDs: string[]) => request<CasePublic>(`${base(id)}/assembly`, {suspect_id: suspectID, evidence_ids: evidenceIDs, testimony_ids: testimonyIDs}),
+  openAssembly: (id: string, suspectID: string, evidenceIDs: string[], testimonyIDs: string[], speech: string) => request<CasePublic>(`${base(id)}/assembly/open`, {
+    suspect_id: suspectID, evidence_ids: evidenceIDs, testimony_ids: testimonyIDs, speech,
+  }),
+  resolveAssembly: (id: string, reply: string) => request<CasePublic>(`${base(id)}/assembly/resolve`, {reply}),
   world: (id: string) => request<WorldSnapshot>(`${base(id)}/world`),
   locations: () => request<Location[]>('/api/v1/world/locations'),
   manifest: () => request<CharacterManifest>('/assets/characters/manifest.json'),

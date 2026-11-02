@@ -38,7 +38,7 @@ app.innerHTML = `
 
   <div id="exit-overlay" class="overlay" hidden><section class="exit-modal" role="dialog" aria-modal="true" aria-labelledby="exit-title" aria-describedby="exit-description"><header class="modal-heading"><div><p class="eyebrow">NO FIM DESTA RUA</p><h2 id="exit-title">Por onde seguimos?</h2></div><button class="icon-button" id="close-exit" aria-label="Ficar neste local" type="button">×</button></header><p id="exit-description">Escolha um caminho para continuar a investigação.</p><div id="exit-destinations" class="exit-destinations"></div><p id="exit-status" class="status" role="status" aria-live="polite"></p><button id="stay-here" class="button secondary" type="button">Ficar neste local</button></section></div>
 
-  <div id="dialogue-overlay" class="overlay dialogue-overlay" hidden><section class="dialogue-modal" role="dialog" aria-modal="true" aria-labelledby="dialogue-name"><aside class="persona-panel"><div class="persona-frame"><img id="persona-portrait" src="" alt=""/></div><p class="eyebrow">DEPOIMENTO</p><h2 id="dialogue-name"></h2><span class="persona-flourish" aria-hidden="true">— ✦ —</span><p>Nem toda verdade vem à primeira pergunta.</p></aside><div class="conversation-panel"><header class="conversation-heading"><div><span class="conversation-dot"></span><span>Conversa com Floriano</span></div><button id="close-dialogue" class="icon-button" type="button" aria-label="Encerrar conversa">×</button></header><div id="messages" class="messages" role="log" aria-live="polite"></div><div id="dialogue-status" class="status dialogue-status" role="status" aria-live="polite"></div><div id="evidence-presenter" class="evidence-presenter" hidden><label for="present-evidence">Mostrar um vestígio</label><div><select id="present-evidence"></select><button id="present-button" class="button small" type="button">Apresentar</button></div><p id="presentation-status" role="status" aria-live="polite"></p></div><details id="interrogation-panel" class="interrogation-panel"><summary>Interrogar e confrontar versões</summary><p class="case-note">Pergunte onde estava, com quem e o que fazia. Um álibi é uma declaração que pode ser confrontada.</p><div class="interrogation-controls"><label>Dia <input id="interrogation-day" type="number" min="0" value="0"/></label><label>Período <select id="interrogation-period"><option value="night">Noite</option><option value="day">Dia</option></select></label><button id="interrogate-button" class="button small" type="button">Perguntar sobre o álibi</button></div><p id="interrogation-status" role="status" aria-live="polite"></p><details><summary>Confrontar com registros do caderno</summary><p class="case-note">Selecione vestígios, seus depoimentos e versões contraditórias. Insistir sem novos elementos não força uma confissão.</p><div id="confrontation-proofs" class="confrontation-proofs"></div><button id="confront-button" class="button small" type="button">Confrontar e pedir que admita</button><p id="confrontation-status" role="status" aria-live="polite"></p></details></details><form id="message-form" class="message-form"><label class="sr-only" for="message-input">Sua pergunta</label><textarea id="message-input" rows="2" maxlength="8000" placeholder="O que você gostaria de perguntar?" required></textarea><button id="send-message" class="button primary" type="submit" aria-label="Enviar pergunta">Enviar <span aria-hidden="true">→</span></button></form><p class="form-hint">Enter para enviar · Shift + Enter para uma nova linha</p></div></section></div>
+  <div id="dialogue-overlay" class="overlay dialogue-overlay" hidden><section class="dialogue-modal" role="dialog" aria-modal="true" aria-labelledby="dialogue-name"><aside class="persona-panel"><div class="persona-frame"><img id="persona-portrait" src="" alt=""/></div><p class="eyebrow">DEPOIMENTO</p><h2 id="dialogue-name"></h2><span class="persona-flourish" aria-hidden="true">— ✦ —</span><p>Nem toda verdade vem à primeira pergunta.</p></aside><div class="conversation-panel"><header class="conversation-heading"><div><span class="conversation-dot"></span><span>Conversa com Floriano</span></div><button id="close-dialogue" class="icon-button" type="button" aria-label="Encerrar conversa">×</button></header><div id="messages" class="messages" role="log" aria-live="polite"></div><div id="dialogue-status" class="status dialogue-status" role="status" aria-live="polite"></div><div id="evidence-presenter" class="evidence-presenter" hidden><label for="present-evidence">Mostrar um vestígio</label><div><select id="present-evidence"></select><button id="present-button" class="button small" type="button">Apresentar</button></div><p id="presentation-status" role="status" aria-live="polite"></p></div><form id="message-form" class="message-form"><label class="sr-only" for="message-input">Sua pergunta</label><textarea id="message-input" rows="2" maxlength="8000" placeholder="Pergunte, retome uma pista ou confronte uma versão…" required></textarea><button id="send-message" class="button primary" type="submit" aria-label="Enviar pergunta">Enviar <span aria-hidden="true">→</span></button></form><p class="form-hint">Pergunte sobre álibis e contradições na conversa. Enter envia · Shift + Enter quebra a linha</p></div></section></div>
   <div id="journal-overlay" class="overlay" hidden><section class="journal-modal case-modal" role="dialog" aria-modal="true" aria-labelledby="journal-title"><header class="newspaper-masthead"><div class="newspaper-dateline"><span>RIO DE JANEIRO</span><span>EDIÇÃO DA MANHÃ</span><button id="close-journal" class="icon-button" type="button" aria-label="Fechar jornal">×</button></div><h2 id="journal-title">O Clarim do Rio</h2><div class="newspaper-edition"><span>NOTÍCIAS DA CIDADE · 1890</span><span id="journal-day"></span></div></header><article class="newspaper-story"><p class="journal-motto">Os acontecimentos da cidade, à luz do dia.</p><p id="journal-death-toll" class="journal-death-toll"></p><h3 id="journal-headline"></h3><figure id="journal-victim" class="journal-victim" hidden><img id="journal-victim-image" alt=""/><figcaption id="journal-victim-caption"></figcaption></figure><figure id="journal-snapshot" class="journal-snapshot" hidden><img id="journal-image" src="/assets/press/crime-scene-snapshot.png" alt="Registro monocromático de uma rua carioca à noite, com um chapéu caído e pegadas no calçamento."/><figcaption id="journal-snapshot-caption"></figcaption></figure><p id="journal-body"></p><p id="journal-location" class="journal-location"></p></article><button id="read-journal" class="button primary" type="button">Continuar a investigação</button></section></div>
   <div id="notebook-overlay" class="overlay notebook-overlay" hidden><section class="case-modal notebook-modal" role="dialog" aria-modal="true" aria-labelledby="notebook-title"><header class="notebook-heading"><div><p class="eyebrow">ANOTAÇÕES DE FLORIANO · 1890</p><h2 id="notebook-title">Caderno de campo</h2></div><button id="close-notebook" class="icon-button" type="button" aria-label="Fechar caderno">×</button></header><div class="notebook-book"><div class="notebook-page-stack" aria-hidden="true"></div><div class="notebook-page-markers" aria-hidden="true"><span class="notebook-page-marker notebook-page-marker-residents">01 · Moradores</span><span class="notebook-page-marker notebook-page-marker-clues">02 · Pistas</span><span class="notebook-page-marker notebook-page-marker-reports">03 · Relatos</span></div><div class="notebook-spread"><aside class="notebook-page notebook-suspect-page" aria-labelledby="notebook-suspects-title"><header class="notebook-page-heading"><span>FOLHA 01</span><h3 id="notebook-suspects-title">Os moradores</h3><p>Sete destinos, uma sombra.</p></header><div id="notebook-suspects" class="notebook-suspects" aria-live="polite"></div></aside><section class="notebook-page notebook-notes-page" aria-label="Anotações do caso"><div class="notebook-tabs" role="tablist" aria-label="Seções do caderno"><button id="notebook-tab-clues" class="notebook-tab" type="button" role="tab" aria-selected="true" aria-controls="notebook-clues" tabindex="0">Pistas <kbd>1</kbd></button><button id="notebook-tab-reports" class="notebook-tab" type="button" role="tab" aria-selected="false" aria-controls="notebook-reports" tabindex="-1">Relatos <kbd>2</kbd></button></div><div id="notebook-clues" class="notebook-tab-panel" role="tabpanel" aria-labelledby="notebook-tab-clues"><header class="notebook-page-heading"><span>FOLHA 02 · INDÍCIOS</span><h3>O que ficou para trás</h3><p>Vestígios, versões e contradições.</p></header><section class="notebook-section"><h4>Vestígios recolhidos</h4><div id="evidence-list" class="evidence-list"></div></section><section class="notebook-section"><h4>Depoimentos sobre objetos</h4><div id="testimony-list" class="testimony-list"></div></section><section class="notebook-section"><h4>Álibis e interrogatórios</h4><div id="interrogation-list" class="testimony-list"></div></section><section class="notebook-section"><h4>Confrontos</h4><div id="confrontation-list" class="testimony-list"></div></section><section class="notebook-section"><h4>Cenas conhecidas</h4><div id="crime-list" class="crime-list"></div></section></div><div id="notebook-reports" class="notebook-tab-panel" role="tabpanel" aria-labelledby="notebook-tab-reports" hidden><header class="notebook-page-heading"><span>FOLHA 02 · VOZES DA CIDADE</span><h3>O que dizem pelas ruas</h3><p>Uma notícia conserva a voz e a fonte de quem a contou.</p></header><p id="reports-status" class="status notebook-status" role="status" aria-live="polite"></p><div id="heard-report-list" class="testimony-list"></div></div></section></div></div><footer class="notebook-shortcuts"><span><kbd>C</kbd> guardar o caderno</span><span><kbd>1</kbd> pistas</span><span><kbd>2</kbd> relatos</span><span><kbd>Esc</kbd> fechar</span></footer></section></div>
   <div id="delegate-overlay" class="overlay" hidden>
@@ -57,10 +57,11 @@ app.innerHTML = `
           <fieldset class="suspect-fieldset"><legend><span class="case-step">01</span> Quem você acusa?</legend><p class="delegate-field-hint">Escolha um morador para examinar o pedido de prisão.</p><div id="accused-npc" class="suspect-gallery"></div><p id="accused-selection" class="accused-selection" role="status" aria-live="polite">Nenhum suspeito selecionado.</p></fieldset>
           <div class="accusation-records"><fieldset><legend><span class="case-step">02</span> Vestígios recolhidos</legend><div id="accusation-evidence"></div></fieldset><fieldset><legend><span class="case-step">03</span> Depoimentos registrados</legend><div id="accusation-testimonies"></div></fieldset></div>
           <div class="accusation-submit"><p id="accusation-status" class="status" role="status" aria-live="polite"></p><button id="submit-accusation" class="button primary" type="submit" disabled>Apresentar acusação <span aria-hidden="true">→</span></button></div>
-        <section class="assembly-action"><h3>Assembleia da cidade</h3><p class="case-note">Uma vez por partida. Você vota pela expulsão do suspeito selecionado. É necessária maioria absoluta dos moradores vivos e livres e de Floriano. Expulsar um inocente aumenta o ressentimento entre os pares.</p><button id="call-assembly" class="button secondary" type="button">Convocar e votar pela expulsão</button><div id="assembly-result" aria-live="polite"></div></section></form><div id="accusation-history"></div>
+        </form><div id="accusation-history"></div>
       </div>
     </section>
   </div>
+  <div id="assembly-overlay" class="overlay assembly-overlay" hidden><section class="case-modal assembly-modal" role="dialog" aria-modal="true" aria-labelledby="assembly-title"><header class="modal-heading"><div><p class="eyebrow">A PALAVRA NA PRAÇA</p><h2 id="assembly-title">Assembleia da cidade</h2></div><button id="close-assembly" class="icon-button" type="button" aria-label="Guardar a assembleia">×</button></header><p class="case-note assembly-rule">Uma convocação por partida. Exponha seu caso, ouça os moradores e faça uma réplica antes da votação. O debate dura até um minuto. Eles também podem votar para expulsar Floriano — e encerrar sua investigação.</p><div id="assembly-preparation"><fieldset class="suspect-fieldset"><legend>Quem você acusa?</legend><div id="assembly-suspects" class="suspect-gallery"></div></fieldset><div class="assembly-dossier"><fieldset><legend>Pistas</legend><div id="assembly-evidence"></div></fieldset><fieldset><legend>Depoimentos</legend><div id="assembly-testimonies"></div></fieldset></div><form id="assembly-opening-form"><label for="assembly-opening">Conte à cidade o que aconteceu</label><textarea id="assembly-opening" rows="3" maxlength="800" placeholder="Explique por que suspeita desta pessoa e como as pistas sustentam sua versão." required></textarea><div class="assembly-form-footer"><small id="assembly-opening-count">0 / 800</small><button id="start-assembly" class="button primary" type="submit">Convocar e expor o caso</button></div></form></div><div id="assembly-debate" hidden><div class="assembly-session-heading"><p id="assembly-subject"></p><strong id="assembly-countdown" role="timer" aria-label="Tempo restante do debate"></strong></div><div id="assembly-chat" class="assembly-chat" role="log" aria-live="polite" aria-label="Falas da assembleia"></div><form id="assembly-reply-form"><label for="assembly-reply">Sua última palavra</label><textarea id="assembly-reply" rows="2" maxlength="500" placeholder="Responda às dúvidas e peça o voto dos moradores."></textarea><div class="assembly-form-footer"><small id="assembly-reply-count">0 / 500</small><button id="finish-assembly" class="button primary" type="submit">Concluir e votar</button></div></form></div><div id="assembly-result" aria-live="polite"></div><p id="assembly-status" class="status" role="status" aria-live="polite"></p></section></div>
   <div id="custody-overlay" class="overlay custody-overlay" hidden><section class="custody-modal" role="dialog" aria-modal="true" aria-labelledby="custody-title"><header><p class="eyebrow">NA DELEGACIA</p><h2 id="custody-title">Uma noite sob custódia</h2><p id="custody-caption" role="status" aria-live="polite"></p></header><div id="custody-canvas" aria-label="Cena da delegacia com a pessoa detida atrás das grades"></div><footer><span id="custody-clock"></span><button id="leave-custody" class="button secondary" type="button">Voltar à investigação</button></footer></section></div>
   <div id="phase-overlay" class="overlay phase-overlay" hidden><section class="case-modal phase-modal" role="dialog" aria-modal="true" aria-labelledby="phase-title" aria-describedby="phase-description"><article id="victory-paper" class="victory-paper" hidden><header class="newspaper-masthead"><div class="newspaper-dateline"><span>RIO DE JANEIRO · 1890</span><span>EDIÇÃO EXTRAORDINÁRIA</span></div><h2>O Clarim do Rio</h2><div class="newspaper-edition"><span>A VITÓRIA DE FLORIANO</span><span id="victory-day"></span></div></header><h3 id="victory-headline"></h3><div class="press-picture press-victory" role="img" aria-label="Ilustração em preto e branco da cidade celebrando Floriano"></div><p id="victory-body"></p><p class="victory-ending">O caso está encerrado. A cidade volta a respirar.</p></article><span class="phase-moon" aria-hidden="true">☾</span><p class="eyebrow" id="phase-eyebrow">A CIDADE RECOLHE-SE</p><h2 id="phase-title">A noite guarda seus segredos.</h2><p id="phase-description">Floriano aguarda a manhã. Os acontecimentos serão publicados no Clarim do Rio.</p><p id="phase-countdown" role="status" aria-live="polite"></p><button id="ending-new-case" class="button primary" type="button" hidden>Iniciar outro caso</button></section></div>
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
@@ -89,7 +90,7 @@ let manifest: CharacterManifest;
 let controller: MovementController | null = null;
 let scene: CityScene | null = null;
 let game: ReturnType<typeof makeGame> | null = null;
-let modal: 'map' | 'dialogue' | 'exit' | 'journal' | 'notebook' | 'delegate' | 'phase' | 'custody' | null = null;
+let modal: 'map' | 'dialogue' | 'exit' | 'journal' | 'notebook' | 'delegate' | 'phase' | 'custody' | 'assembly' | null = null;
 let exitSide: ExitSide | null = null;
 let exitBoundary = new ExitBoundary();
 let busy = false;
@@ -113,6 +114,11 @@ let custodyGame: ReturnType<typeof makeCustodyGame> | null = null;
 let custodyScene: CustodyScene | null = null;
 let custodyNpc: string | null = null;
 let lastNearest = '';
+let assemblyResolving = false;
+let assemblyClockOffset = 0;
+let assemblyTimeoutAttempt = '';
+let assemblyRenderedRevision = '';
+let assemblyDraftGame: string | null = null;
 let toastTimer: ReturnType<typeof setTimeout> | undefined;
 
 function savedGame() { try { return localStorage.getItem(STORAGE_KEY); } catch { return null; } }
@@ -136,8 +142,8 @@ function setModal(next: typeof modal) {
     void api.closeConversation(world.game_id, conversation.id).catch(() => { /* Reserva expira automaticamente. */ });
   }
   modal = next;
-  for (const name of ['map', 'dialogue', 'exit', 'journal', 'notebook', 'delegate', 'phase', 'custody']) $(`#${name}-overlay`).hidden = next !== name;
-  scene?.setInputEnabled(next === null && !caseClock.blocked());
+  for (const name of ['map', 'dialogue', 'exit', 'journal', 'notebook', 'delegate', 'phase', 'custody', 'assembly']) $(`#${name}-overlay`).hidden = next !== name;
+  scene?.setInputEnabled(next === null && !caseClock.blocked() && !activeAssembly());
   $('#approach').hidden = true; $('#inspect-crime').hidden = true;
   lastNearest = '';
   if (next === null) $('#game-canvas').focus({preventScroll: true});
@@ -175,7 +181,7 @@ async function launch(resume: boolean) {
     exitBoundary = new ExitBoundary();
     controller = new MovementController(snapshot, api.move, () => api.world(id), applySnapshot, error => toast(explain(error)));
     scene = new CityScene(manifest, locations, snapshot, {
-      blocked: () => Boolean(modal || busy || transitioning || starting || caseClock.blocked() || document.hidden || $('#investigation').hidden),
+      blocked: () => Boolean(modal || activeAssembly() || busy || transitioning || starting || caseClock.blocked() || document.hidden || $('#investigation').hidden),
       frame: (delta, direction) => {
         if (!caseClock.blocked() && !transitioning) controller?.update(delta, direction);
         if (controller && world) {
@@ -196,7 +202,7 @@ async function launch(resume: boolean) {
           facing: direction === 'left' ? 'left' : direction === 'right' ? 'right' : controller?.world.player.facing ?? 'right'};
       },
       approach: () => {void approach();}, inspect: crimeID => {void searchCrime(crimeID);}, map: () => {void openMap();},
-      loaded: () => {$('#scene-loading').hidden = true; scene?.setInputEnabled(modal === null && !caseClock.blocked()); if (!modal) $('#game-canvas').focus({preventScroll: true});},
+      loaded: () => {$('#scene-loading').hidden = true; scene?.setInputEnabled(modal === null && !caseClock.blocked() && !activeAssembly()); if (!modal) $('#game-canvas').focus({preventScroll: true});},
       failed: () => {$('#scene-loading').hidden = false; $('#scene-loading').textContent = 'Não foi possível carregar a arte da cidade. Recarregue para tentar novamente.';},
     });
     modal = null; busy = false; lastNearest = '';
@@ -227,7 +233,7 @@ async function launch(resume: boolean) {
 }
 
 async function openMap() {
-  if (!world || !controller || busy || modal || caseClock.blocked() || transitioning) return;
+  if (!world || !controller || busy || modal || activeAssembly() || caseClock.blocked() || transitioning) return;
   busy = true;
   await settleMovement();
   setModal('map');
@@ -260,28 +266,159 @@ function renderMapResidents() {
   }
 }
 
-function renderAssembly() {
-  const panel = $('#assembly-result'); panel.replaceChildren();
-  const record = caseState?.assembly;
-  if (!record) return;
-  addText(panel, 'h4', record.expelled ? `Expulsão de ${npcName(record.suspect_id)} confirmada.` : 'A proposta não alcançou maioria.');
-  addText(panel, 'p', `${record.votes.filter(v => v.expel).length} votos pela expulsão; ${record.required_votes} necessários. ${record.outcome === 'innocent' ? 'Era inocente. O ressentimento entre os pares aumentou.' : ''}`);
-  for (const vote of record.votes) addText(panel, 'p', `${vote.voter_id === 'player' ? 'Floriano' : npcName(vote.voter_id)}: ${vote.expel ? 'expulsar' : 'não expulsar'}. ${vote.reason}`);
+function activeAssembly() {return caseState?.assembly_session?.phase === 'debate' && !caseState.assembly;}
+
+function assemblySelected(name: string) {
+  return [...document.querySelectorAll<HTMLInputElement>(`#assembly-overlay input[name="${name}"]:checked`)].map(input => input.value);
 }
 
-async function callAssembly() {
-  if (!world || busy || caseClock.blocked() || caseState?.assembly) return;
-  const suspect = $('#accused-npc').querySelector<HTMLInputElement>('input:checked:not(:disabled)')?.value;
-  if (!suspect) return;
-  const ids = (name: string) => [...document.querySelectorAll<HTMLInputElement>(`input[name="${name}"]:checked`)].map(i => i.value);
-  busy = true; updateAccusationSelection();
-  try {await applyCase(await api.assemble(world.game_id, suspect, ids('evidence'), ids('testimony'))); renderAccusation();}
-  catch (error) {status('#accusation-status', explain(error), true);}
-  finally {busy = false; updateAccusationSelection();}
+function saveAssemblyDraft() {
+  if (!world) return;
+  try {localStorage.setItem(`memorias-licantropicas:assembly:${world.game_id}`, JSON.stringify({
+    speech: $<HTMLTextAreaElement>('#assembly-opening').value,
+    reply: $<HTMLTextAreaElement>('#assembly-reply').value,
+    suspect: assemblySelected('assembly-suspect')[0] ?? '',
+    evidence: assemblySelected('assembly-evidence'), testimony: assemblySelected('assembly-testimony'),
+  }));} catch { /* Draft remains on the page if browser storage is unavailable. */ }
+}
+
+function renderAssemblyChoices() {
+  if (!caseState || !world) return;
+  const sameGame = assemblyDraftGame === world.game_id;
+  let draft: {speech?: string; reply?: string; suspect?: string; evidence?: string[]; testimony?: string[]} = {};
+  if (sameGame) draft = {speech: $<HTMLTextAreaElement>('#assembly-opening').value,
+    reply: $<HTMLTextAreaElement>('#assembly-reply').value, suspect: assemblySelected('assembly-suspect')[0],
+    evidence: assemblySelected('assembly-evidence'), testimony: assemblySelected('assembly-testimony')};
+  else {try {draft = JSON.parse(localStorage.getItem(`memorias-licantropicas:assembly:${world.game_id}`) ?? '{}') ?? {};} catch { /* empty draft */ }}
+  assemblyDraftGame = world.game_id;
+  const suspects = $('#assembly-suspects'); suspects.replaceChildren();
+  for (const member of cast.filter(person => person.alive && person.character.id !== caseState?.detained_npc_id
+      && !caseState?.expelled_npc_ids?.includes(person.character.id))) {
+    const label = document.createElement('label'); label.className = 'suspect-card';
+    const radio = document.createElement('input'); radio.type = 'radio'; radio.name = 'assembly-suspect'; radio.value = member.character.id;
+    radio.checked = radio.value === draft.suspect;
+    const image = document.createElement('img'); image.src = portraitPath(member.character.id); image.alt = ''; image.width = 72; image.height = 80;
+    label.append(radio, image); addText(label, 'strong', member.character.name); suspects.append(label);
+  }
+  const evidence = $('#assembly-evidence'), testimony = $('#assembly-testimonies'); evidence.replaceChildren(); testimony.replaceChildren();
+  const choice = (parent: HTMLElement, name: string, id: string, text: string, checked: boolean, art?: CaseEvidence) => {
+    const label = document.createElement('label'); label.className = 'proof-choice';
+    const input = document.createElement('input'); input.type = 'checkbox'; input.name = name; input.value = id; input.checked = checked;
+    label.append(input); if (art) label.append(itemArt(art.item_id, art.kind)); addText(label, 'span', text); parent.append(label);
+  };
+  for (const {item, copies} of stackEvidence(caseState.inventory)) choice(evidence, 'assembly-evidence', item.id,
+    `${item.name}${copies.length > 1 ? ` ×${copies.length}` : ''}`, Array.isArray(draft.evidence) && draft.evidence.includes(item.id), item);
+  for (const item of stackTestimonies(caseState.testimonies, caseState.inventory)) choice(testimony, 'assembly-testimony', item.id,
+    `${item.witness_name}: ${item.text}`, Array.isArray(draft.testimony) && draft.testimony.includes(item.id));
+  if (!evidence.childElementCount) addText(evidence, 'p', 'Você pode argumentar mesmo sem objetos recolhidos.', 'empty-case');
+  if (!testimony.childElementCount) addText(testimony, 'p', 'Nenhum depoimento registrado.', 'empty-case');
+  $<HTMLTextAreaElement>('#assembly-opening').value = typeof draft.speech === 'string' ? draft.speech.slice(0,800) : '';
+  $<HTMLTextAreaElement>('#assembly-reply').value = typeof draft.reply === 'string' ? draft.reply.slice(0,500) : '';
+  updateAssemblyControls();
+}
+
+function renderAssemblyPanel() {
+  if (!caseState) return;
+  const session = caseState.assembly_session;
+  $('#assembly-preparation').hidden = Boolean(session || caseState.assembly);
+  $('#assembly-debate').hidden = !session;
+  $('#assembly-reply-form').hidden = !activeAssembly();
+  if (session) {
+    if (assemblyDraftGame !== world?.game_id) {
+      renderAssemblyChoices();
+      if (!$<HTMLTextAreaElement>('#assembly-reply').value && session.reply) $<HTMLTextAreaElement>('#assembly-reply').value = session.reply;
+    }
+    $('#assembly-subject').textContent = `Em discussão: ${npcName(session.suspect_id)}`;
+    const signature = JSON.stringify([session.id, session.phase, session.messages]);
+    if (signature !== assemblyRenderedRevision) {
+      assemblyRenderedRevision = signature;
+      const chat = $('#assembly-chat'); chat.replaceChildren();
+      for (const message of session.messages) {
+        const row = document.createElement('article'); row.className = `assembly-message${message.speaker_id === 'player' ? ' is-floriano' : ''}`;
+        const portrait = message.speaker_id === 'player' ? document.createElement('span') : document.createElement('img');
+        if (portrait instanceof HTMLImageElement) {portrait.src = portraitPath(message.speaker_id); portrait.alt = '';}
+        else {portrait.className = 'assembly-player-mark'; portrait.textContent = 'F'; portrait.setAttribute('aria-hidden', 'true');}
+        const body = document.createElement('div'); addText(body, 'strong', npcName(message.speaker_id)); addText(body, 'p', message.text);
+        row.append(portrait, body); chat.append(row);
+      }
+      chat.scrollTop = 0;
+    }
+  }
+  const result = $('#assembly-result'); result.replaceChildren();
+  const record = caseState.assembly;
+  if (record) {
+    const expelledPlayer = record.outcome === 'player_expelled';
+    const target = expelledPlayer ? 'Floriano' : npcName(record.suspect_id);
+    addText(result, 'h3', record.expelled ? `${target} foi expulso da cidade.` : 'A proposta não alcançou maioria.');
+    addText(result, 'p', expelledPlayer ? 'Os moradores retiraram sua confiança no detetive. Você perdeu a investigação.'
+      : record.outcome === 'werewolf' ? 'A assembleia expulsou o lobisomem. A cidade venceu.'
+      : record.outcome === 'innocent' ? 'A pessoa expulsa era inocente. O ressentimento entre os moradores aumentou.'
+      : `Eram necessários ${record.required_votes} votos para expulsar uma pessoa.`);
+    for (const vote of record.votes) {
+      const votedTarget = vote.target_id === undefined ? vote.expel ? record.suspect_id : null : vote.target_id;
+      addText(result, 'p', `${npcName(vote.voter_id)}: ${votedTarget ? `expulsar ${npcName(votedTarget)}` : 'abstenção'}. ${vote.reason}`);
+    }
+  }
+  updateAssemblyControls(); renderAssemblyClock();
+}
+
+function updateAssemblyControls() {
+  $('#assembly-opening-count').textContent = `${$<HTMLTextAreaElement>('#assembly-opening').value.length} / 800`;
+  $('#assembly-reply-count').textContent = `${$<HTMLTextAreaElement>('#assembly-reply').value.length} / 500`;
+  $('#start-assembly').toggleAttribute('disabled', busy || Boolean(caseState?.assembly_session || caseState?.assembly)
+    || !assemblySelected('assembly-suspect').length || !$<HTMLTextAreaElement>('#assembly-opening').value.trim());
+  $('#finish-assembly').toggleAttribute('disabled', busy || assemblyResolving || !activeAssembly());
+  $('#close-assembly').toggleAttribute('disabled', busy || assemblyResolving);
+}
+
+function renderAssemblyClock() {
+  const session = caseState?.assembly_session;
+  if (!session) return;
+  const seconds = Math.max(0, Math.ceil((Date.parse(session.deadline) - (Date.now() - assemblyClockOffset)) / 1000));
+  $('#assembly-countdown').textContent = activeAssembly() ? seconds ? `${formatClock(seconds)} para votar` : 'Concluindo a votação…' : 'Votação encerrada';
+  if (activeAssembly() && !seconds && modal === 'assembly' && !busy && !assemblyResolving && assemblyTimeoutAttempt !== session.id) {
+    assemblyTimeoutAttempt = session.id;
+    void finishAssembly();
+  }
+}
+
+async function openAssemblyPanel() {
+  if (!world || busy || modal || (caseClock.blocked() && !activeAssembly())) return;
+  await settleMovement();
+  renderAssemblyChoices(); renderAssemblyPanel(); status('#assembly-status', '');
+  setModal('assembly'); $('#close-assembly').focus();
+}
+
+async function startAssembly() {
+  if (!world || busy || caseState?.assembly || caseState?.assembly_session || caseClock.blocked()) return;
+  const suspect = assemblySelected('assembly-suspect')[0];
+  const speech = $<HTMLTextAreaElement>('#assembly-opening').value.trim();
+  if (!suspect || !speech || !$<HTMLTextAreaElement>('#assembly-opening').reportValidity()) return;
+  saveAssemblyDraft(); busy = true; updateAssemblyControls(); status('#assembly-status', 'Os moradores se reúnem para ouvir seu caso…');
+  try {
+    await applyCase(await api.openAssembly(world.game_id, suspect, assemblySelected('assembly-evidence'), assemblySelected('assembly-testimony'), speech));
+    renderAssemblyPanel(); if (caseState?.status === 'active') setModal('assembly'); status('#assembly-status', 'Ouça a cidade e faça sua réplica. Você pode concluir antes do prazo.');
+    if (modal === 'assembly') $('#assembly-reply').focus();
+  } catch (error) {status('#assembly-status', explain(error), true);}
+  finally {busy = false; updateAssemblyControls();}
+}
+
+async function finishAssembly() {
+  if (!world || busy || assemblyResolving || !activeAssembly()) return;
+  const gameID = world.game_id;
+  const reply = $<HTMLTextAreaElement>('#assembly-reply').value.trim();
+  saveAssemblyDraft(); assemblyResolving = true; busy = true; updateAssemblyControls(); status('#assembly-status', 'Os moradores votam…');
+  try {
+    await applyCase(await api.resolveAssembly(gameID, reply));
+    renderAssemblyPanel(); status('#assembly-status', 'Votação registrada.');
+  } catch (error) {
+    status('#assembly-status', explain(error), true);
+    try {await applyCase(await api.investigation(gameID));} catch { /* Keep the draft and error while offline. */ }
+  } finally {assemblyResolving = false; busy = false; updateAssemblyControls();}
 }
 
 async function openExit(side: ExitSide) {
-  if (!world || !controller || busy || modal || caseClock.blocked() || transitioning) return;
+  if (!world || !controller || busy || modal || activeAssembly() || caseClock.blocked() || transitioning) return;
   busy = true;
   await settleMovement();
   exitSide = side;
@@ -316,7 +453,7 @@ function renderExits() {
 }
 
 async function travel(target: LocationID, side?: ExitSide) {
-  if (!world || !controller || busy || caseClock.blocked() || transitioning) return;
+  if (!world || !controller || busy || activeAssembly() || caseClock.blocked() || transitioning) return;
   const statusSelector = side ? '#exit-status' : '#map-status';
   busy = true; renderMap(); renderExits(); status(statusSelector, 'Seguindo por outro caminho…');
   try {
@@ -331,13 +468,13 @@ async function travel(target: LocationID, side?: ExitSide) {
 }
 
 async function approach() {
-  if (!world || !controller || busy || modal || caseClock.blocked() || transitioning) return;
+  if (!world || !controller || busy || modal || activeAssembly() || caseClock.blocked() || transitioning) return;
   const npc = closestNPC(world, controller.x);
   if (!npc) {toast('Aproxime-se de um morador para conversar.'); return;}
   busy = true;
   await settleMovement();
   busy = true; dialogueUnavailable = false; dialogueNPC = npc; conversation = null; conversationMessages = []; historyReady = false;
-  $<HTMLTextAreaElement>('#message-input').value = ''; renderPresentation(); renderInterrogation(); status('#presentation-status', ''); status('#interrogation-status', ''); status('#confrontation-status', '');
+  $<HTMLTextAreaElement>('#message-input').value = ''; renderPresentation(); status('#presentation-status', '');
   setModal('dialogue');
   $('#dialogue-name').textContent = npc.name;
   const image = $('#persona-portrait') as HTMLImageElement;
@@ -386,7 +523,6 @@ function setSending(sending: boolean) {
   $('#message-input').toggleAttribute('disabled', sending || dialogueUnavailable || !conversation || !historyReady || caseClock.blocked());
   $('#close-dialogue').toggleAttribute('disabled', sending);
   $('#present-button').toggleAttribute('disabled', sending || dialogueUnavailable || caseClock.blocked());
-  for (const id of ['interrogate-button', 'confront-button']) $(`#${id}`).toggleAttribute('disabled', sending || dialogueUnavailable || !conversation || caseClock.blocked());
 }
 
 async function sendMessage(event: Event) {
@@ -408,6 +544,7 @@ async function sendMessage(event: Event) {
         if (isCurrent()) {input.value = ''; renderConversation(messages);}
       }});
     if (result.clearDraft) dialogueDrafts.delete(draftKey);
+    if (isCurrent()) {try {await applyCase(await api.investigation(gameID));} catch { /* The case poller will retry the committed dialogue consequences. */ }}
     if (!isCurrent()) return;
     if (result.clearDraft) input.value = '';
     if (result.outcome === 'uncertain') historyReady = false;
@@ -424,7 +561,7 @@ function addText(parent: HTMLElement, tag: string, text: string, className?: str
 }
 
 function locationName(id: string) {return locations.find(location => location.id === id)?.name ?? id;}
-function npcName(id: string) {return cast.find(member => member.character.id === id)?.character.name ?? id;}
+function npcName(id: string) {if (id === 'player') return 'Floriano'; return cast.find(member => member.character.id === id)?.character.name ?? id;}
 function portraitPath(id: string) {return manifest?.characters.find(asset => asset.id === id)?.portraitPath ?? `/assets/portraits/${id}.png`;}
 function periodLabel(day: number, period: 'night' | 'day') {return `${period === 'night' ? 'noite' : 'dia'} ${day}`;}
 function itemKind(evidence: CaseEvidence) {return {unique: 'Exclusivo', singular: 'Singular', common: 'Comum'}[evidence.kind];}
@@ -466,7 +603,7 @@ async function applyCase(next: CasePublic, initial = false) {
   const previous = caseState;
   const changed = !previous || previous.day !== next.day || previous.phase !== next.phase || previous.status !== next.status
     || previous.detained_npc_id !== next.detained_npc_id || pendingWorldSync;
-  caseState = next; caseClock.accept(next); renderClock();
+  caseState = next; assemblyClockOffset = Date.now() - Date.parse(next.server_time); caseClock.accept(next); renderClock();
   if (!previous || previous.revision !== next.revision) {
     scene?.setInvestigation(next); renderCase();
   }
@@ -486,6 +623,7 @@ async function applyCase(next: CasePublic, initial = false) {
       void showCustody(next.detained_npc_id,'night',previous?.detained_npc_id!==next.detained_npc_id);
     } else if (next.phase !== 'day' || next.status !== 'active') showPhase();
     else if (initial && next.detained_npc_id) {void showCustody(next.detained_npc_id,'waiting');}
+    else if (next.assembly_session?.phase === 'debate') {renderAssemblyPanel(); setModal('assembly');}
     else if (initial || previous?.day !== next.day) {
       conversation = null; dialogueNPC = null; exitBoundary = new ExitBoundary();
       if (previous?.detained_npc_id && next.journal.at(-1)?.detention_outcome === 'released') await showCustody(previous.detained_npc_id,'released');
@@ -493,20 +631,22 @@ async function applyCase(next: CasePublic, initial = false) {
     } else if (next.detained_npc_id) {void showCustody(next.detained_npc_id,'waiting',previous?.detained_npc_id!==next.detained_npc_id);}
     else if (modal === 'phase' || modal === 'custody') setModal(null);
   } catch {toast('A manhã chegou. Estamos atualizando os caminhos da cidade.');}
-  finally {transitioning = pendingWorldSync; scene?.setInputEnabled(modal === null && !caseClock.blocked() && !transitioning);}
+  finally {transitioning = pendingWorldSync; scene?.setInputEnabled(modal === null && !caseClock.blocked() && !activeAssembly() && !transitioning);}
 }
 
 function renderClock() {
   if (!caseState || $('#investigation').hidden) return;
   $('#case-day').textContent = `DIA ${caseState.day}`;
-  $('#case-clock').textContent = caseState.phase === 'finished' ? 'FIM' : formatClock(caseClock.seconds());
-  $('#case-phase').textContent = caseState.phase === 'night' ? 'A noite não é jogável'
+  $('#case-clock').textContent = caseState.phase === 'finished' ? 'FIM' : activeAssembly() ? 'DEBATE' : formatClock(caseClock.seconds());
+  $('#case-phase').textContent = activeAssembly() ? 'Assembleia em curso · o dia aguarda a votação' : caseState.phase === 'night' ? 'A noite não é jogável'
     : caseState.phase === 'finished' ? 'Este caso chegou ao fim'
     : caseClock.seconds() ? 'Cinco minutos até a noite' : 'Aguardando os acontecimentos da noite…';
-  $('#open-delegate').toggleAttribute('disabled', caseClock.blocked());
-  $('#open-assembly').toggleAttribute('disabled', caseClock.blocked() || Boolean(caseState?.assembly));
-  $('#open-map').toggleAttribute('disabled', caseClock.blocked());
-  if (caseState.phase === 'day' && caseState.status === 'active' && !caseClock.seconds() && modal !== 'phase' && modal !== 'custody') {
+  $('#open-delegate').toggleAttribute('disabled', caseClock.blocked() || Boolean(activeAssembly()));
+  $('#open-assembly').toggleAttribute('disabled', caseState.status !== 'active' || (caseClock.blocked() && !activeAssembly()));
+  $('#open-assembly').textContent = activeAssembly() ? 'Retomar assembleia' : caseState.assembly ? 'Resultado da assembleia' : 'Assembleia da cidade';
+  renderAssemblyClock();
+  $('#open-map').toggleAttribute('disabled', caseClock.blocked() || Boolean(activeAssembly()));
+  if (caseState.phase === 'day' && caseState.status === 'active' && !caseClock.seconds() && modal !== 'phase' && modal !== 'custody' && !activeAssembly()) {
     scene?.setInputEnabled(false); showPhase();
   }
   if (modal === 'custody') $('#custody-clock').textContent = caseState.status === 'won' ? 'Transformação confirmada pelo delegado' : caseState.phase === 'night' ? `Amanhecer em ${formatClock(caseClock.seconds())}` : `Anoitecer em ${formatClock(caseClock.seconds())}`;
@@ -538,16 +678,20 @@ function showPhase() {
   if (!caseState) return;
   const ending = caseState.ending;
   const victorious = ending?.result === 'won';
-  $('#victory-paper').hidden = !victorious;
-  $('#phase-overlay .phase-modal').classList.toggle('is-victory',victorious);
-  if(victorious) {
+  const expelled = caseState.assembly?.outcome === 'player_expelled';
+  $('#victory-paper').hidden = !victorious && !expelled;
+  $('#phase-overlay .phase-modal').classList.toggle('is-victory',victorious || expelled);
+  $('#victory-paper .press-picture').hidden = expelled;
+  $('#victory-paper .newspaper-edition span').textContent = expelled ? 'FLORIANO EXPULSO DA CIDADE' : 'A VITÓRIA DE FLORIANO';
+  $('#victory-paper .victory-ending').textContent = expelled ? 'A cidade afastou o detetive. A investigação está encerrada.' : 'O caso está encerrado. A cidade volta a respirar.';
+  if(victorious || expelled) {
     const edition=caseState.journal.at(-1);
     $('#victory-day').textContent=`DIA ${caseState.day}`;
-    $('#victory-headline').textContent=edition?.illustration === 'victory' ? edition.headline : 'Floriano vence: a cidade está livre do lobisomem';
-    $('#victory-body').textContent=edition?.illustration === 'victory' ? edition.body : ending.message;
+    $('#victory-headline').textContent=expelled ? edition?.headline ?? 'A cidade expulsa Floriano' : edition?.illustration === 'victory' ? edition.headline : 'Floriano vence: a cidade está livre do lobisomem';
+    $('#victory-body').textContent=edition?.body ?? ending?.message ?? '';
   }
   $('#phase-eyebrow').textContent = ending ? ending.result === 'won' ? 'A CIDADE RESPIRA ALIVIADA' : 'A CIDADE SILENCIOU' : 'A CIDADE RECOLHE-SE';
-  $('#phase-title').textContent = ending ? ending.result === 'won' ? 'O lobisomem foi descoberto.' : 'A investigação chegou tarde demais.'
+  $('#phase-title').textContent = ending ? ending.result === 'won' ? 'O lobisomem foi descoberto.' : expelled ? 'Floriano foi expulso da cidade.' : 'A investigação chegou tarde demais.'
     : caseState.phase === 'night' ? 'A noite guarda seus segredos.' : 'O dia está terminando.';
   $('#phase-description').textContent = ending?.message ?? 'Floriano aguarda a manhã. Os acontecimentos serão publicados no Clarim do Rio.';
   $('#ending-new-case').hidden = !ending;
@@ -596,7 +740,7 @@ function renderCase() {
   $('#case-hint').textContent = caseState.detained_npc_id
     ? `${personWords(cast.find(member=>member.character.id===caseState?.detained_npc_id)?.character).accused} ficará na cela esta noite. O jornal trará os acontecimentos da manhã.`
     : 'Recolha vestígios nas cenas do crime. Mostre-os aos moradores e confronte versões antes de chamar o delegado.';
-  renderJournal(); renderPresentation(); renderInterrogation(); renderNotebook();
+  renderJournal(); renderPresentation(); renderNotebook(); renderAssemblyPanel();
   if (modal !== 'delegate') renderAccusation();
 }
 
@@ -727,59 +871,6 @@ function renderPresentation() {
   $('#present-button').toggleAttribute('disabled', busy || dialogueUnavailable || caseClock.blocked());
 }
 
-function renderInterrogation() {
-  if (!caseState) return;
-  const day = $<HTMLInputElement>('#interrogation-day'); day.max = String(caseState.day);
-  const proofs = $('#confrontation-proofs');
-  const selected = new Set([...proofs.querySelectorAll<HTMLInputElement>('input:checked')].map(input => input.value));
-  proofs.replaceChildren();
-  const choice = (kind: string, id: string, text: string) => {
-    const label = document.createElement('label'); label.className = 'proof-choice';
-    const input = document.createElement('input'); input.type = 'checkbox'; input.name = kind; input.value = id;
-    input.checked = selected.has(id); const caption = document.createElement('span'); caption.textContent = text;
-    label.append(input, caption); proofs.append(label);
-  };
-  for (const {item, copies} of stackEvidence(caseState.inventory)) {
-    choice('confront-evidence', item.id, `${item.name}${copies.length > 1 ? ` ×${copies.length}` : ''}`);
-  }
-  for (const testimony of stackTestimonies(caseState.testimonies, caseState.inventory)) {
-    choice('confront-testimony', testimony.id, `${testimony.witness_name}: ${testimony.text}`);
-  }
-  for (const record of caseState.interrogations ?? []) choice('confront-interrogation', record.id, `${record.npc_name} · ${periodLabel(record.day, record.period)}: ${record.text}`);
-  if (!proofs.childElementCount) addText(proofs, 'p', 'Reúna provas e registre versões antes de confrontar.', 'empty-case');
-}
-
-async function interrogateNPC() {
-  if (!world || !dialogueNPC || !conversation || dialogueUnavailable || busy || modal !== 'dialogue' || caseClock.blocked()) return;
-  const day = $<HTMLInputElement>('#interrogation-day');
-  if (!day.reportValidity()) return;
-  const period = $<HTMLSelectElement>('#interrogation-period').value as 'night' | 'day';
-  const gameID = world.game_id, npcID = dialogueNPC.npc_id;
-  busy = true; setSending(true); status('#interrogation-status', 'Registrando a versão do morador…');
-  try {
-    const result = await api.interrogate(gameID, npcID, Number(day.value), period);
-    if (world?.game_id !== gameID) return;
-    await applyCase(result);
-    const record = result.interrogations?.find(item => item.npc_id === npcID && item.day === Number(day.value) && item.period === period);
-    status('#interrogation-status', record?.text ?? 'Versão registrada no caderno.');
-  } catch (error) {status('#interrogation-status', explain(error), true);}
-  finally {busy = false; setSending(false);}
-}
-
-async function confrontNPC() {
-  if (!world || !dialogueNPC || !conversation || dialogueUnavailable || busy || modal !== 'dialogue' || caseClock.blocked()) return;
-  const chosen = (kind: string) => [...$('#confrontation-proofs').querySelectorAll<HTMLInputElement>(`input[name="${kind}"]:checked`)].map(input => input.value);
-  const gameID = world.game_id, npcID = dialogueNPC.npc_id;
-  busy = true; setSending(true); status('#confrontation-status', 'O morador examina os elementos apresentados…');
-  try {
-    const result = await api.confront(gameID, npcID, chosen('confront-evidence'), chosen('confront-testimony'), chosen('confront-interrogation'));
-    if (world?.game_id !== gameID) return;
-    await applyCase(result);
-    status('#confrontation-status', result.confrontations?.filter(record => record.npc_id === npcID).at(-1)?.text ?? 'Confronto registrado.');
-  } catch (error) {status('#confrontation-status', explain(error), true);}
-  finally {busy = false; setSending(false);}
-}
-
 function renderAccusation() {
   if (!caseState) return;
   const gallery = $('#accused-npc');
@@ -824,7 +915,7 @@ function renderAccusation() {
   stackTestimonies(caseState.testimonies, inventorySnapshot).forEach(item => renderChoice(testimonies, 'testimony', item.id, `${item.witness_name}: ${item.text}`, inventorySnapshot.find(evidence => evidence.id === item.evidence_id), item.witness_id));
   if (!caseState.testimonies.length) addText(testimonies, 'p', 'Nenhum depoimento sobre objetos registrado.', 'empty-case');
   const attempted = caseState.accusations.some(accusation => accusation.day === caseState?.day);
-  updateAccusationSelection(); renderAssembly();
+  updateAccusationSelection();
   if (attempted) status('#accusation-status', 'O delegado já examinou uma acusação neste dia. Aguarde a próxima manhã.');
   const history = $('#accusation-history'); history.replaceChildren();
   for (const accusation of caseState.accusations) {
@@ -841,7 +932,6 @@ function updateAccusationSelection() {
   }
   $('#accused-selection').textContent = selected ? `Pedido de prisão contra ${npcName(selected.value)}.` : 'Nenhum suspeito selecionado.';
   const attempted = caseState?.accusations.some(accusation => accusation.day === caseState?.day);
-  $('#call-assembly').toggleAttribute('disabled', !selected || busy || caseClock.blocked() || Boolean(caseState?.assembly));
   $('#submit-accusation').toggleAttribute('disabled', !selected || busy || caseClock.blocked() || Boolean(attempted));
 }
 
@@ -888,10 +978,12 @@ async function presentEvidence() {
   try {
     const result = await api.present(world.game_id, evidenceID, dialogueNPC.npc_id);
     await applyCase(result);
+    await refreshHistory();
     const presentedItemID = result.inventory.find(item => item.id === evidenceID)?.item_id;
     const testimony = result.testimonies.find(item => item.witness_id === dialogueNPC?.npc_id
       && result.inventory.find(evidence => evidence.id === item.evidence_id)?.item_id === presentedItemID);
-    status('#presentation-status', testimony?.text ?? 'Depoimento registrado no caderno.');
+    status('#presentation-status', 'Objeto apresentado. Continue a conversa a partir da resposta registrada.');
+    if (!testimony) status('#presentation-status', 'Objeto apresentado. A resposta está na conversa.');
   } catch (error) {status('#presentation-status', explain(error), true);}
   finally {busy = false; setSending(false);}
 }
@@ -930,12 +1022,15 @@ setInterval(async () => {
 $('#inspect-crime').addEventListener('click', () => {void searchCrime();});
 $('#present-button').addEventListener('click', () => {void presentEvidence();});
 $('#present-evidence').addEventListener('change', () => renderPresentation());
-$('#interrogate-button').addEventListener('click', () => {void interrogateNPC();});
-$('#confront-button').addEventListener('click', () => {void confrontNPC();});
 $('#accusation-form').addEventListener('submit', event => {void submitAccusation(event);});
 $('#accused-npc').addEventListener('change', updateAccusationSelection);
-$('#call-assembly').addEventListener('click', () => {void callAssembly();});
-$('#open-assembly').addEventListener('click', () => {void openCasePanel('delegate');});
+$('#open-assembly').addEventListener('click', () => {void openAssemblyPanel();});
+$('#close-assembly').addEventListener('click', () => {if (!busy) setModal(null);});
+$('#assembly-opening-form').addEventListener('submit', event => {event.preventDefault(); void startAssembly();});
+$('#assembly-reply-form').addEventListener('submit', event => {event.preventDefault(); void finishAssembly();});
+for (const id of ['assembly-opening', 'assembly-reply']) $(`#${id}`).addEventListener('input', () => {updateAssemblyControls(); saveAssemblyDraft();});
+$('#assembly-suspects').addEventListener('change', () => {updateAssemblyControls(); saveAssemblyDraft();});
+for (const id of ['assembly-evidence', 'assembly-testimonies']) $(`#${id}`).addEventListener('change', saveAssemblyDraft);
 for (const panel of ['journal', 'notebook', 'delegate'] as const) {
   $(`#open-${panel}`).addEventListener('click', () => {void openCasePanel(panel);});
   $(`#close-${panel}`).addEventListener('click', () => {if (!busy) setModal(null);});
@@ -967,7 +1062,7 @@ $('#approach').addEventListener('click', () => {void approach();});
 for (const [id, direction] of [['walk-left', 'left'], ['walk-right', 'right']] as const) {
   const button = $(`#${id}`);
   button.addEventListener('pointerdown', event => {
-    if (modal || busy || caseClock.blocked()) return;
+    if (modal || busy || activeAssembly() || caseClock.blocked()) return;
     event.preventDefault(); button.setPointerCapture(event.pointerId); scene?.setTouchDirection(direction);
   });
   for (const event of ['pointerup', 'pointercancel', 'lostpointercapture']) button.addEventListener(event, () => scene?.setTouchDirection('idle'));

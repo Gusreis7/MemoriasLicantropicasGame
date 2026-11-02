@@ -1,5 +1,5 @@
 import {test, expect} from '@playwright/test';
-import type {CasePublic, GamePublic, Location, WorldSnapshot} from '../shared/api';
+import type {CasePublic, GamePublic, Location, Message, WorldSnapshot} from '../shared/api';
 
 /** Contract-level UI fixture: no inference and no private character data in the browser. */
 async function cityFixture(page: import('@playwright/test').Page) {
@@ -17,6 +17,7 @@ async function cityFixture(page: import('@playwright/test').Page) {
     journal: [{day: 1, title: 'O Clarim do Rio', headline: 'Brás Cubas encontrado morto', body: 'A cidade desperta com a notícia do crime na praça.', victim_id: 'bras_cubas', victim_name: 'Brás Cubas', location_id: 'praca_verde', detention_outcome: 'none'}],
     crimes: [{id: 'crime-ui', day: 0, victim_id: 'bras_cubas', victim_name: 'Brás Cubas', location_id: 'praca_verde', x: 600, remaining_clues: 2}],
     inventory: [], testimonies: [], accusations: [], detained_npc_id: null, ending: null};
+  const messages: Message[] = [];
   let previousDirection = 'idle'; let movementCalls = 0;
   const requests: Array<{path: string; body: unknown}> = [];
   const json = (route: import('@playwright/test').Route, body: unknown) => route.fulfill({json: body});
@@ -46,9 +47,23 @@ async function cityFixture(page: import('@playwright/test').Page) {
       return json(route, state);
     }
     if (path.endsWith('/approaches')) return json(route, {id: 'conversation-ui', game_id: cast.id, npc_id: body.npc_id, created_at: new Date().toISOString()});
-    if (path.endsWith('/messages')) return json(route, {conversation_id: 'conversation-ui', messages: []});
+    if (path.endsWith('/messages')) {
+      if (request.method() === 'POST') {
+        messages.push({id:`m-${messages.length}`,speaker:'player',content:body.content,created_at:new Date().toISOString()});
+        const confessing = body.content.includes('admita');
+        const answer = confessing ? 'Confesso minha condição e me entrego ao delegado.' : 'Estava na praça, sozinho, lendo o jornal.';
+        messages.push({id:`m-${messages.length}`,speaker:'npc',content:answer,created_at:new Date().toISOString()});
+        state.revision++;
+        if (confessing) {state.status='won';state.phase='finished';state.ending={result:'won',werewolf_id:'rubiao',method:'confession',message:'O morador confessou sua condição e se entregou ao delegado.'};}
+        else state.interrogations=[{id:'alibi-ui',npc_id:'rubiao',npc_name:'Rubião',day:0,period:'night',location_id:'praca_verde',companion_ids:[],activity:'Lia o jornal.',text:answer,observations:[]}];
+        return json(route,{conversation_id:'conversation-ui',message:messages.at(-1)});
+      }
+      return json(route, {conversation_id: 'conversation-ui', messages});
+    }
     if (path.endsWith('/present')) {
       state.testimonies = [{id: 'testimony-ui', day: state.day, evidence_id: 'ev-2', witness_id: 'rubiao', witness_name: 'Rubião', recognition: 'recognizes', claimed_owner_id: 'capitu', text: 'Reconheço esta fita; já a vi com Capitu.'}];
+      messages.push({id:`m-${messages.length}`,speaker:'player',content:'Mostro a fita ao morador.',created_at:new Date().toISOString()});
+      messages.push({id:`m-${messages.length}`,speaker:'npc',content:state.testimonies[0].text,created_at:new Date().toISOString()});
       state.revision++; return json(route, state);
     }
     if (path.endsWith('/assembly')) {
@@ -101,7 +116,7 @@ test('busca, apresenta vestígios e pede detenção antes de aguardar a noite', 
   await page.keyboard.up('ArrowLeft'); await expect(page.locator('#approach')).toBeVisible();
   await page.locator('#approach').click(); await expect(page.locator('#message-input')).toBeEnabled();
   await page.locator('#present-evidence').selectOption('ev-2'); await page.locator('#present-button').click();
-  await expect(page.locator('#presentation-status')).toContainText('já a vi com Capitu');
+  await expect(page.locator('#messages')).toContainText('já a vi com Capitu');
   await expect(page.locator('#close-dialogue')).toBeInViewport(); await page.locator('#close-dialogue').click();
   await page.locator('#open-notebook').click(); await expect(page.locator('.evidence-card')).toHaveCount(2);
   await expect(page.locator('#testimony-list')).toContainText('Rubião'); await page.locator('#close-notebook').click();
@@ -142,23 +157,18 @@ test('amanhecer retorna à banca e publica a morte sem manter o NPC no cenário'
   await expect(page.locator('#approach')).toBeHidden(); await expect(page.locator('#open-map')).toBeEnabled();
 });
 
-test('registra álibi, preserva no caderno e confronta com a seleção do jogador', async ({page}) => {
+test('pergunta e confronta pela conversa, registra a versão e recebe a conclusão do mestre', async ({page}) => {
   const city = await cityFixture(page); city.world.visible_npcs[0].x = 190; city.world.visible_npcs[0].can_approach = true;
-  await begin(page); await page.locator('#approach').click();
-  await expect(page.locator('#message-input')).toBeEnabled();
-  await page.locator('#interrogation-panel > summary').click();
-  await page.locator('#interrogate-button').click();
-  await expect(page.locator('#interrogation-status')).toContainText('Estava na praça');
+  await begin(page); await page.locator('#approach').click(); await expect(page.locator('#message-input')).toBeEnabled();
+  await expect(page.locator('#interrogation-panel')).toHaveCount(0);
+  await page.locator('#message-input').fill('Onde estava na noite de ontem?'); await page.locator('#send-message').click();
+  await expect(page.locator('#messages')).toContainText('Estava na praça');
   await page.locator('#close-dialogue').click(); await page.locator('#open-notebook').click();
   await expect(page.locator('#interrogation-list')).toContainText('Rubião · noite 0');
-  await page.locator('#close-notebook').click(); await page.locator('#approach').click();
-  await expect(page.locator('#message-input')).toBeEnabled();
-  await page.locator('#interrogation-panel details > summary').click();
-  await page.locator('input[name="confront-interrogation"]').check();
-  await page.locator('#confront-button').click();
-  await expect(page.locator('#phase-overlay')).toBeVisible();
-  await expect(page.locator('#phase-description')).toContainText('confessou');
-  expect(city.requests.find(request => request.path.endsWith('/confrontations'))?.body).toEqual({npc_id: 'rubiao', evidence_ids: [], testimony_ids: [], interrogation_ids: ['alibi-ui']});
+  await page.locator('#close-notebook').click(); await page.locator('#approach').click(); await expect(page.locator('#message-input')).toBeEnabled();
+  await page.locator('#message-input').fill('Sua versão contradiz os registros; admita o que fez e se entregue.'); await page.locator('#send-message').click();
+  await expect(page.locator('#phase-overlay')).toBeVisible(); await expect(page.locator('#phase-description')).toContainText('confessou');
+  expect(city.requests.filter(request => request.path.endsWith('/interrogations') || request.path.endsWith('/confrontations'))).toHaveLength(0);
 });
 
 test('delegado apresenta retratos, exige escolha e distingue moradores indisponíveis em desktop e celular', async ({page}) => {
@@ -193,7 +203,7 @@ test('delegado apresenta retratos, exige escolha e distingue moradores indispon�
 });
 
 
-test('assembleia apresenta resultado único e o mapa acompanha moradores em viagem', async ({page}) => {
+test('mapa acompanha moradores em viagem', async ({page}) => {
   const city = await cityFixture(page);
   city.world.npc_presences = [{npc_id:'capitu',name:'Capitu',location_id:'praca_verde',activity:'travelling',destination_id:'cais_lanternas'}];
   city.state.inventory = [{id:'ev-pixel',crime_id:'crime-ui',item_id:'relogio_quincas',name:'Relógio de bolso',kind:'unique',description:'Objeto recolhido.'}];
@@ -201,16 +211,7 @@ test('assembleia apresenta resultado único e o mapa acompanha moradores em viag
   await expect(page.locator('#map-residents')).toContainText('Capitu · Praça Verde → Cais das Lanternas');
   city.world.npc_presences[0].location_id = 'cais_lanternas'; city.world.npc_presences[0].activity = 'talking'; city.world.npc_presences[0].destination_id = null;
   await expect(page.locator('#map-residents')).toContainText('Capitu · Cais das Lanternas · Conversando');
-  await page.locator('#close-map').click(); await page.locator('#open-assembly').click();
-  await page.getByRole('radio',{name:/Rubião/}).check();
-  await page.locator('#accusation-evidence input').check();
-  await page.screenshot({path:'../artifacts/assembly-pixel-items.png',fullPage:true});
-  await page.locator('#call-assembly').click();
-  await expect(page.locator('#assembly-result')).toContainText('Era inocente');
-  await expect(page.locator('#call-assembly')).toBeDisabled();
-  await expect(page.getByRole('radio',{name:/Rubião/})).toBeDisabled();
-  await page.locator('#close-delegate').click(); await expect(page.locator('#open-assembly')).toBeDisabled();
-  expect(city.requests.filter(r => r.path.endsWith('/assembly'))).toHaveLength(1);
+  await page.locator('#close-map').click();
 });
 
 test('rejeição de disponibilidade preserva rascunho e bloqueia envios repetidos até nova abordagem', async ({page}) => {

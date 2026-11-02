@@ -198,15 +198,6 @@ kbd{font:10px/1.2 Arial,sans-serif;min-width:21px;padding:4px 5px;border:1px sol
 .persona-panel h2{font-size:23px;align-self:start;margin-top:4px}
 .persona-panel>p:last-child,.persona-flourish{display:none}
 .conversation-panel{min-height:0}
-.interrogation-panel{flex-shrink:0;margin:0 18px;padding:7px 0;border-top:1px solid #c8bc9470;font-size:12px;max-height:34vh;overflow:auto}
-.interrogation-panel summary{cursor:pointer;color:var(--ink);padding:5px 0}
-.interrogation-panel .case-note{font-size:11px;margin:6px 0}
-.interrogation-controls{display:flex;gap:8px;align-items:end;flex-wrap:wrap}
-.interrogation-controls label{display:grid;gap:3px;font-size:11px}
-.interrogation-controls input{width:65px}
-.interrogation-controls input,.interrogation-controls select{padding:6px;border:1px solid #bbb28c;background:#f7f1de;color:var(--ink)}
-.confrontation-proofs{max-height:120px;overflow:auto;margin-bottom:6px}
-.interrogation-panel .proof-choice{font-size:11px}
 .conversation-heading{height:46px;min-height:46px;padding:0 17px}
 .messages{padding:20px 18px}
 .message-content{font-size:14px}
@@ -446,6 +437,42 @@ kbd{font:10px/1.2 Arial,sans-serif;min-width:21px;padding:4px 5px;border:1px sol
 .phase-modal h2{font-size:28px}
 }
 
-.assembly-action{border-top:1px solid #bcb48e;margin-top:22px;padding-top:10px}.assembly-action p{font:12px/1.7 Georgia,serif}.map-residents{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:12px;max-height:160px;overflow:auto}.map-residents>div{display:flex;align-items:center;gap:6px;font:10px/1.5 Arial,sans-serif}.map-residents img{width:28px;height:30px;object-fit:contain;image-rendering:pixelated}@media(max-width:600px){.map-residents{grid-template-columns:1fr}}
 
 .custody-modal{width:min(1000px,100%);max-height:calc(100dvh - 32px);overflow:auto;background:#14372d;border:1px solid #a8905a;color:#eee4ca;box-shadow:0 25px 100px #001b14bb}.custody-modal header{padding:20px 25px 12px}.custody-modal h2{margin:5px 0;font:normal 27px Georgia,serif}.custody-modal header>p:last-child{font:12px/1.6 Georgia,serif;color:#c7cfad}.custody-modal .eyebrow{margin-bottom:5px}.custody-modal footer{padding:14px 25px;display:flex;justify-content:space-between;align-items:center;gap:12px;font:12px Georgia,serif}#custody-canvas{width:100%;aspect-ratio:16/9;overflow:hidden}#custody-canvas canvas{max-width:100%;image-rendering:pixelated}.press-picture{width:100%;aspect-ratio:1.5;background-image:url('/assets/press/editions.png');background-size:200% 200%;image-rendering:pixelated;filter:grayscale(1)}.press-docks{background-position:0 0}.press-garden{background-position:100% 0}.press-capture{background-position:0 100%}.press-victory{background-position:100% 100%}.phase-modal.is-victory{width:min(730px,100%);max-width:730px;background:#e8e6d7;color:#292b27;border-color:#858478;text-align:left;padding:30px}.is-victory>.phase-moon,.is-victory>#phase-eyebrow,.is-victory>#phase-title,.is-victory>#phase-description,.is-victory>#phase-countdown{display:none}.victory-paper h2{font-family:Georgia,serif;font-size:45px}.victory-paper h3{font:normal 30px/1.15 Georgia,serif;margin:18px 0}.victory-paper>p{font:15px/1.8 Georgia,serif}.victory-paper .press-picture{float:left;width:44%;margin:0 18px 8px 0;border:1px solid #807e71}.victory-paper .victory-ending{clear:both;border-top:1px solid #aaa795;padding-top:12px;font-style:italic}.is-victory #ending-new-case{margin-top:10px}@media(max-width:600px){.custody-modal header{padding:14px}.custody-modal h2{font-size:22px}.phase-modal.is-victory{padding:20px}.victory-paper h2{font-size:33px}.victory-paper h3{font-size:24px}.custody-modal footer{padding:12px;flex-wrap:wrap}}
+
+.map-residents{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:12px;max-height:160px;overflow:auto}.map-residents>div{display:flex;align-items:center;gap:6px;font:10px/1.5 Arial,sans-serif}.map-residents img{width:28px;height:30px;object-fit:contain;image-rendering:pixelated}@media(max-width:600px){.map-residents{grid-template-columns:1fr}}
+
+/* A short public conversation, with one closing reply before the vote. */
+.assembly-modal{width:min(980px,100%);padding:28px 32px;background:#faf3e3;color:#342f25}
+.assembly-modal .modal-heading{align-items:start;margin-bottom:12px}
+.assembly-modal .modal-heading h2{margin-bottom:0}
+.assembly-rule{padding:12px 14px;background:#eee3cc;border-left:3px solid #a28b58;margin-bottom:20px}
+.assembly-modal fieldset{min-width:0;border:1px solid #d2c3a3;padding:12px;margin:0 0 16px}
+.assembly-modal legend{font:12px Georgia,serif;padding:0 7px;color:#6e5b3d}
+.assembly-modal .suspect-gallery{grid-template-columns:repeat(auto-fit,minmax(86px,1fr));gap:9px}
+.assembly-modal .suspect-card img{width:64px;height:74px;object-fit:cover;object-position:top;image-rendering:pixelated}
+.assembly-modal .suspect-card strong{font:13px/1.25 Georgia,serif}
+.assembly-dossier{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.assembly-dossier fieldset>div{max-height:180px;overflow:auto;scrollbar-width:thin}
+.assembly-modal .proof-choice{padding:8px 0;font:12px/1.5 Arial,sans-serif}
+.assembly-modal .proof-choice .item-art{flex:0 0 38px;width:38px;height:38px}
+.assembly-modal .proof-choice .item-art img,.assembly-modal .proof-choice .item-art svg{width:32px;height:32px}
+.assembly-modal form>label{display:block;font:15px Georgia,serif;margin:5px 0 9px}
+.assembly-modal textarea{display:block;width:100%;min-height:72px;max-height:180px;resize:vertical;padding:12px;color:#342f25;border:1px solid #b7a57d;background:#fffdf6;font:13px/1.6 Arial,sans-serif}
+.assembly-form-footer{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-top:10px}
+.assembly-form-footer small{color:#86734e;font:10px Arial,sans-serif}
+.assembly-session-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;border-bottom:1px solid #cfbe99;margin:14px 0}
+.assembly-session-heading p{font:18px Georgia,serif;color:#51432e}
+#assembly-countdown{font:12px Arial,sans-serif;font-variant-numeric:tabular-nums;color:#7b563c;white-space:nowrap}
+.assembly-chat{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-height:42vh;overflow:auto;padding:5px 4px 12px 0;scrollbar-width:thin}
+.assembly-message{display:grid;grid-template-columns:46px minmax(0,1fr);align-items:start;gap:10px;padding:12px;background:#f0e8d5;border:1px solid #ded0b4}
+.assembly-message.is-floriano{grid-column:1/-1;background:#e7ead9;border-color:#b8c3a0}
+.assembly-message img{width:46px;height:54px;object-fit:cover;object-position:top;image-rendering:pixelated}
+.assembly-message .assembly-player-mark{display:grid;place-items:center;width:46px;height:54px;font:24px Georgia,serif;color:#42604a;background:#d6ddc5;border:1px solid #b4c19e}
+.assembly-message strong{font:14px Georgia,serif;color:#4e432f}
+.assembly-message p{font:12px/1.6 Arial,sans-serif;color:#5b5342;white-space:pre-wrap;margin:7px 0 0;overflow-wrap:anywhere}
+#assembly-result{border-top:1px solid #cfbe99;margin-top:18px}
+#assembly-result:empty{display:none}
+#assembly-result h3{font:22px Georgia,serif;margin:18px 0 10px}
+#assembly-result p{font:12px/1.65 Arial,sans-serif;color:#62553e}
+@media(max-width:760px){.assembly-modal{padding:20px 16px}.assembly-dossier,.assembly-chat{grid-template-columns:1fr}.assembly-chat{max-height:37vh}.assembly-session-heading{gap:8px}.assembly-session-heading p{font-size:16px}.assembly-form-footer .button{padding:12px}.assembly-modal .suspect-gallery{grid-template-columns:repeat(3,minmax(0,1fr))}}
