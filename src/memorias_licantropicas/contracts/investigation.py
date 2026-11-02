@@ -125,13 +125,39 @@ class Confrontation(Contract):
     created_at: AwareDatetime
 
 
+class AssemblyMessage(Contract):
+    speaker_id: str
+    text: str
+
+
+class AssemblySession(Contract):
+    id: UUID
+    suspect_id: str
+    phase: Literal["debate", "resolved"] = "debate"
+    evidence_ids: tuple[UUID, ...] = ()
+    testimony_ids: tuple[UUID, ...] = ()
+    messages: tuple[AssemblyMessage, ...] = ()
+    opening_speech: str = ""
+    reply: str = ""
+    opened_at: AwareDatetime
+    deadline: AwareDatetime
+    remaining_day_seconds: float = Field(ge=0)
+    relationships: tuple[dict, ...] = ()
+    argument_strength: float = Field(default=0, ge=0, le=1)
+
+
 class AssemblyVote(Contract):
+    target_id: str | None = None
     voter_id: str
     expel: bool
     reason: str
 
 
 class AssemblyRecord(Contract):
+    opening_speech: str = ""
+    reply: str = ""
+    messages: tuple[AssemblyMessage, ...] = ()
+    nominated_id: str | None = None
     evidence_ids: tuple[UUID, ...] = ()
     testimony_ids: tuple[UUID, ...] = ()
     suspect_id: str
@@ -139,7 +165,7 @@ class AssemblyRecord(Contract):
     votes: tuple[AssemblyVote, ...]
     required_votes: int
     expelled: bool
-    outcome: Literal["werewolf", "innocent", "no_majority"]
+    outcome: Literal["werewolf", "innocent", "no_majority", "player_expelled"]
     created_at: AwareDatetime
 
 
@@ -159,9 +185,11 @@ class InvestigationState(Contract):
     activity_records: tuple[ActivityRecord, ...] = ()
     interrogations: tuple[Interrogation, ...] = ()
     confrontations: tuple[Confrontation, ...] = ()
+    dialogue_events: tuple[dict, ...] = ()
+    assembly_session: AssemblySession | None = None
     assembly: AssemblyRecord | None = None
     expelled_npc_ids: tuple[str, ...] = ()
-    ending_method: Literal["detention", "confession", "survival", "assembly"] | None = None
+    ending_method: Literal["detention", "confession", "survival", "assembly", "player_expelled"] | None = None
 
 
 class CaseEvent(Contract):

@@ -95,7 +95,7 @@ class EndingPublic(Contract):
     result: Literal["won", "lost"]
     message: str
     werewolf_id: str
-    method: Literal["detention", "confession", "survival", "assembly"] = "detention"
+    method: Literal["detention", "confession", "survival", "assembly", "player_expelled"] = "detention"
 
 
 class ActivityClaimPublic(Contract):
@@ -146,6 +146,7 @@ class CasePublic(Contract):
     accusations: tuple[AccusationPublic, ...]
     detained_npc_id: str | None
     ending: EndingPublic | None
+    assembly_session: dict | None = None
     assembly: dict | None = None
     expelled_npc_ids: tuple[str, ...] = ()
     interrogations: tuple[InterrogationPublic, ...] = ()
@@ -154,3 +155,11 @@ class CasePublic(Contract):
 
 class AssemblyRequest(AccuseRequest):
     pass
+
+
+class AssemblyOpenRequest(AssemblyRequest):
+    speech: str = Field(default="", max_length=800)
+
+
+class AssemblyResolveRequest(Contract):
+    reply: str = Field(default="", max_length=500)
