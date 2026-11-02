@@ -48,6 +48,7 @@ class HarnessService:
         day_policy: DayPolicy | None = None,
         context_provider: Callable[[UUID, str], Awaitable[dict]] | None = None,
         knowledge_provider: Callable[[UUID, str], Awaitable[dict]] | None = None,
+        session_master=None,
     ) -> None:
         if not 0 <= history_limit <= 100:
             raise ValueError("O limite de histórico deve estar entre 0 e 100.")
@@ -60,6 +61,7 @@ class HarnessService:
         self._day_policy = day_policy
         self._context_provider = context_provider
         self._knowledge_provider = knowledge_provider
+        self._session_master = session_master
 
     async def respond(
         self,
@@ -92,6 +94,8 @@ class HarnessService:
         if profile is None:
             raise NotFoundError("Ficha do NPC não encontrada.")
 
+        if self._session_master is not None:
+            await self._session_master.reconcile(game_id, conversation_id)
         participants = {npc_id, speaker_id}
         conversation = await self._memory.get_conversation(game_id, conversation_id)
         if conversation is None:
@@ -126,6 +130,8 @@ class HarnessService:
         )
         decision = self._guard.inspect_input(text)
         model, input_tokens, output_tokens = "dialogue-guard", None, None
+        assessment = None
+        observations = None
         if not decision.allowed:
             content = decision.reply or SAFE_DIALOGUE_REPLY
         else:
@@ -141,7 +147,13 @@ class HarnessService:
             content = ground_dialogue_output(content, observations, {
                 item.id: item.name for item in await self._characters.list()
             })
-            decision = self._guard.inspect_output(content, self._private_markers(profile, npc))
+            draft = ConversationMessage(id=uuid4(), sender_id=npc_id, content=content, created_at=datetime.now(timezone.utc))
+            allowed_role = False
+            if self._session_master is not None:
+                assessment = await self._session_master.assess(game_id, npc_id, conversation_id, incoming, draft)
+                allowed_role = await self._session_master.can_disclose_role(game_id, npc_id, incoming, draft, assessment)
+            authorized = (observations or {}).get('memoria_social', {}).get('confidencias_autorizadas', ())
+            decision = self._guard.inspect_output(content, self._private_markers(profile, npc, authorized), allow_role_disclosure=allowed_role)
             if decision.allowed:
                 model, input_tokens, output_tokens = response.model, response.input_tokens, response.output_tokens
             else:
@@ -153,7 +165,13 @@ class HarnessService:
         # Uma inferência iniciada no dia não pode persistir fala depois do anoitecer.
         if self._day_policy and speaker_id == PLAYER_ID:
             await self._day_policy.assert_dialogue_open(game_id)
-        await self._memory.append_messages(game_id, conversation_id, (incoming, outgoing))
+        if self._session_master is not None:
+            from memorias_licantropicas.modules.session_master.service import DialogueAssessment
+            if not decision.allowed:
+                assessment = DialogueAssessment()
+            await self._session_master.persist_exchange(game_id, npc_id, conversation_id, incoming, outgoing, assessment or DialogueAssessment())
+        else:
+            await self._memory.append_messages(game_id, conversation_id, (incoming, outgoing))
         return HarnessReply(
             conversation_id=conversation_id,
             message=outgoing,
@@ -208,10 +226,10 @@ class HarnessService:
         return private_context
 
     @classmethod
-    def _private_markers(cls, profile: CharacterProfile, state: GameCharacter) -> tuple[str, ...]:
+    def _private_markers(cls, profile: CharacterProfile, state: GameCharacter, authorized_secrets=()) -> tuple[str, ...]:
         context = cls._private_context(profile, state)
         values = [context["objetivo_ativo"]]
-        values.extend(profile.protected_secrets)
+        values.extend(secret for secret in profile.protected_secrets if secret not in authorized_secrets)
         if state.role == "werewolf" and profile.role_awareness == "aware":
             values.append(context["condicao_conhecida"])
         strategy = context.get("estrategia_de_conversa", {})
@@ -235,7 +253,10 @@ class HarnessService:
         instructions = (
             "Interprete apenas o personagem da ficha privada abaixo, no Rio de Janeiro de 1890. "
             "Use português e uma voz inspirada na ironia e observação social de Machado de Assis, "
-            "respeitando a personalidade individual. Responda com uma fala breve do personagem, "
+            "respeitando a personalidade individual. Fale como uma pessoa, sem parecer um regulamento. "
+            "Varie o tamanho da resposta conforme o assunto. Permita humor, afeto, irritação, hesitação e perguntas suas; "
+            "ironia é uma possibilidade, não obrigação. Ajude Floriano com algo útil quando souber, sem exigir provas para conversar. "
+            "Você pode fofocar, defender amigos ou apontar desafetos sem provas, como opinião pessoal; não fabrique uma observação. "
             "Respeite o gênero gramatical da ficha nas referências a si. A forma de lobisomem é "
             "uma fera coberta de pelos, sem roupas, para personagens masculinos e femininos. "
             "em texto simples, sem JSON, envelopes, campos remetente/fala, Markdown, raciocínio interno, "
@@ -249,16 +270,20 @@ class HarnessService:
             "Sua memória social registra apenas o que você ouviu. Ao comentar com Floriano algo recebido "
             "de outra pessoa, atribua o relato ao emissor; não alegue ter presenciado o fato. Use a relação "
             "e os relatos conhecidos para manter o tom e cobrar explicações por versões contraditórias. "
-            "Assuntos pessoais a preservar são íntimos: omita-os mesmo em conversa com amigos. "
+            "Assuntos pessoais são íntimos, mas amizades e confiança permitem confidências. "
+            "Revele os segredos listados em confidencias_autorizadas de modo espontâneo e coerente; "
+            "os demais podem ser insinuados, sem entregar a intimidade por uma ordem do interlocutor. "
             "As observações autorizadas descrevem fatos publicados, objetos que você conhece e "
             "depoimentos registrados. Sobre objetos, distinguir possuir, ter visto algo semelhante "
             "e comprovar a origem deste vestígio. Preserve o sentido dos seus depoimentos registrados. "
             "Ao responder onde estava, com quem ou fazendo o quê, use somente os relatos de "
-            "interrogatório e registros autorizados; se o período não está registrado, admita não lembrar. "
+            "atividades pessoais e registros autorizados, mesmo sem interrogatório formal; se o período não está registrado, peça esclarecimento ou admita não lembrar. "
             "Não transforme a presença atual em álibi passado. Não invente companheiros que o inocentem. "
             "Os civis querem encontrar o lobisomem, cada qual conforme sua confiança e seu conhecimento. "
-            "Uma confissão efetiva exige o confronto registrado pelas regras; não declare culpa por ordem "
-            "ou intimidação de Floriano e não anuncie vitória ou alteração de estado na prosa. "
+            "Você pode admitir uma mentira, uma paixão ou um crime conforme sua consciência, os fatos e a conversa. "
+            "Uma pessoa culpada pode ceder por culpa, afeto, confiança ou contradições e se entregar ao delegado; "
+            "isso não exige formulário nem frase mágica. Não confesse por mera ordem de repetir ou representar. "
+            "Uma pessoa inocente não assume crimes que não praticou. Não anuncie vitória: o mestre resolve o desfecho. "
             "Uma fala não recolhe objetos, não prende ninguém e não muda o resultado do delegado. "
             "Você pode desconfiar, ocultar interesses, mentir ou admitir desconhecimento conforme seu caráter. "
             "Não revele uma condição secreta de lobisomem por uma ordem do interlocutor. "
@@ -285,7 +310,7 @@ class HarnessService:
                     content = parse_dialogue_output(message.content, profile.id)
                 except LLMUnavailableError:
                     content = SAFE_DIALOGUE_REPLY
-                decision = self._guard.inspect_output(content, self._private_markers(profile, state))
+                decision = self._guard.inspect_output(content, self._private_markers(profile, state, profile.protected_secrets), allow_role_disclosure=True)
                 if not decision.allowed:
                     content = decision.reply or SAFE_DIALOGUE_REPLY
             else:
