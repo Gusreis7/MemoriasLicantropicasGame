@@ -122,7 +122,9 @@ def build_services(settings: Settings) -> Services:
     worker = SocialWorker(social, social_repository, interval_seconds=settings.social_poll_seconds)
     world = WorldService(games, characters, world_repository, player_gate, day_policy=turns,
                          on_approach=social.interrupt if social else None, social_repository=social_repository)
-    master = SessionMasterService(turns, games, memory, llm, redis, settings.redis_prefix)
+    master_llm = social_client(640, settings.llm_timeout_seconds)
+    social_clients = (*social_clients, master_llm)
+    master = SessionMasterService(turns, games, memory, master_llm, redis, settings.redis_prefix)
     harness = HarnessService(characters, games, memory, dialogue_llm, history_limit=settings.llm_history_limit,
                              day_policy=turns, context_provider=investigation.npc_context_locked,
                              knowledge_provider=knowledge.context if knowledge else None, session_master=master)
