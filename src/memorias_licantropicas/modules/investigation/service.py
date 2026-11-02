@@ -39,7 +39,7 @@ class InvestigationService:
             game_id=state.game_id, revision=state.revision, day=state.day, phase=state.phase, status=state.status,
             server_time=now, phase_ends_at=state.phase_ends_at,
             seconds_remaining=max(0, ceil((state.phase_ends_at - now).total_seconds())) if state.status == "active" else 0,
-            journal=tuple(JournalPublic(day=entry.day, headline=entry.headline, body=entry.body,
+            journal=tuple(JournalPublic(illustration=entry.illustration, day=entry.day, headline=entry.headline, body=entry.body,
                 victim_id=entry.victim_id, victim_name=names.get(entry.victim_id) if entry.victim_id else None,
                 location_id=entry.location_id, detention_outcome=entry.detention_outcome) for entry in state.journal),
             crimes=tuple(CrimePublic(id=crime.id, day=crime.day, victim_id=crime.victim_id,

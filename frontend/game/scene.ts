@@ -46,7 +46,7 @@ export class CityScene extends Phaser.Scene {
   private player?: Phaser.GameObjects.Sprite;
   private npcs: Phaser.GameObjects.GameObject[] = [];
   private ambient: Phaser.GameObjects.GameObject[] = [];
-  private wanderers: Array<{image: Phaser.GameObjects.Image; placement: AmbientPlacement}> = [];
+  private wanderers: Array<{image: Phaser.GameObjects.Image | Phaser.GameObjects.Sprite; placement: AmbientPlacement}> = [];
   private background?: Phaser.GameObjects.Image;
   private currentLocation = '';
   private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
@@ -76,6 +76,7 @@ export class CityScene extends Phaser.Scene {
       else this.load.spritesheet(asset.id, asset.path, {frameWidth: asset.frameWidth, frameHeight: asset.frameHeight});
     }
     for (const location of this.locations) this.load.image(`location-${location.id}`, location.background);
+    this.load.atlas('animals-walk','/assets/ambient/animals-walk.png','/assets/ambient/animals-walk.json');
     this.load.atlas('scene-life', '/assets/ambient/scene-life.png', '/assets/ambient/scene-life.json');
     this.load.atlas('capoeira', '/assets/ambient/capoeira.png', '/assets/ambient/capoeira.json');
     this.load.atlas('clarim', '/assets/ambient/clarim.png', '/assets/ambient/clarim.json');
@@ -89,6 +90,7 @@ export class CityScene extends Phaser.Scene {
         this.anims.create({key: `${asset.id}-walk`, frames: asset.walkFrames.map(frame => ({key: asset.id, frame})), frameRate: 7, repeat: -1});
       }
     }
+    for(const kind of ['dog','cat','bird']) this.anims.create({key:`${kind}-move`,frames:[0,1,2,3].map(i=>({key:'animals-walk',frame:`${kind}-${i}`})),frameRate:kind==='bird'?8:6,repeat:-1});
     this.cursors = this.input.keyboard?.createCursorKeys();
     this.keys = this.input.keyboard?.addKeys('A,D,E,M') as Record<string, Phaser.Input.Keyboard.Key>;
     this.input.keyboard?.on('keydown-E', () => {
@@ -136,12 +138,15 @@ export class CityScene extends Phaser.Scene {
     if (!this.textures.exists('scene-life')) return;
     this.textures.get('scene-life').setFilter(Phaser.Textures.FilterMode.NEAREST);
     for (const placement of AMBIENT[id]) {
-      const image = this.add.image(placement.x, placement.y, 'scene-life', placement.frame)
-        .setOrigin(.5, 1).setDepth(placement.frame === 'tree' ? -3 : -1);
+      const animal=['dog','cat','bird'].includes(placement.frame);
+      const image = (animal ? this.add.sprite(placement.x,placement.y,'animals-walk',`${placement.frame}-0`) : this.add.image(placement.x,placement.y,'scene-life',placement.frame))
+        .setOrigin(.5,1).setDepth(placement.frame==='tree'?-3:-1);
+      image.setName(`ambient-${placement.frame}-${placement.x}`);
+      if(animal && !this.reducedMotion)(image as Phaser.GameObjects.Sprite).play(`${placement.frame}-move`);
       // Fit each atlas cutout inside its box without stretching its natural silhouette.
       image.setScale(Math.min(placement.width / image.width, placement.height / image.height));
       this.ambient.push(image);
-      if (placement.drift && !this.reducedMotion) this.wanderers.push({image, placement});
+      if ((animal || placement.drift) && !this.reducedMotion) this.wanderers.push({image, placement});
     }
     if (id === 'cais_lanternas' && this.textures.exists('capoeira')) {
       // Put the roda on the forward part of the promenade, clear of the seawall.
@@ -201,18 +206,18 @@ export class CityScene extends Phaser.Scene {
       this.cameras.main.setBounds(0, 0, world.location.width, world.location.height);
       this.cameras.main.setScroll(0, 0);
     }
-    const signature = world.visible_npcs.map(npc => `${npc.npc_id}:${npc.x}:${npc.name}:${npc.activity}:${npc.social_partner_id}:${npc.speech ?? ""}`).join('|');
+    const signature = world.visible_npcs.map(npc => `${npc.npc_id}:${npc.name}:${npc.activity}:${npc.social_partner_id}:${npc.speech ?? ""}`).join('|');
     if (signature !== this.npcSignature) {
       this.npcSignature = signature;
       this.npcs.forEach(npc => {this.tweens.killTweensOf(npc); npc.destroy();}); this.npcs = [];
       for (const npc of world.visible_npcs) {
         const previousX = this.npcPositions.get(npc.npc_id) ?? npc.x;
         this.npcPositions.set(npc.npc_id, npc.x);
-        const shadow = this.add.ellipse(previousX, world.location.ground_y + 1, 34, 7, 0x173e31, .3);
+        const shadow = this.add.ellipse(previousX, world.location.ground_y + 1, 34, 7, 0x173e31, .3).setName(`npc-shadow-${npc.npc_id}`);
         const sprite = this.sprite(npc.sprite_id, previousX, world.location.ground_y);
         const partner = world.visible_npcs.find(other => other.npc_id === npc.social_partner_id);
         if (npc.activity === 'talking' && partner) sprite?.setFlipX(partner.x < npc.x);
-        if (sprite) {this.npcs.push(sprite); if (npc.activity === 'travelling') {sprite.setFlipX(npc.x < previousX); if (this.anims.exists(`${npc.sprite_id}-walk`)) sprite.anims.play(`${npc.sprite_id}-walk`, true);}}
+        if (sprite) {sprite.setName(`npc-sprite-${npc.npc_id}`);this.npcs.push(sprite); if (npc.activity === 'travelling' && !this.reducedMotion) {sprite.setFlipX(npc.x < previousX); if (this.anims.exists(`${npc.sprite_id}-walk`)) sprite.anims.play(`${npc.sprite_id}-walk`, true);}}
         this.npcs.push(shadow);
         const caption = npc.activity === 'talking' ? `${npc.name}\n${partner ? `Com ${partner.name}` : 'Conversando'}` : npc.activity === 'travelling' ? `${npc.name}\nCaminhando` : npc.name;
         const label = this.add.text(previousX, world.location.ground_y - 96, caption, {fontFamily: 'Georgia, serif', fontSize: '11px', align: 'center', color: '#fff4d2', backgroundColor: '#183c33cc', padding: {x: 5, y: 3}}).setOrigin(.5, 1).setDepth(4);
@@ -222,10 +227,21 @@ export class CityScene extends Phaser.Scene {
             .setOrigin(npc.x > 750 ? 1 : npc.x < 180 ? 0 : .5,1).setDepth(6);
           this.npcs.push(bubble);
         }
-        this.npcs.push(label);
+        label.setName(`npc-label-${npc.npc_id}`);this.npcs.push(label);
         this.tweens.add({targets: [shadow, label, ...(sprite ? [sprite] : [])], x: npc.x, duration: this.reducedMotion ? 0 : 950, ease: "Linear"});
       }
       this.addExitSigns(world);
+    }
+    for (const npc of world.visible_npcs) {
+      const sprite = this.children.getByName(`npc-sprite-${npc.npc_id}`) as Phaser.GameObjects.Sprite | null;
+      const targets = ['sprite','shadow','label'].map(kind => this.children.getByName(`npc-${kind}-${npc.npc_id}`)).filter(Boolean);
+      if (this.npcPositions.get(npc.npc_id) !== npc.x) {
+        this.tweens.killTweensOf(targets);
+        if (sprite && npc.activity === 'travelling') sprite.setFlipX(npc.x < sprite.x);
+        this.tweens.add({targets, x:npc.x, duration:this.reducedMotion ? 0 : 950,ease:'Linear'});
+        this.npcPositions.set(npc.npc_id,npc.x);
+      }
+      if (sprite && npc.activity === 'travelling' && !this.reducedMotion && this.anims.exists(`${npc.sprite_id}-walk`)) sprite.anims.play(`${npc.sprite_id}-walk`,true);
     }
   }
 
@@ -260,7 +276,11 @@ export class CityScene extends Phaser.Scene {
       if (shadow) shadow.x = Math.round(position.x);
     }
     for (const {image, placement} of this.wanderers) {
-      image.x = Math.round(placement.x + Math.sin(time / 1600 + placement.x) * (placement.drift ?? 0));
+      const range=placement.frame==='bird'?200:placement.frame==='dog'?75:55;
+      const speed=placement.frame==='bird'?35:placement.frame==='dog'?12:10;
+      const phase=(time/1000*speed+placement.x)%(range*2);
+      image.x=Math.round(placement.x-range/2+(phase<range?phase:range*2-phase));
+      image.setFlipX(phase>=range);
       if (placement.frame === 'bird') image.y = Math.round(placement.y + Math.sin(time / 900 + placement.x) * 4);
     }
     const nearest = this.currentWorld.visible_npcs.find(npc => Math.abs(npc.x - position.x) <= 64);

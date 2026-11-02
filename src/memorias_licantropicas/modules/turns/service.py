@@ -120,8 +120,11 @@ class TurnService:
         if state.detained_npc_id == werewolf:
             status = "won"
             detention = "transformed"
-            headline = "Lobisomem revela-se na cela; cidade está livre da ameaça"
-            body = ("A transformação do detido foi testemunhada na delegacia. "
+            headline = "Floriano vence: lobisomem desmascarado na cadeia"
+            profile = await self._characters.get(werewolf)
+            name = profile.name if profile else werewolf
+            body = (f"Floriano desvendou o caso: {name} se transformou na cela. "
+                    "A cidade testemunhou a prova final. "
                     "O lobisomem foi expulso da cidade, encerrando o caso de Floriano.")
             events.append(CaseEvent(type="werewolf.expelled", data={"character_id": werewolf, "day": day}))
         else:
@@ -162,7 +165,7 @@ class TurnService:
             status = "active" if any(member.role == "civil" and member.alive and member.character_id not in state.expelled_npc_ids for member in game.characters) else "lost"
             if status == "lost":
                 body += " Não restam civis vivos; o caso de Floriano terminou em derrota."
-        edition = JournalEdition(day=day, headline=headline, body=body, victim_id=victim_id,
+        edition = JournalEdition(illustration="victory" if status == "won" else "quiet" if not victim_id else "crime_docks" if location_id == "cais_lanternas" else "crime_garden" if location_id in {"casa_verde", "cabana_capitu"} else "crime_street", day=day, headline=headline, body=body, victim_id=victim_id,
                                  location_id=location_id, detention_outcome=detention)
         game = game.model_copy(update={"status": status})
         updated = state.model_copy(update={
@@ -228,6 +231,14 @@ class TurnService:
             if result.state == state and not result.events:
                 return state
             updated = result.state.model_copy(update={"revision": state.revision + 1})
+            if confession:
+                winner_id = next(m.character_id for m in game.characters if m.role == "werewolf")
+                profile = await self._characters.get(winner_id)
+                name = profile.name if profile else winner_id
+                disposition = "entregue à custódia do delegado" if updated.ending_method == "confession" else "expulso da cidade pela assembleia"
+                updated = updated.model_copy(update={"journal": (*updated.journal, JournalEdition(
+                    day=updated.day, illustration="victory", headline="Floriano vence: a cidade está livre do lobisomem",
+                    body=f"Floriano reuniu os indícios e desvendou o caso. {name}, o lobisomem, foi {disposition}. O Clarim do Rio celebra a vitória do detetive e o alívio dos moradores."))})
             updated_game = game.model_copy(update={"status": "won"}) if confession else game
             updated_world = world
             if confession:
