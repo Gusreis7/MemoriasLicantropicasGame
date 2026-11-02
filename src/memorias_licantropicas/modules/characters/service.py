@@ -10,6 +10,7 @@ def public_character(profile: CharacterProfile) -> CharacterPublic:
         id=profile.id,
         name=profile.name,
         bio=PUBLIC_BIOS.get(profile.id, ""),
+        grammatical_gender=profile.grammatical_gender,
     )
 
 

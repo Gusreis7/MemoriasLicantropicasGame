@@ -5,6 +5,8 @@ import {CaseClock, CasePoller, closestCrime, formatClock} from './case';
 import {CityScene, makeGame} from './scene';
 import {sendDialogue} from './dialogue';
 import {CustodyScene, makeCustodyGame, type CustodyMode} from './custody';
+import {personWords} from '../shared/language';
+import {POPULATION} from './population';
 import './style.css';
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
@@ -59,7 +61,7 @@ app.innerHTML = `
       </div>
     </section>
   </div>
-  <div id="custody-overlay" class="overlay custody-overlay" hidden><section class="custody-modal" role="dialog" aria-modal="true" aria-labelledby="custody-title"><header><p class="eyebrow">NA DELEGACIA</p><h2 id="custody-title">Uma noite sob custódia</h2><p id="custody-caption" role="status" aria-live="polite"></p></header><div id="custody-canvas" aria-label="Cena da cadeia com o acusado atrás das grades"></div><footer><span id="custody-clock"></span><button id="leave-custody" class="button secondary" type="button">Voltar à investigação</button></footer></section></div>
+  <div id="custody-overlay" class="overlay custody-overlay" hidden><section class="custody-modal" role="dialog" aria-modal="true" aria-labelledby="custody-title"><header><p class="eyebrow">NA DELEGACIA</p><h2 id="custody-title">Uma noite sob custódia</h2><p id="custody-caption" role="status" aria-live="polite"></p></header><div id="custody-canvas" aria-label="Cena da delegacia com a pessoa detida atrás das grades"></div><footer><span id="custody-clock"></span><button id="leave-custody" class="button secondary" type="button">Voltar à investigação</button></footer></section></div>
   <div id="phase-overlay" class="overlay phase-overlay" hidden><section class="case-modal phase-modal" role="dialog" aria-modal="true" aria-labelledby="phase-title" aria-describedby="phase-description"><article id="victory-paper" class="victory-paper" hidden><header class="newspaper-masthead"><div class="newspaper-dateline"><span>RIO DE JANEIRO · 1890</span><span>EDIÇÃO EXTRAORDINÁRIA</span></div><h2>O Clarim do Rio</h2><div class="newspaper-edition"><span>A VITÓRIA DE FLORIANO</span><span id="victory-day"></span></div></header><h3 id="victory-headline"></h3><div class="press-picture press-victory" role="img" aria-label="Ilustração em preto e branco da cidade celebrando Floriano"></div><p id="victory-body"></p><p class="victory-ending">O caso está encerrado. A cidade volta a respirar.</p></article><span class="phase-moon" aria-hidden="true">☾</span><p class="eyebrow" id="phase-eyebrow">A CIDADE RECOLHE-SE</p><h2 id="phase-title">A noite guarda seus segredos.</h2><p id="phase-description">Floriano aguarda a manhã. Os acontecimentos serão publicados no Clarim do Rio.</p><p id="phase-countdown" role="status" aria-live="polite"></p><button id="ending-new-case" class="button primary" type="button" hidden>Iniciar outro caso</button></section></div>
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 `;
@@ -148,6 +150,7 @@ async function settleMovement() {
 function applySnapshot(snapshot: WorldSnapshot) {
   world = snapshot;
   $('#location-name').textContent = snapshot.location.name;
+  $('#game-canvas').setAttribute('aria-label',`${snapshot.location.name}. Use as setas para andar e E para conversar. Ao fundo: ${POPULATION[snapshot.location.id].map(person=>`${person.name}, ${person.occupation}`).join('; ')}.`);
   $('#world-caption').textContent = locationDescription[snapshot.location.id];
   scene?.apply(snapshot);
   if (modal === "map") renderMapResidents();
@@ -260,7 +263,7 @@ function renderAssembly() {
   const panel = $('#assembly-result'); panel.replaceChildren();
   const record = caseState?.assembly;
   if (!record) return;
-  addText(panel, 'h4', record.expelled ? `${npcName(record.suspect_id)} foi expulso.` : 'A proposta não alcançou maioria.');
+  addText(panel, 'h4', record.expelled ? `Expulsão de ${npcName(record.suspect_id)} confirmada.` : 'A proposta não alcançou maioria.');
   addText(panel, 'p', `${record.votes.filter(v => v.expel).length} votos pela expulsão; ${record.required_votes} necessários. ${record.outcome === 'innocent' ? 'Era inocente. O ressentimento entre os pares aumentou.' : ''}`);
   for (const vote of record.votes) addText(panel, 'p', `${vote.voter_id === 'player' ? 'Floriano' : npcName(vote.voter_id)}: ${vote.expel ? 'expulsar' : 'não expulsar'}. ${vote.reason}`);
 }
@@ -489,8 +492,10 @@ function showCustody(npcID:string,mode:CustodyMode):Promise<void> {
   const asset=manifest.characters.find(c=>c.id===npcID);
   if(!asset)return Promise.resolve();
   const name=npcName(npcID);
+  const words=personWords(cast.find(member=>member.character.id===npcID)?.character);
   $('#custody-title').textContent=mode==='transformed' ? 'A verdade por trás das grades' : mode==='released' ? 'A porta se abre ao amanhecer' : `${name} está sob custódia`;
-  $('#custody-caption').textContent=mode==='transformed' ? `${name} se transformou. Floriano desvendou o caso.` : mode==='released' ? `${name} não se transformou e será solto. A investigação continua.` : 'A acusação ainda não confirma a culpa. Floriano aguarda os acontecimentos da noite.';
+  $('#custody-caption').textContent=mode==='transformed' ? `${name} se transformou. Floriano desvendou o caso.` : mode==='released' ? `${name} não se transformou e será ${words.release}. A investigação continua.` : 'A acusação ainda não confirma a culpa. Floriano aguarda os acontecimentos da noite.';
+  $('#custody-canvas').setAttribute('aria-label',`Delegacia com a mesa do delegado à esquerda, ${name} na cela central e bancos de espera à direita`);
   $('#leave-custody').hidden=mode!=='waiting';setModal('custody');
   if(!custodyScene || custodyNpc!==npcID){custodyGame?.destroy(true);custodyNpc=npcID;custodyScene=new CustodyScene(asset);custodyGame=makeCustodyGame($('#custody-canvas'),custodyScene);}
   return new Promise(resolve=>{custodyScene!.setMode(mode,resolve);if(mode==='waiting'||mode==='night')resolve();});
@@ -545,7 +550,7 @@ function renderCase() {
   $('#case-hint-title').textContent = caseState.detained_npc_id
     ? 'Uma detenção. Uma noite de espera.' : `${caseState.inventory.length} vestígios, ${caseState.testimonies.length} depoimentos.`;
   $('#case-hint').textContent = caseState.detained_npc_id
-    ? 'O acusado ficará na cela esta noite. O jornal trará os acontecimentos da manhã.'
+    ? `${personWords(cast.find(member=>member.character.id===caseState?.detained_npc_id)?.character).accused} ficará na cela esta noite. O jornal trará os acontecimentos da manhã.`
     : 'Recolha vestígios nas cenas do crime. Mostre-os aos moradores e confronte versões antes de chamar o delegado.';
   renderJournal(); renderPresentation(); renderInterrogation(); renderNotebook();
   if (modal !== 'delegate') renderAccusation();
@@ -681,7 +686,8 @@ function renderAccusation() {
     const portrait = document.createElement('img'); portrait.src = portraitPath(member.character.id);
     portrait.alt = ''; portrait.width = 88; portrait.height = 96;
     const name = document.createElement('strong'); name.textContent = member.character.name;
-    const availability = document.createElement('small'); availability.textContent = !member.alive ? 'Falecido' : expelled ? 'Expulso' : detained ? 'Sob custódia' : 'Selecionar';
+    const words=personWords(member.character);
+    const availability = document.createElement('small'); availability.textContent = !member.alive ? words.deceased : expelled ? words.expelled : detained ? 'Sob custódia' : 'Selecionar';
     label.append(input, portrait, name, availability); gallery.append(label);
   }
   const renderChoice = (container: HTMLElement, name: string, id: string, text: string, item?: CaseEvidence, witnessID?: string) => {

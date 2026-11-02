@@ -11,6 +11,7 @@ CONTENT_VERSION = "3"
 _PROFILES: tuple[CharacterProfile, ...] = (
     CharacterProfile(
         id="bentinho",
+        grammatical_gender="masculine",
         name="Bentinho",
         bio=(
             "Casado com Capitu, vive tomado pelo ciúme do trabalho dela e de seus clientes, "
@@ -26,6 +27,7 @@ _PROFILES: tuple[CharacterProfile, ...] = (
     ),
     CharacterProfile(
         id="capitu",
+        grammatical_gender="feminine",
         name="Capitu",
         bio=(
             "De família cigana, trabalha como bruxa por encomenda. É casada com Bentinho "
@@ -45,6 +47,7 @@ _PROFILES: tuple[CharacterProfile, ...] = (
     ),
     CharacterProfile(
         id="escobar",
+        grammatical_gender="masculine",
         name="Escobar",
         bio=(
             "Amigo da família de Bentinho e Capitu. Secretamente apaixonado por Bentinho "
@@ -57,6 +60,7 @@ _PROFILES: tuple[CharacterProfile, ...] = (
     ),
     CharacterProfile(
         id="rubiao",
+        grammatical_gender="masculine",
         name="Rubião",
         bio=(
             "Herdeiro de uma fortuna, costuma ser manipulado. Nutre interesse romântico "
@@ -71,6 +75,7 @@ _PROFILES: tuple[CharacterProfile, ...] = (
     ),
     CharacterProfile(
         id="virgilia",
+        grammatical_gender="feminine",
         name="Virgília Neves",
         bio=(
             "Viúva, tinha uma queda por Brás Cubas, morto no início da história. "
@@ -82,6 +87,7 @@ _PROFILES: tuple[CharacterProfile, ...] = (
     ),
     CharacterProfile(
         id="florenca",
+        grammatical_gender="feminine",
         name="Florença",
         bio=(
             "Jovem, solteira e filha única, trabalha e teve o pai internado por Bacamarte "
@@ -93,6 +99,7 @@ _PROFILES: tuple[CharacterProfile, ...] = (
     ),
     CharacterProfile(
         id="bacamarte",
+        grammatical_gender="masculine",
         name="Dr. Bacamarte",
         bio=(
             "Cientista da cidade, valoriza a ciência e rejeita crendices populares. "

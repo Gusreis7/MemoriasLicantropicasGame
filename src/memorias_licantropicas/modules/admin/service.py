@@ -132,6 +132,7 @@ class AdminService:
             characters=[AdminCharacter(
                 character_id=character.character_id,
                 name=names.get(character.character_id, character.character_id),
+                grammatical_gender=profiles[character.character_id].grammatical_gender if character.character_id in profiles else None,
                 role=character.role, alive=character.alive,
                 location_id=positions[character.character_id].location_id if character.character_id in positions else None,
                 x=positions[character.character_id].x if character.character_id in positions else None,

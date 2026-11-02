@@ -5,7 +5,7 @@ import type {CasePublic, GamePublic, Location, WorldSnapshot} from '../shared/ap
 async function cityFixture(page: import('@playwright/test').Page) {
   const now = Date.now();
   const names = {rubiao: 'Rubião', capitu: 'Capitu', escobar: 'Escobar', bentinho: 'Bentinho', virgilia: 'Virgília Neves', florenca: 'Florença', bacamarte: 'Dr. Bacamarte'};
-  const cast: GamePublic = {id: 'case-ui', status: 'active', characters: Object.entries(names).map(([id, name]) => ({character: {id, name}, alive: true}))};
+  const cast: GamePublic = {id: 'case-ui', status: 'active', characters: Object.entries(names).map(([id, name]) => ({character: {id, name, grammatical_gender: ['capitu','virgilia','florenca'].includes(id) ? 'feminine' : 'masculine'}, alive: true}))};
   const place: Location = {id: 'praca_verde', name: 'Praça Verde', width: 960, height: 360, ground_y: 300, background: '/assets/locations/praca_verde.png', exits: [
     {side: 'left', target_location_id: 'cabana_capitu', arrival_side: 'right'}, {side: 'right', target_location_id: 'cais_lanternas', arrival_side: 'left'},
   ]};
@@ -250,4 +250,32 @@ test('cadeia mostra detido, bloqueia a noite e solta inocente antes do jornal', 
   await expect(page.locator('#custody-title')).toContainText('amanhecer');
   await expect(page.locator('#journal-overlay')).toBeVisible({timeout:10000});
   await expect(page.locator('#journal-body')).toContainText('foi solto');
+});
+
+test('personagem feminina aguarda na cela e recebe aviso de soltura no feminino', async ({page}) => {
+  const city=await cityFixture(page);await begin(page);
+  city.state.detained_npc_id='florenca';city.state.revision++;
+  await expect(page.locator('#custody-title')).toContainText('Florença');
+  await expect(page.locator('#case-hint')).toContainText('A acusada');
+  await expect(page.locator('#custody-canvas')).toHaveAttribute('aria-label',/Florença na cela central/);
+  await page.screenshot({path:'../artifacts/delegacia-florenca.png',fullPage:true});
+  city.state.phase='night';city.state.revision++;
+  await expect(page.locator('#leave-custody')).toBeHidden();
+  city.state.phase='day';city.state.day=2;city.state.detained_npc_id=null;city.state.revision++;
+  city.state.journal.push({day:2,title:'O Clarim do Rio',headline:'Florença volta à cidade',body:'Florença foi solta ao amanhecer.',victim_id:null,victim_name:null,location_id:null,detention_outcome:'released',illustration:'quiet'});
+  await expect(page.locator('#custody-caption')).toContainText('Florença não se transformou e será solta');
+  await expect(page.locator('#journal-body')).toContainText('Florença foi solta');
+});
+
+test('personagem masculino também se transforma na cela e chega à edição de vitória', async ({page}) => {
+  const city=await cityFixture(page);await begin(page);
+  city.state.detained_npc_id='bentinho';city.state.revision++;
+  await expect(page.locator('#custody-title')).toContainText('Bentinho');
+  await expect(page.locator('#case-hint')).toContainText('O acusado');
+  city.state.phase='finished';city.state.status='won';city.state.revision++;
+  city.state.ending={result:'won',method:'detention',werewolf_id:'bentinho',message:'Bentinho se transformou na cela. Floriano venceu.'};
+  await expect(page.locator('#custody-caption')).toContainText('Bentinho se transformou');
+  await page.waitForTimeout(1900);
+  await page.screenshot({path:'../artifacts/delegacia-bentinho-feral.png',fullPage:true});
+  await expect(page.locator('#victory-paper')).toBeVisible({timeout:10000});
 });

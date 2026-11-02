@@ -20,7 +20,7 @@ async def test_catalog_is_public_and_has_seven_suspects(api_client):
     assert len(characters) == 7
     assert len({character["id"] for character in characters}) == 7
     for character in characters:
-        assert set(character) == {"id", "name", "bio"}
+        assert set(character) == {"id", "name", "bio", "grammatical_gender"}
     assert "separar" not in (await api_client.get("/api/v1/characters/capitu")).json()["bio"]
     assert (await api_client.get("/api/v1/characters/desconhecido")).status_code == 404
 
@@ -37,7 +37,7 @@ async def test_create_game_persists_secret_and_returns_public_state(api_client, 
     assert public["status"] == "active"
     for state in public["characters"]:
         assert set(state) == {"character", "alive"}
-        assert set(state["character"]) == {"id", "name", "bio"}
+        assert set(state["character"]) == {"id", "name", "bio", "grammatical_gender"}
     assert (await api_client.get(f'/api/v1/games/{public["id"]}')).json() == public
 
 

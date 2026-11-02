@@ -24,7 +24,9 @@ export interface CharacterAsset {
   displayWidth: number; displayHeight: number; origin: {x: number; y: number}; portraitPath?: string;
 }
 export interface CharacterManifest {version: string; characters: CharacterAsset[]}
-export interface GamePublic {id: string; status: 'active' | 'won' | 'lost'; characters: Array<{character: {id: string; name: string}; alive: boolean}>}
+export type GrammaticalGender = 'masculine' | 'feminine';
+export interface PublicCharacter {id: string; name: string; grammatical_gender?: GrammaticalGender}
+export interface GamePublic {id: string; status: 'active' | 'won' | 'lost'; characters: Array<{character: PublicCharacter; alive: boolean}>}
 export interface CaseCrime {id: string; day: number; victim_id: string; victim_name: string; location_id: LocationID; x: number; remaining_clues: number}
 export interface CaseEvidence {id: string; crime_id: string; item_id: string; name: string; kind: 'unique' | 'singular' | 'common'; description: string}
 export interface CaseTestimony {id: string; day: number; evidence_id: string; witness_id: string; witness_name: string; recognition: 'recognizes' | 'denies' | 'unknown'; claimed_owner_id: string | null; text: string}

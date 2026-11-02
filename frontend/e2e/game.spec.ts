@@ -1,5 +1,21 @@
 import { test, expect } from '@playwright/test';
 
+test('moradores de diferentes ofícios povoam os cinco locais',async({page})=>{
+  const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
+  const atlas=await page.request.get('/assets/ambient/citizens.json');expect(atlas.ok()).toBeTruthy();
+  expect(Object.keys((await atlas.json()).frames)).toHaveLength(24);
+  await page.goto('/');await page.locator('#start').click();
+  await expect(page.locator('#scene-loading')).toBeHidden({timeout:30000});await page.locator('#read-journal').click();
+  await expect(page.locator('#game-canvas')).toHaveAttribute('aria-label',/Rita, quitandeira/);
+  for(const [name,occupation] of [['Cabana da Capitu','costureira'],['Casa Verde','caixeiro'],['Café do Largo','cocheiro'],['Cais das Lanternas','estivador']]){
+    await page.locator('#open-map').click();await page.getByRole('button',{name:new RegExp(name)}).click();
+    await expect(page.locator('#location-name')).toHaveText(name);
+    await expect(page.locator('#game-canvas')).toHaveAttribute('aria-label',new RegExp(occupation));
+  }
+  await page.screenshot({path:'../artifacts/cais-moradores.png',fullPage:true});
+  expect(errors).toEqual([]);
+});
+
 test('explorar, conversar, viajar, retomar e observar com autenticação', async ({page}) => {
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));

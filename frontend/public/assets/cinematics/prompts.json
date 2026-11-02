@@ -3,11 +3,13 @@
   "assets": {
     "werewolf": {
       "prompt": "Game sprite sheet for a pixel art mystery game in Rio de Janeiro 1890. ONE ROW of FOUR equally spaced full-body frames on genuinely transparent background, no scenery no text no borders. The same imposing anthropomorphic werewolf, charcoal brown fur, amber eyes, torn dark period frock coat and trousers, clawed feet and hands, not gory. Facing slightly right. Four sequential transformation-reveal poses: hunched crouch, rising and spreading claws, upright howl, settled breathing. Identical scale and fixed foot baseline in all four cells, ample margins and no overlap. Crisp square pixels and restrained warm earthy palette matching reference character game sprites. These frames animate a monster revealed inside a prison cell. Whole body including feet visible in each cell.",
-      "source": "exec-c8dd51d2-bb7a-42cf-9afc-0d465f1bf385.png"
+      "source": "exec-c8dd51d2-bb7a-42cf-9afc-0d465f1bf385.png",
+      "superseded_by": "feral-police-prompts.json"
     },
     "jail": {
       "prompt": "Pixel art game background, landscape composition 16:9, a simple Rio de Janeiro 1890 police station holding cell seen straight on. Empty cell, NO people NO monster NO text. Old pale stone walls, a small high barred window with moonlight, wooden bench along back wall, straw at lower right, simple oil lantern on left wall. Clear central floor for compositing a full-body character, floor baseline around 82% of image height. The central cell entrance is open to camera: do NOT draw foreground bars across the center, foreground bars are added by the game. Dark forest green shadows, muted brown, amber lamp and cool moonlight. Crisp pixel art, deliberately simple and static background, low detail, match reference game's warm earthy palette. Quiet suspenseful atmosphere, not horror gore.",
-      "source": "exec-39353fbc-656a-475e-941b-0c5fa2e13afd.png"
+      "source": "exec-39353fbc-656a-475e-941b-0c5fa2e13afd.png",
+      "superseded_by": "feral-police-prompts.json"
     },
     "animals": {
       "prompt": "Production pixel art animal animation atlas, transparent background, NO scenery NO text NO grid lines. Exactly FOUR columns by THREE rows, every cell equal size with ample transparent padding, animals same scale and baseline within each row, full silhouettes never touching neighboring cells. Row 1: the same small brown street dog facing right in four distinct walk-cycle leg poses (front legs forward, passing, opposite legs forward, passing). Row 2: the same orange tabby cat facing right, STANDING and WALKING on four legs, four distinct alternating leg and tail walk poses. Row 3: the same blue gray and cream small bird flying right, four distinct wing-beat poses (wings fully up, level, down, level). Crisp stepped square pixels, dark outlines, warm colors and small shading clusters like the reference. This is an actual animation sheet, not a selection of different animals.",

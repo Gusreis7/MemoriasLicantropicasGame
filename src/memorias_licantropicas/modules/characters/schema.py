@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict
 
 
@@ -9,3 +11,4 @@ class CharacterPublic(BaseModel):
     id: str
     name: str
     bio: str
+    grammatical_gender: Literal["masculine", "feminine"] = "masculine"

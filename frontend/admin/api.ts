@@ -1,6 +1,6 @@
 export interface Page<T> { items: T[]; total: number }
 export interface GameSummary { id: string; created_at: string; status: string }
-export interface CharacterState { character_id: string; name: string; role: string; alive: boolean; location_id?: string | null; x?: number | null }
+export interface CharacterState { character_id: string; name: string; grammatical_gender?: 'masculine' | 'feminine'; role: string; alive: boolean; location_id?: string | null; x?: number | null }
 export interface KnownDeath { victim_id: string; victim_name?: string; killer_id: string | null; killer_name?: string | null; attribution: string; source: string }
 export interface GameState {
   game_id: string; created_at: string; content_version: string; status: string;
