@@ -98,7 +98,7 @@ test('busca, apresenta vestígios e pede detenção antes de aguardar a noite', 
   await expect(page.locator('#close-dialogue')).toBeInViewport(); await page.locator('#close-dialogue').click();
   await page.locator('#open-notebook').click(); await expect(page.locator('.evidence-card')).toHaveCount(2);
   await expect(page.locator('#testimony-list')).toContainText('Rubião'); await page.locator('#close-notebook').click();
-  await page.locator('#open-delegate').click(); await page.locator('#accused-npc').selectOption('capitu');
+  await page.locator('#open-delegate').click(); await page.getByRole('radio', {name: /Capitu/}).check();
   for (const input of await page.locator('#accusation-evidence input').all()) await input.check();
   await page.locator('#accusation-testimonies input').check();
   await page.locator('#submit-accusation').click(); await expect(page.locator('#accusation-status')).toContainText('detenção');
@@ -146,4 +146,35 @@ test('registra álibi, preserva no caderno e confronta com a seleção do jogado
   await expect(page.locator('#phase-overlay')).toBeVisible();
   await expect(page.locator('#phase-description')).toContainText('confessou');
   expect(city.requests.find(request => request.path.endsWith('/confrontations'))?.body).toEqual({npc_id: 'rubiao', evidence_ids: [], testimony_ids: [], interrogation_ids: ['alibi-ui']});
+});
+
+test('delegado apresenta retratos, exige escolha e distingue moradores indisponíveis em desktop e celular', async ({page}) => {
+  const city = await cityFixture(page);
+  city.cast.characters.find(member => member.character.id === 'escobar')!.alive = false;
+  city.state.detained_npc_id = 'bentinho';
+  await begin(page); await page.locator('#open-delegate').click();
+  await expect(page.locator('.delegate-portrait-frame img')).toBeVisible();
+  await expect(page.locator('.suspect-card')).toHaveCount(7);
+  await expect(page.locator('#submit-accusation')).toBeDisabled();
+  await expect(page.getByRole('radio', {name: /Escobar/})).toBeDisabled();
+  await expect(page.getByRole('radio', {name: /Bentinho/})).toBeDisabled();
+  await page.getByRole('radio', {name: /Capitu/}).check();
+  await expect(page.locator('#accused-selection')).toContainText('Capitu');
+  await expect(page.locator('#submit-accusation')).toBeEnabled();
+  await page.getByRole('radio', {name: /Capitu/}).focus(); await page.keyboard.press('ArrowRight');
+  await expect(page.getByRole('radio', {name: /Virgília/})).toBeChecked();
+  await expect(page.locator('#accused-selection')).toContainText('Virgília');
+  await expect.poll(() => page.locator('#delegate-overlay img').evaluateAll(images => images.every(image => (image as HTMLImageElement).complete && (image as HTMLImageElement).naturalWidth > 0))).toBe(true);
+  await page.screenshot({path: '../artifacts/delegate-desktop.png', fullPage: true});
+  await page.locator('#close-delegate').click(); await page.locator('#open-delegate').click();
+  await expect(page.getByRole('radio', {name: /Virgília/})).toBeChecked();
+  await page.setViewportSize({width: 390, height: 844});
+  await expect(page.locator('.delegate-portrait-frame img')).toBeVisible();
+  expect(await page.locator('.delegate-modal').evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
+  await page.getByRole('radio', {name: /Capitu/}).check();
+  await expect(page.locator('#accused-selection')).toContainText('Capitu');
+  await page.locator('.delegate-modal').evaluate(element => {element.scrollTop = 0;});
+  await page.screenshot({path: '../artifacts/delegate-mobile.png', fullPage: true});
+  await page.locator('#close-delegate').click();
+  await expect(page.locator('#delegate-overlay')).toBeHidden();
 });

@@ -1,0 +1,11 @@
+{
+  "id": "delegado",
+  "path": "/assets/portraits/delegado.png",
+  "width": 1254,
+  "height": 1254,
+  "role": "supporting_interface_portrait",
+  "generator": "image_gen built-in",
+  "transparent_background": true,
+  "style_reference": "/assets/portraits/bacamarte.png",
+  "prompt": "Use case: historical-scene. Asset type: transparent PNG portrait for the police delegate in a pixel art detective web game set in Rio de Janeiro in 1890. Input image is a STYLE REFERENCE ONLY; create a new distinct character, not the doctor in the reference. Primary request: a single bust portrait of a mature Brazilian police delegate, about 50 years old, brown skin, broad weathered face, dark neatly groomed moustache, short graying hair, composed serious expression, looking slightly to the viewer's left toward the accusation form. Dark forest charcoal frock coat, brown waistcoat, white high collar and sober black cravat, discreet brass watch chain, period-inspired civilian official attire. Style: match the existing portrait's crisp pixel art, warm earthy colors, clear expressive eyes, stepped pixel contours, small restrained palette and simple shading. Composition: square canvas, head and shoulders centered, entire head and both shoulders fully visible, bust extending to bottom with generous transparent margin at top and sides. Transparent background with real alpha. No frame, no text, no modern police uniform, no modern badge, no weapon, no scenery, no photorealism. Keep the visual detail readable at 160px."
+}

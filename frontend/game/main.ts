@@ -38,7 +38,26 @@ app.innerHTML = `
   <div id="dialogue-overlay" class="overlay dialogue-overlay" hidden><section class="dialogue-modal" role="dialog" aria-modal="true" aria-labelledby="dialogue-name"><aside class="persona-panel"><div class="persona-frame"><img id="persona-portrait" src="" alt=""/></div><p class="eyebrow">DEPOIMENTO</p><h2 id="dialogue-name"></h2><span class="persona-flourish" aria-hidden="true">— ✦ —</span><p>Nem toda verdade vem à primeira pergunta.</p></aside><div class="conversation-panel"><header class="conversation-heading"><div><span class="conversation-dot"></span><span>Conversa com Floriano</span></div><button id="close-dialogue" class="icon-button" type="button" aria-label="Encerrar conversa">×</button></header><div id="messages" class="messages" role="log" aria-live="polite"></div><div id="dialogue-status" class="status dialogue-status" role="status" aria-live="polite"></div><div id="evidence-presenter" class="evidence-presenter" hidden><label for="present-evidence">Mostrar um vestígio</label><div><select id="present-evidence"></select><button id="present-button" class="button small" type="button">Apresentar</button></div><p id="presentation-status" role="status" aria-live="polite"></p></div><details id="interrogation-panel" class="interrogation-panel"><summary>Interrogar e confrontar versões</summary><p class="case-note">Pergunte onde estava, com quem e o que fazia. Um álibi é uma declaração que pode ser confrontada.</p><div class="interrogation-controls"><label>Dia <input id="interrogation-day" type="number" min="0" value="0"/></label><label>Período <select id="interrogation-period"><option value="night">Noite</option><option value="day">Dia</option></select></label><button id="interrogate-button" class="button small" type="button">Perguntar sobre o álibi</button></div><p id="interrogation-status" role="status" aria-live="polite"></p><details><summary>Confrontar com registros do caderno</summary><p class="case-note">Selecione vestígios, seus depoimentos e versões contraditórias. Insistir sem novos elementos não força uma confissão.</p><div id="confrontation-proofs" class="confrontation-proofs"></div><button id="confront-button" class="button small" type="button">Confrontar e pedir que admita</button><p id="confrontation-status" role="status" aria-live="polite"></p></details></details><form id="message-form" class="message-form"><label class="sr-only" for="message-input">Sua pergunta</label><textarea id="message-input" rows="2" maxlength="8000" placeholder="O que você gostaria de perguntar?" required></textarea><button id="send-message" class="button primary" type="submit" aria-label="Enviar pergunta">Enviar <span aria-hidden="true">→</span></button></form><p class="form-hint">Enter para enviar · Shift + Enter para uma nova linha</p></div></section></div>
   <div id="journal-overlay" class="overlay" hidden><section class="journal-modal case-modal" role="dialog" aria-modal="true" aria-labelledby="journal-title"><header class="newspaper-masthead"><div class="newspaper-dateline"><span>RIO DE JANEIRO</span><span>EDIÇÃO DA MANHÃ</span><button id="close-journal" class="icon-button" type="button" aria-label="Fechar jornal">×</button></div><h2 id="journal-title">O Clarim do Rio</h2><div class="newspaper-edition"><span>NOTÍCIAS DA CIDADE · 1890</span><span id="journal-day"></span></div></header><article class="newspaper-story"><p class="journal-motto">Os acontecimentos da cidade, à luz do dia.</p><h3 id="journal-headline"></h3><figure id="journal-snapshot" class="journal-snapshot" hidden><img src="/assets/press/crime-scene-snapshot.png" alt="Registro monocromático de uma rua carioca à noite, com um chapéu caído e pegadas no calçamento."/><figcaption id="journal-snapshot-caption"></figcaption></figure><p id="journal-body"></p><p id="journal-location" class="journal-location"></p></article><button id="read-journal" class="button primary" type="button">Continuar a investigação</button></section></div>
   <div id="notebook-overlay" class="overlay" hidden><section class="case-modal notebook-modal" role="dialog" aria-modal="true" aria-labelledby="notebook-title"><header class="modal-heading"><div><p class="eyebrow">O CADERNO DE FLORIANO</p><h2 id="notebook-title">Vestígios e versões</h2></div><button id="close-notebook" class="icon-button" type="button" aria-label="Fechar caderno">×</button></header><p class="case-note">Um objeto pode ter muitos donos. Um depoimento registra uma versão, não uma certeza.</p><h3>Vestígios recolhidos</h3><div id="evidence-list" class="evidence-list"></div><h3>Depoimentos sobre objetos</h3><div id="testimony-list" class="testimony-list"></div><h3>Álibis e interrogatórios</h3><div id="interrogation-list" class="testimony-list"></div><h3>Confrontos</h3><div id="confrontation-list" class="testimony-list"></div><h3>Cenas conhecidas</h3><div id="crime-list" class="crime-list"></div><h3>Relatos ouvidos por Floriano</h3><p class="case-note">Fofocas conservam a fonte de quem contou. Repetir uma história não a torna prova.</p><p id="reports-status" class="status" role="status" aria-live="polite"></p><div id="heard-report-list" class="testimony-list"></div></section></div>
-  <div id="delegate-overlay" class="overlay" hidden><section class="case-modal delegate-modal" role="dialog" aria-modal="true" aria-labelledby="delegate-title"><header class="modal-heading"><div><p class="eyebrow">UM PEDIDO DE PRISÃO</p><h2 id="delegate-title">Na presença do delegado</h2></div><button id="close-delegate" class="icon-button" type="button" aria-label="Dispensar delegado">×</button></header><p class="case-note">Apresente objetos e depoimentos que sustentem sua suspeita. Se o delegado aceitar, haverá detenção nesta noite. A transformação na cela será a prova final.</p><form id="accusation-form"><label class="field-label" for="accused-npc">Quem você acusa?</label><select id="accused-npc" required></select><fieldset><legend>Vestígios</legend><div id="accusation-evidence"></div></fieldset><fieldset><legend>Depoimentos registrados</legend><div id="accusation-testimonies"></div></fieldset><p id="accusation-status" class="status" role="status" aria-live="polite"></p><button id="submit-accusation" class="button primary" type="submit">Apresentar acusação</button></form><div id="accusation-history"></div></section></div>
+  <div id="delegate-overlay" class="overlay" hidden>
+    <section class="case-modal delegate-modal" role="dialog" aria-modal="true" aria-labelledby="delegate-title">
+      <aside class="delegate-persona">
+        <p class="eyebrow">A AUTORIDADE POLICIAL</p>
+        <div class="delegate-portrait-frame"><img src="/assets/portraits/delegado.png" alt="Delegado de polícia, de bigode e casaca escura." width="192" height="220"/></div>
+        <h3>Delegado<br> de polícia</h3><span class="persona-flourish" aria-hidden="true">— ✦ —</span>
+        <blockquote>“Suspeitas abrem o caso, detetive. São os indícios que sustentam uma prisão.”</blockquote>
+        <p class="delegate-rule">Uma acusação por dia.<br>A verdade será confirmada à noite.</p>
+      </aside>
+      <div class="delegate-case">
+        <header class="modal-heading"><div><p class="eyebrow">UM PEDIDO DE PRISÃO</p><h2 id="delegate-title">Apresente seu caso</h2></div><button id="close-delegate" class="icon-button" type="button" aria-label="Dispensar delegado">×</button></header>
+        <p class="case-note delegate-introduction">Escolha quem deseja acusar e apresente os vestígios e depoimentos que sustentam sua suspeita. A transformação na cela será a confirmação da culpa.</p>
+        <form id="accusation-form">
+          <fieldset class="suspect-fieldset"><legend><span class="case-step">01</span> Quem você acusa?</legend><p class="delegate-field-hint">Escolha um morador para examinar o pedido de prisão.</p><div id="accused-npc" class="suspect-gallery"></div><p id="accused-selection" class="accused-selection" role="status" aria-live="polite">Nenhum suspeito selecionado.</p></fieldset>
+          <div class="accusation-records"><fieldset><legend><span class="case-step">02</span> Vestígios recolhidos</legend><div id="accusation-evidence"></div></fieldset><fieldset><legend><span class="case-step">03</span> Depoimentos registrados</legend><div id="accusation-testimonies"></div></fieldset></div>
+          <div class="accusation-submit"><p id="accusation-status" class="status" role="status" aria-live="polite"></p><button id="submit-accusation" class="button primary" type="submit" disabled>Apresentar acusação <span aria-hidden="true">→</span></button></div>
+        </form><div id="accusation-history"></div>
+      </div>
+    </section>
+  </div>
   <div id="phase-overlay" class="overlay phase-overlay" hidden><section class="case-modal phase-modal" role="dialog" aria-modal="true" aria-labelledby="phase-title" aria-describedby="phase-description"><span class="phase-moon" aria-hidden="true">☾</span><p class="eyebrow" id="phase-eyebrow">A CIDADE RECOLHE-SE</p><h2 id="phase-title">A noite guarda seus segredos.</h2><p id="phase-description">Floriano aguarda a manhã. Os acontecimentos serão publicados no Clarim do Rio.</p><p id="phase-countdown" role="status" aria-live="polite"></p><button id="ending-new-case" class="button primary" type="button" hidden>Iniciar outro caso</button></section></div>
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 `;
@@ -359,6 +378,7 @@ function addText(parent: HTMLElement, tag: string, text: string, className?: str
 
 function locationName(id: string) {return locations.find(location => location.id === id)?.name ?? id;}
 function npcName(id: string) {return cast.find(member => member.character.id === id)?.character.name ?? id;}
+function portraitPath(id: string) {return manifest?.characters.find(asset => asset.id === id)?.portraitPath ?? `/assets/portraits/${id}.png`;}
 function periodLabel(day: number, period: 'night' | 'day') {return `${period === 'night' ? 'noite' : 'dia'} ${day}`;}
 function itemKind(evidence: CaseEvidence) {return {unique: 'Exclusivo', singular: 'Singular', common: 'Comum'}[evidence.kind];}
 function itemArt(itemId: string, kind: CaseEvidence['kind']) {
@@ -568,15 +588,30 @@ async function confrontNPC() {
 
 function renderAccusation() {
   if (!caseState) return;
-  const select = $<HTMLSelectElement>('#accused-npc'); const selected = select.value; select.replaceChildren();
-  for (const member of cast.filter(member => member.alive && member.character.id !== caseState?.detained_npc_id)) {
-    const option = document.createElement('option'); option.value = member.character.id; option.textContent = member.character.name; select.append(option);
+  const gallery = $('#accused-npc');
+  const selected = gallery.querySelector<HTMLInputElement>('input:checked')?.value;
+  gallery.replaceChildren();
+  for (const member of cast) {
+    const detained = member.character.id === caseState.detained_npc_id;
+    const label = document.createElement('label'); label.className = 'suspect-card';
+    const input = document.createElement('input'); input.type = 'radio'; input.name = 'accused-npc';
+    input.value = member.character.id; input.required = true; input.disabled = !member.alive || detained;
+    input.checked = !input.disabled && input.value === selected;
+    const portrait = document.createElement('img'); portrait.src = portraitPath(member.character.id);
+    portrait.alt = ''; portrait.width = 88; portrait.height = 96;
+    const name = document.createElement('strong'); name.textContent = member.character.name;
+    const availability = document.createElement('small'); availability.textContent = !member.alive ? 'Falecido' : detained ? 'Sob custódia' : 'Selecionar';
+    label.append(input, portrait, name, availability); gallery.append(label);
   }
-  if ([...select.options].some(option => option.value === selected)) select.value = selected;
-  const renderChoice = (container: HTMLElement, name: string, id: string, text: string, item?: CaseEvidence) => {
+  const renderChoice = (container: HTMLElement, name: string, id: string, text: string, item?: CaseEvidence, witnessID?: string) => {
     const label = document.createElement('label'); label.className = 'proof-choice';
     const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.name = name; checkbox.value = id;
     const title = document.createElement('span'); title.textContent = text; label.append(checkbox);
+    if (witnessID) {
+      const portrait = document.createElement('img'); portrait.className = 'witness-portrait';
+      portrait.src = portraitPath(witnessID); portrait.alt = ''; portrait.width = 36; portrait.height = 42;
+      label.append(portrait);
+    }
     if (item) label.append(itemArt(item.item_id, item.kind));
     label.append(title); container.append(label);
   };
@@ -585,10 +620,10 @@ function renderAccusation() {
   if (!caseState.inventory.length) addText(evidence, 'p', 'Você ainda não recolheu vestígios.', 'empty-case');
   const testimonies = $('#accusation-testimonies'); testimonies.replaceChildren();
   const inventorySnapshot = caseState.inventory;
-  caseState.testimonies.forEach(item => renderChoice(testimonies, 'testimony', item.id, `${item.witness_name}: ${item.text}`, inventorySnapshot.find(evidence => evidence.id === item.evidence_id)));
+  caseState.testimonies.forEach(item => renderChoice(testimonies, 'testimony', item.id, `${item.witness_name}: ${item.text}`, inventorySnapshot.find(evidence => evidence.id === item.evidence_id), item.witness_id));
   if (!caseState.testimonies.length) addText(testimonies, 'p', 'Nenhum depoimento sobre objetos registrado.', 'empty-case');
   const attempted = caseState.accusations.some(accusation => accusation.day === caseState?.day);
-  $('#submit-accusation').toggleAttribute('disabled', busy || caseClock.blocked() || attempted);
+  updateAccusationSelection();
   if (attempted) status('#accusation-status', 'O delegado já examinou uma acusação neste dia. Aguarde a próxima manhã.');
   const history = $('#accusation-history'); history.replaceChildren();
   for (const accusation of caseState.accusations) {
@@ -596,6 +631,16 @@ function renderAccusation() {
     addText(card, 'strong', `${accusation.suspect_name} · ${accusation.accepted ? 'detenção autorizada' : 'pedido recusado'} · dia ${accusation.day}`);
     addText(card, 'p', accusation.reason); history.append(card);
   }
+}
+
+function updateAccusationSelection() {
+  const selected = $('#accused-npc').querySelector<HTMLInputElement>('input:checked:not(:disabled)');
+  for (const input of $('#accused-npc').querySelectorAll<HTMLInputElement>('input:not(:disabled)')) {
+    input.closest('label')!.querySelector('small')!.textContent = input.checked ? 'Selecionado' : 'Selecionar';
+  }
+  $('#accused-selection').textContent = selected ? `Pedido de prisão contra ${npcName(selected.value)}.` : 'Nenhum suspeito selecionado.';
+  const attempted = caseState?.accusations.some(accusation => accusation.day === caseState?.day);
+  $('#submit-accusation').toggleAttribute('disabled', !selected || busy || caseClock.blocked() || Boolean(attempted));
 }
 
 async function openCasePanel(panel: 'journal' | 'notebook' | 'delegate') {
@@ -648,16 +693,18 @@ async function presentEvidence() {
 
 async function submitAccusation(event: Event) {
   event.preventDefault(); if (!world || busy || modal !== 'delegate' || caseClock.blocked()) return;
+  const suspectID = $('#accused-npc').querySelector<HTMLInputElement>('input:checked:not(:disabled)')?.value;
+  if (!suspectID) {status('#accusation-status', 'Selecione um suspeito antes de apresentar a acusação.', true); return;}
   const evidence = [...document.querySelectorAll<HTMLInputElement>('#accusation-evidence input:checked')].map(input => input.value);
   const testimony = [...document.querySelectorAll<HTMLInputElement>('#accusation-testimonies input:checked')].map(input => input.value);
   busy = true; $('#submit-accusation').setAttribute('disabled', ''); status('#accusation-status', 'O delegado examina os elementos apresentados…');
   try {
-    const result = await api.accuse(world.game_id, $<HTMLSelectElement>('#accused-npc').value, evidence, testimony);
+    const result = await api.accuse(world.game_id, suspectID, evidence, testimony);
     await applyCase(result); renderAccusation();
     const decision = result.accusations.at(-1);
     status('#accusation-status', decision?.reason ?? 'Pedido registrado.');
   } catch (error) {status('#accusation-status', explain(error), true);}
-  finally {busy = false; $('#submit-accusation').toggleAttribute('disabled', caseClock.blocked() || Boolean(caseState?.accusations.some(item => item.day === caseState?.day)));}
+  finally {busy = false; updateAccusationSelection();}
 }
 
 setInterval(renderClock, 250);
@@ -667,6 +714,7 @@ $('#present-evidence').addEventListener('change', () => renderPresentation());
 $('#interrogate-button').addEventListener('click', () => {void interrogateNPC();});
 $('#confront-button').addEventListener('click', () => {void confrontNPC();});
 $('#accusation-form').addEventListener('submit', event => {void submitAccusation(event);});
+$('#accused-npc').addEventListener('change', updateAccusationSelection);
 for (const panel of ['journal', 'notebook', 'delegate'] as const) {
   $(`#open-${panel}`).addEventListener('click', () => {void openCasePanel(panel);});
   $(`#close-${panel}`).addEventListener('click', () => {if (!busy) setModal(null);});
