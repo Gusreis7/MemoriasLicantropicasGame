@@ -116,7 +116,7 @@ def build_services(settings: Settings) -> Services:
                            turns, speech_llm, player_gate, enabled=settings.social_enabled)
     worker = SocialWorker(social, social_repository, interval_seconds=settings.social_poll_seconds)
     world = WorldService(games, characters, world_repository, player_gate, day_policy=turns,
-                         on_approach=social.interrupt if social else None)
+                         on_approach=social.interrupt if social else None, social_repository=social_repository)
     harness = HarnessService(characters, games, memory, llm, history_limit=settings.llm_history_limit,
                              day_policy=turns, context_provider=investigation.npc_context_locked,
                              knowledge_provider=knowledge.context if knowledge else None)

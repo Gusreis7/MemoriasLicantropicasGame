@@ -123,6 +123,24 @@ class Confrontation(Contract):
     created_at: AwareDatetime
 
 
+class AssemblyVote(Contract):
+    voter_id: str
+    expel: bool
+    reason: str
+
+
+class AssemblyRecord(Contract):
+    evidence_ids: tuple[UUID, ...] = ()
+    testimony_ids: tuple[UUID, ...] = ()
+    suspect_id: str
+    day: int
+    votes: tuple[AssemblyVote, ...]
+    required_votes: int
+    expelled: bool
+    outcome: Literal["werewolf", "innocent", "no_majority"]
+    created_at: AwareDatetime
+
+
 class InvestigationState(Contract):
     game_id: UUID
     revision: int = Field(default=0, ge=0)
@@ -139,7 +157,9 @@ class InvestigationState(Contract):
     activity_records: tuple[ActivityRecord, ...] = ()
     interrogations: tuple[Interrogation, ...] = ()
     confrontations: tuple[Confrontation, ...] = ()
-    ending_method: Literal["detention", "confession", "survival"] | None = None
+    assembly: AssemblyRecord | None = None
+    expelled_npc_ids: tuple[str, ...] = ()
+    ending_method: Literal["detention", "confession", "survival", "assembly"] | None = None
 
 
 class CaseEvent(Contract):

@@ -25,7 +25,7 @@ async function cityFixture(page: import('@playwright/test').Page) {
     const body = request.method() === 'POST' ? request.postDataJSON() : undefined;
     requests.push({path, body});
     if (path === '/api/v1/games' && body) return json(route, {id: cast.id});
-    if (path === '/api/v1/world/locations') return json(route, [place]);
+    if (path === '/api/v1/world/locations') return json(route, [place, {...place,id:'cais_lanternas',name:'Cais das Lanternas'}]);
     if (path === `/api/v1/games/${cast.id}`) return json(route, cast);
     if (path.endsWith('/investigation')) {
       state.server_time = new Date().toISOString(); state.seconds_remaining = Math.max(0, (Date.parse(state.phase_ends_at) - Date.now()) / 1000);
@@ -50,6 +50,11 @@ async function cityFixture(page: import('@playwright/test').Page) {
     if (path.endsWith('/present')) {
       state.testimonies = [{id: 'testimony-ui', day: state.day, evidence_id: 'ev-2', witness_id: 'rubiao', witness_name: 'Rubião', recognition: 'recognizes', claimed_owner_id: 'capitu', text: 'Reconheço esta fita; já a vi com Capitu.'}];
       state.revision++; return json(route, state);
+    }
+    if (path.endsWith('/assembly')) {
+      state.assembly = {suspect_id: body.suspect_id, day: 1, required_votes: 5, expelled: true, outcome: 'innocent',
+        votes: Object.keys(names).map(voter_id => ({voter_id, expel: true, reason: 'Os registros apresentados sustentam o pedido.'}))};
+      state.expelled_npc_ids = [body.suspect_id]; state.revision++; return json(route, state);
     }
     if (path.endsWith('/accusations')) {
       state.accusations.push({id: 'accusation-ui', day: state.day, suspect_id: body.suspect_id, suspect_name: 'Capitu', evidence_ids: body.evidence_ids, testimony_ids: body.testimony_ids, accepted: true, reason: 'Há elementos suficientes para uma detenção nesta noite.'});
@@ -177,4 +182,25 @@ test('delegado apresenta retratos, exige escolha e distingue moradores indispon�
   await page.screenshot({path: '../artifacts/delegate-mobile.png', fullPage: true});
   await page.locator('#close-delegate').click();
   await expect(page.locator('#delegate-overlay')).toBeHidden();
+});
+
+
+test('assembleia apresenta resultado único e o mapa acompanha moradores em viagem', async ({page}) => {
+  const city = await cityFixture(page);
+  city.world.npc_presences = [{npc_id:'capitu',name:'Capitu',location_id:'praca_verde',activity:'travelling',destination_id:'cais_lanternas'}];
+  city.state.inventory = [{id:'ev-pixel',crime_id:'crime-ui',item_id:'relogio_quincas',name:'Relógio de bolso',kind:'unique',description:'Objeto recolhido.'}];
+  await begin(page); await page.locator('#open-map').click();
+  await expect(page.locator('#map-residents')).toContainText('Capitu · Praça Verde → Cais das Lanternas');
+  city.world.npc_presences[0].location_id = 'cais_lanternas'; city.world.npc_presences[0].activity = 'talking'; city.world.npc_presences[0].destination_id = null;
+  await expect(page.locator('#map-residents')).toContainText('Capitu · Cais das Lanternas · Conversando');
+  await page.locator('#close-map').click(); await page.locator('#open-assembly').click();
+  await page.getByRole('radio',{name:/Rubião/}).check();
+  await page.locator('#accusation-evidence input').check();
+  await page.screenshot({path:'../artifacts/assembly-pixel-items.png',fullPage:true});
+  await page.locator('#call-assembly').click();
+  await expect(page.locator('#assembly-result')).toContainText('Era inocente');
+  await expect(page.locator('#call-assembly')).toBeDisabled();
+  await expect(page.getByRole('radio',{name:/Rubião/})).toBeDisabled();
+  await page.locator('#close-delegate').click(); await expect(page.locator('#open-assembly')).toBeDisabled();
+  expect(city.requests.filter(r => r.path.endsWith('/assembly'))).toHaveLength(1);
 });

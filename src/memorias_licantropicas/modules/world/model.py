@@ -29,6 +29,10 @@ class WorldNPC(Contract):
     social_encounter_id: UUID | None = None
     travel_destination_id: LocationID | None = None
     travel_arrives_at: AwareDatetime | None = None
+    travel_started_at: AwareDatetime | None = None
+    travel_origin_x: float | None = None
+    travel_target_x: float | None = None
+    travel_route: tuple[LocationID, ...] = ()
     social_partner_id: str | None = None
 
 

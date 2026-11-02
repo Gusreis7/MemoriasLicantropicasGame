@@ -29,7 +29,8 @@ class InvestigationService:
                 raise ConflictError("O desfecho desta investigação está incompleto.")
             ending = EndingPublic(result=state.status, werewolf_id=state.crimes[0].killer_id,
                 method=state.ending_method or ("detention" if state.status == "won" else "survival"),
-                message=("Confrontado com as provas, o lobisomem confessou e entregou-se ao delegado. "
+                message=("A assembleia expulsou o lobisomem. A cidade venceu a investigação." if state.ending_method == "assembly" else
+                         "Confrontado com as provas, o lobisomem confessou e entregou-se ao delegado. "
                          "Floriano venceu a investigação." if state.ending_method == "confession" else
                          "A transformação na cela confirmou a acusação. A cidade expulsa o lobisomem. "
                          "Floriano venceu a investigação." if state.status == "won" else
@@ -56,6 +57,8 @@ class InvestigationService:
                 testimony_ids=record.testimony_ids, accepted=record.accepted, reason=record.reason)
                 for record in state.accusations),
             detained_npc_id=state.detained_npc_id, ending=ending,
+            assembly=state.assembly.model_dump(mode="json") if state.assembly else None,
+            expelled_npc_ids=state.expelled_npc_ids,
             interrogations=tuple(InterrogationPublic(id=record.id, npc_id=record.npc_id,
                 npc_name=names.get(record.npc_id, record.npc_id), day=record.day, period=record.period,
                 location_id=record.location_id, companion_ids=record.companion_ids,
@@ -119,6 +122,20 @@ class InvestigationService:
             return CaseTransition(state=state.model_copy(update=changes), events=tuple(events))
         return await self.public(await self._turns.act(game_id, transition))
 
+    async def assemble(self, game_id, suspect_id, evidence_ids=(), testimony_ids=()):
+        from memorias_licantropicas.modules.investigation.assembly import convene
+        def transition(state, game, world):
+            record = convene(state, game, suspect_id, tuple(dict.fromkeys(evidence_ids)),
+                             tuple(dict.fromkeys(testimony_ids)), self._turns.now())
+            changes = {"assembly": record}
+            if record.expelled:
+                changes["expelled_npc_ids"] = (*state.expelled_npc_ids, suspect_id)
+            if record.outcome == "werewolf":
+                changes.update(status="won", phase="finished", ending_method="assembly")
+            return CaseTransition(state=state.model_copy(update=changes), events=(CaseEvent(
+                type="assembly.resolved", data=record.model_dump(mode="json")),))
+        return await self.public(await self._turns.act(game_id, transition))
+
     async def get(self, game_id: UUID) -> CasePublic:
         return await self.public(await self._turns.sync(game_id))
 
@@ -170,7 +187,7 @@ class InvestigationService:
             member = next((npc for npc in game.characters if npc.character_id == suspect_id), None)
             if member is None:
                 raise NotFoundError("Acusado não encontrado nesta partida.")
-            if not member.alive:
+            if not member.alive or suspect_id in state.expelled_npc_ids:
                 raise AccessDeniedError("Não é possível deter uma pessoa morta.")
             record = evaluate_accusation(state, suspect_id, tuple(dict.fromkeys(evidence_ids)),
                                          tuple(dict.fromkeys(testimony_ids)), self._turns.now())

@@ -27,7 +27,7 @@ class WorldService:
     def __init__(self, games: GameRepository, characters: CharacterRepository,
                  repository: RedisWorldRepository, gate: RedisPlayerGate,
                  clock: Callable[[], datetime] | None = None, day_policy: DayPolicy | None = None,
-                 on_approach: Callable[[UUID, str], Awaitable[None]] | None = None):
+                 on_approach: Callable[[UUID, str], Awaitable[None]] | None = None, social_repository=None):
         self._games = games
         self._characters = characters
         self._repository = repository
@@ -35,6 +35,7 @@ class WorldService:
         self._clock = clock or (lambda: datetime.now(UTC))
         self._day_policy = day_policy
         self._on_approach = on_approach
+        self._social_repository = social_repository
 
     async def _load(self, game_id: UUID) -> tuple[GameState, WorldState]:
         game = await self._games.get(game_id)
@@ -55,11 +56,32 @@ class WorldService:
                        and placement.activity != "travelling"
                        and placement.npc_id in cast and cast[placement.npc_id].alive
                        and (case is None or placement.npc_id != case.detained_npc_id)}
+        from memorias_licantropicas.modules.world.motion import project_npc
+        speech = {}
+        if self._social_repository:
+            social = await self._social_repository.get(game.id)
+            for encounter in social.encounters:
+                if encounter.location_id == world.player.location_id:
+                    for message in encounter.messages:
+                        age = (self._clock() - message.created_at).total_seconds()
+                        if 0 <= age <= 12:
+                            speech[message.sender_id] = message.content
         visible = []
+        presences = []
         for placement in world.npcs:
             member = cast.get(placement.npc_id)
-            if (placement.location_id != world.player.location_id or member is None or not member.alive
-                    or placement.activity == "travelling"):
+            if member is None or not member.alive or (case and placement.npc_id in case.expelled_npc_ids):
+                continue
+            if case and placement.npc_id == case.detained_npc_id:
+                continue
+            if placement.activity == "travelling" and (not placement.travel_started_at or not placement.travel_route):
+                continue
+            projected_location, projected_x = project_npc(placement, self._clock())
+            profile = await self._characters.get(placement.npc_id)
+            presences.append({"npc_id": placement.npc_id, "name": profile.name if profile else placement.npc_id,
+                "location_id": projected_location, "activity": placement.activity,
+                "destination_id": placement.travel_destination_id if placement.activity == "travelling" else None})
+            if projected_location != world.player.location_id:
                 continue
             if case is not None and placement.npc_id == case.detained_npc_id:
                 continue
@@ -67,9 +89,10 @@ class WorldService:
             if profile is None:
                 raise ConflictError("Ficha do personagem indisponível.")
             visible.append(VisibleNPC(
-                npc_id=profile.id, name=profile.name, x=placement.x, sprite_id=profile.id,
-                can_approach=(case is None or case.phase == "day") and abs(placement.x - world.player.x) <= APPROACH_DISTANCE,
+                npc_id=profile.id, name=profile.name, x=projected_x, sprite_id=profile.id,
+                can_approach=placement.activity != "travelling" and (case is None or case.phase == "day") and abs(placement.x - world.player.x) <= APPROACH_DISTANCE,
                 activity=placement.activity,
+                speech=speech.get(profile.id) if abs(projected_x - world.player.x) <= 180 else None,
                 social_partner_id=(placement.social_partner_id if placement.activity == "talking"
                                    and placement.social_partner_id in visible_ids else None),
             ))
@@ -78,7 +101,7 @@ class WorldService:
             location=LOCATIONS_BY_ID[world.player.location_id],
             player=PlayerPublic(location_id=world.player.location_id, x=world.player.x,
                                 facing=world.player.facing, movement_seq=world.player.movement_seq),
-            visible_npcs=tuple(visible),
+            visible_npcs=tuple(visible), npc_presences=tuple(presences),
             travel_targets=tuple(location.id for location in LOCATIONS if location.id != world.player.location_id),
         )
 

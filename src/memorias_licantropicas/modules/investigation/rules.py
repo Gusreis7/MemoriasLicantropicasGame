@@ -13,10 +13,10 @@ from memorias_licantropicas.modules.investigation.catalog import (
 )
 
 
-def choose_victim(game, detained_npc_id=None) -> str | None:
+def choose_victim(game, detained_npc_id=None, excluded_ids=()) -> str | None:
     """Escolha de regras: civis vivos e livres; nunca o detetive ou o próprio lobo."""
     candidates = tuple(npc.character_id for npc in game.characters
-                       if npc.alive and npc.role == "civil" and npc.character_id != detained_npc_id)
+                       if npc.alive and npc.character_id not in excluded_ids and npc.role == "civil" and npc.character_id != detained_npc_id)
     if not candidates:
         return None
     wolf = next(npc.character_id for npc in game.characters if npc.role == "werewolf")

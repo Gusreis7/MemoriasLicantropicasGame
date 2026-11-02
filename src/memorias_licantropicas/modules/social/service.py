@@ -187,8 +187,8 @@ class SocialService:
         origin, destination = positions[actor], positions[recipient]
         travelling = len(route) > 1 or abs(origin.x - destination.x) > 64
         # Até no mesmo cenário é preciso caminhar antes de conversar, sem salto de coordenada.
-        travel_seconds = (3 * (len(route) - 1) if len(route) > 1 else
-                          max(1, (abs(origin.x - destination.x) - 48) / 210) if travelling else 0)
+        travel_seconds = (12 * (len(route) - 1) if len(route) > 1 else
+                          max(1, (abs(origin.x - destination.x) - 48) / 65) if travelling else 0)
         arrival = now + timedelta(seconds=travel_seconds)
         deadline = min(now + timedelta(seconds=40), case.phase_ends_at)
         if arrival >= deadline:
@@ -216,7 +216,11 @@ class SocialService:
                        "social_encounter_id": encounter.id,
                        "social_partner_id": recipient if npc.npc_id == actor else actor,
                        "travel_destination_id": destination.location_id if travelling and npc.npc_id == actor else None,
-                       "travel_arrives_at": arrival if travelling and npc.npc_id == actor else None}
+                       "travel_arrives_at": arrival if travelling and npc.npc_id == actor else None,
+                       "travel_started_at": now if travelling and npc.npc_id == actor else None,
+                       "travel_origin_x": origin.x if npc.npc_id == actor else None,
+                       "travel_target_x": max(32, destination.x - 48) if npc.npc_id == actor else None,
+                       "travel_route": route if travelling and npc.npc_id == actor else ()}
             updated_npcs.append(npc.model_copy(update=updates))
         updated_world = world.model_copy(update={"revision": world.revision + 1, "npcs": tuple(updated_npcs)})
         return await self._save(
