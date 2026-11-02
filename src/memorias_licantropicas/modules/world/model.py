@@ -34,6 +34,7 @@ class WorldNPC(Contract):
     travel_target_x: float | None = None
     travel_route: tuple[LocationID, ...] = ()
     social_partner_id: str | None = None
+    player_engaged_until: AwareDatetime | None = None
 
 
 class WorldState(Contract):

@@ -1,4 +1,6 @@
 """Regras da exploração: o cliente envia intenção, o servidor calcula deslocamento."""
+from datetime import timedelta
+from memorias_licantropicas.contracts.errors import InteractionUnavailableError
 
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
@@ -184,19 +186,43 @@ class WorldService:
         if self._day_policy:
             case = await self._day_policy.require_day_locked(game_id)
             if case.detained_npc_id == npc_id:
-                raise AccessDeniedError("Este personagem está sob custódia do delegado.")
+                raise InteractionUnavailableError("npc_detained")
         game, world = await self._load(game_id)
         npc = next((member for member in game.characters if member.character_id == npc_id), None)
         if npc is None:
             raise NotFoundError("Persona não encontrada nesta partida.")
         if not npc.alive:
-            raise AccessDeniedError("Esta persona não pode conversar.")
+            raise InteractionUnavailableError("npc_unavailable")
         placement = next((member for member in world.npcs if member.npc_id == npc_id), None)
         if placement is None or placement.location_id != world.player.location_id:
-            raise AccessDeniedError("A persona está em outro local.")
+            raise InteractionUnavailableError("npc_away")
         if placement.activity == "travelling":
-            raise AccessDeniedError("Esta persona está a caminho de outro local.")
+            raise InteractionUnavailableError("npc_travelling")
         if abs(placement.x - world.player.x) > APPROACH_DISTANCE:
-            raise AccessDeniedError("Aproxime-se da persona para conversar.")
+            raise InteractionUnavailableError("npc_too_far")
         if self._on_approach is not None:
             await self._on_approach(game_id, npc_id)
+
+        # A reserva da ação protege a transição; o prazo protege também a leitura
+        # entre mensagens, quando nenhuma inferência mantém o player gate.
+        world = await self._repository.get(game_id)
+        expiry = self._clock() + timedelta(seconds=90)
+        if self._day_policy:
+            expiry = min(expiry, case.phase_ends_at)
+        if any(n.npc_id == npc_id and n.player_engaged_until and n.player_engaged_until >= expiry - timedelta(seconds=25) for n in world.npcs):
+            return
+        updated = world.model_copy(update={"revision": world.revision + 1, "npcs": tuple(
+            n.model_copy(update={"player_engaged_until": expiry}) if n.npc_id == npc_id
+            else n.model_copy(update={"player_engaged_until": None}) if n.player_engaged_until else n
+            for n in world.npcs)})
+        if not await self._repository.save(updated, expected_revision=world.revision):
+            raise ConflictError("O mundo mudou durante a abordagem; tente novamente.")
+
+    async def release_dialogue(self, game_id, npc_id):
+        world = await self._repository.get(game_id)
+        if world is None or not any(n.npc_id == npc_id and n.player_engaged_until for n in world.npcs):
+            return
+        updated = world.model_copy(update={"revision": world.revision + 1, "npcs": tuple(
+            n.model_copy(update={"player_engaged_until": None}) if n.npc_id == npc_id else n for n in world.npcs)})
+        if not await self._repository.save(updated, expected_revision=world.revision):
+            raise ConflictError("O mundo mudou ao encerrar a conversa.")

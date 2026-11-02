@@ -1,7 +1,7 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Query, Request, Response
 
 from memorias_licantropicas.modules.conversations.schema import (
     ConversationHistory, ConversationPublic, CreateConversation, MessageReply, SendMessage,
@@ -43,3 +43,9 @@ async def send_message(game_id: UUID, conversation_id: UUID, body: SendMessage, 
 async def get_history(game_id: UUID, conversation_id: UUID, service: Service,
                       limit: Annotated[int, Query(ge=1, le=200)] = 50):
     return await service.history(game_id, conversation_id, limit)
+
+
+@router.post("/{conversation_id}/close", status_code=204)
+async def close_conversation(game_id: UUID, conversation_id: UUID, service: Service):
+    await service.close(game_id, conversation_id)
+    return Response(status_code=204)

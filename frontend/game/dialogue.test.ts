@@ -80,3 +80,15 @@ describe('confirmação de envio da conversa', () => {
     expect(result.clearDraft).toBe(true);
   });
 });
+
+it('uma rejeição de disponibilidade bloqueia o chat sem confundir com resposta perdida', async () => {
+  const send = vi.fn().mockRejectedValue(new ApiError(403, 'O personagem saiu deste local.', 'npc_away'));
+  const history = vi.fn();
+  const result = await sendDialogue({content: question, baseline: [], send, history});
+  expect(result.blocked).toBe(true);
+  expect(result.clearDraft).toBe(false);
+  expect(result.status).toContain('saiu deste local');
+  expect(result.status).not.toContain('Ainda não há resposta');
+  expect(history).not.toHaveBeenCalled();
+  expect(send).toHaveBeenCalledOnce();
+});

@@ -35,3 +35,18 @@ class LLMUnavailableError(Exception):
         super().__init__(message)
         # Somente códigos conhecidos podem atravessar a fronteira HTTP/logs.
         self.code = code if code in LLM_PUBLIC_DETAILS else "llm_unavailable"
+
+
+INTERACTION_DETAILS = {
+    "npc_away": "O personagem saiu deste local. Feche a conversa e procure-o no mapa.",
+    "npc_travelling": "O personagem está em deslocamento. Aguarde a chegada e aproxime-se novamente.",
+    "npc_too_far": "Você está longe do personagem. Feche a conversa e aproxime-se novamente.",
+    "npc_unavailable": "O personagem não está disponível para conversar agora.",
+    "npc_detained": "O personagem está sob custódia do delegado.",
+}
+
+
+class InteractionUnavailableError(AccessDeniedError):
+    def __init__(self, code):
+        self.code = code if code in INTERACTION_DETAILS else "npc_unavailable"
+        super().__init__(INTERACTION_DETAILS[self.code])

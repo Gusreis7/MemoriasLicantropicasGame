@@ -1,6 +1,7 @@
 import {ApiError, type Message} from '../shared/api';
 
 export interface DialogueResult {
+  blocked?: boolean;
   outcome: 'confirmed' | 'failed' | 'uncertain';
   messages: Message[];
   clearDraft: boolean;
@@ -28,6 +29,12 @@ export async function sendDialogue(options: {
   try {
     reply = await send();
   } catch (error) {
+    // Uma rejeição explícita precede a inferência/persistência. Não é uma confirmação perdida.
+    if (error instanceof ApiError && (error.status === 403 || error.status === 404)) {
+      const detail = error.message === 'Acesso não permitido.' ? 'Esta conversa não está mais disponível. Feche e aborde o personagem novamente.' : error.message;
+      return {outcome:'failed', blocked:true, messages:baseline, clearDraft:false,
+        status:`${detail} Seu rascunho foi mantido.`};
+    }
     let recovered: Message[];
     try {recovered = await history();}
     catch {
