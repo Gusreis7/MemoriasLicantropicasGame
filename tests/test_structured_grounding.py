@@ -28,11 +28,26 @@ def test_bad_claim_does_not_erase_independently_valid_claim():
 
 
 def test_unrecorded_presence_and_invented_source_are_replaced():
-    assert "Não tenho uma lembrança" in ground_dialogue_output("Eu estava no cais ontem.", {}, {})
-    assert "Não recebi" in ground_dialogue_output("Soube por Escobar que você perguntou.", {}, {"escobar": "Escobar"})
-    assert "Não recebi" in ground_dialogue_output("Ouvi dizer, de Virgília, que esteve no cais.", {}, {"virgilia": "Virgília Neves"})
-    assert "Não recebi" in ground_dialogue_output("Ouvi dizer, pela senhora Virgília, que esteve no cais.", {}, {"virgilia": "Virgília Neves"})
-    assert "Não tenho uma lembrança" in ground_dialogue_output("Andei pelo cais ontem.", {}, {})
+    for invented_presence in ("Eu estava no cais ontem.", "Andei pelo cais ontem."):
+        response = ground_dialogue_output(invented_presence, {}, {})
+        assert response != invented_presence
+        assert "não me lembro" in response
+        assert "no cais" not in response and "interrogatório" not in response
+    for invented_source, names in (
+        ("Soube por Escobar que você perguntou.", {"escobar": "Escobar"}),
+        ("Ouvi dizer, de Virgília, que esteve no cais.", {"virgilia": "Virgília Neves"}),
+        ("Ouvi dizer, pela senhora Virgília, que esteve no cais.", {"virgilia": "Virgília Neves"}),
+    ):
+        response = ground_dialogue_output(invented_source, {}, names)
+        assert response != invented_source
+        assert "não ouvi" in response
+        assert not any(name in response for name in ("Escobar", "Virgília"))
+
+
+def test_personal_activity_is_usable_without_formal_interrogation():
+    context = {"suas_atividades": [{"dia": 0, "periodo": "night", "local_id": "cais_lanternas"}]}
+    text = "Eu estava no cais, cuidando de meus afazeres."
+    assert ground_dialogue_output(text, context, {}) == text
 
 
 def test_official_version_and_heard_source_remain_authorized():

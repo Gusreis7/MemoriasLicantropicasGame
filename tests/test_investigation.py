@@ -1,5 +1,5 @@
 from collections import Counter
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -8,6 +8,7 @@ import pytest
 from fastapi import FastAPI
 
 from memorias_licantropicas.contracts.errors import AccessDeniedError, ConflictError, NotFoundError
+from memorias_licantropicas.contracts.investigation import CaseEvent
 from memorias_licantropicas.contracts.model import GameCharacter, GameState
 from memorias_licantropicas.modules.characters.repository import CatalogCharacterRepository
 from memorias_licantropicas.modules.investigation.catalog import INVENTORIES, ITEMS_BY_ID, OBSERVED_PEOPLE
@@ -45,12 +46,21 @@ class FakeTurns:
             raise ConflictError("Dia encerrado.")
         return self.state
 
-    async def act(self, game_id, transition):
+    async def act(self, game_id, transition, *, start_night_on_detention=False, allow_assembly=False):
         await self.require_day_locked(game_id)
         result = transition(self.state, self.game, self.world)
-        if result.state != self.state:
-            self.state = result.state.model_copy(update={"revision": self.state.revision + 1})
+        updated = result.state
+        starts_night = (start_night_on_detention and self.state.detained_npc_id is None
+                        and updated.detained_npc_id is not None)
+        if starts_night:
+            assert any(record.accepted and record.suspect_id == updated.detained_npc_id
+                       for record in updated.accusations[len(self.state.accusations):])
+            updated = updated.model_copy(update={"phase": "night", "phase_ends_at": self.now() + timedelta(seconds=8)})
+        if updated != self.state:
+            self.state = updated.model_copy(update={"revision": self.state.revision + 1})
         self.events.extend(result.events)
+        if starts_night:
+            self.events.append(CaseEvent(type="night.started", data={"day": self.state.day, "reason": "accepted_detention"}))
         return self.state
 
 
@@ -240,6 +250,7 @@ async def test_accusation_detains_and_consumes_only_one_attempt_per_day(case):
                                       tuple(item.id for item in state.testimonies))
     assert public.accusations[0].accepted and public.detained_npc_id == "capitu"
     assert public.ending is None and public.status == "active"
+    assert public.phase == "night" and public.seconds_remaining == 8
     assert {event.type for event in case.turns.events} >= {"accusation.reviewed", "character.detained"}
     with pytest.raises(ConflictError):
         await case.service.accuse(case.game.id, "rubiao", (), ())
