@@ -1,12 +1,25 @@
 {
-  "asset": "policiais-1890.png",
-  "type": "static-pixel-art-cutout",
-  "characters": 2,
-  "transparent_background": true,
-  "source_dimensions": "1536x1024",
-  "trimmed_dimensions": "788x1016",
-  "rendering": "Phaser image, nearest-neighbor filter, scaled to 92x118 px",
-  "generated_with": "OpenAI image generation",
-  "prompt_file": "prompt.md",
-  "scene_notice": "Rendered in Phaser code, never baked into the image"
+  "assets": [
+    {
+      "asset": "policiais-1890.png",
+      "type": "static-pixel-art-cutout",
+      "characters": 2,
+      "transparent_background": true,
+      "source_dimensions": "788x1016",
+      "render_dimensions": "92x86 px",
+      "rendering": "Phaser image with nearest-neighbor filter; both officers match the 86px height of town NPCs",
+      "generated_with": "OpenAI image generation",
+      "prompt_file": "prompt.md"
+    },
+    {
+      "asset": "placa-faixa.png",
+      "type": "static-pixel-art-crime-scene-prop",
+      "transparent_background": true,
+      "source_dimensions": "1971x798",
+      "render_dimensions": "216x88 px",
+      "rendering": "Phaser image with nearest-neighbor filter; sign lettering is drawn on the board in game",
+      "generated_with": "OpenAI image generation",
+      "prompt_file": "placa-faixa-prompt.md"
+    }
+  ]
 }
