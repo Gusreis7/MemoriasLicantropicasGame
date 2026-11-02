@@ -172,7 +172,7 @@ class AdminService:
             raise StorageUnavailableError("Histórico administrativo inválido.")
         if any(str(message.id) != _text(identifier) for identifier, message in zip(ids, messages, strict=True)):
             raise StorageUnavailableError("Histórico administrativo inválido.")
-        return Page[AdminMessage](items=[AdminMessage.model_validate(message.model_dump()) for message in messages],
+        return Page[AdminMessage](items=[AdminMessage.model_validate(message.model_dump(exclude={"narrative_authorized"})) for message in messages],
                                   total=await self._client.llen(f"{key}:order"))
 
     @storage_errors

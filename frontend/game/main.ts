@@ -329,11 +329,12 @@ function renderAssemblyPanel() {
       if (!$<HTMLTextAreaElement>('#assembly-reply').value && session.reply) $<HTMLTextAreaElement>('#assembly-reply').value = session.reply;
     }
     $('#assembly-subject').textContent = `Em discussão: ${npcName(session.suspect_id)}`;
-    const signature = JSON.stringify([session.id, session.phase, session.messages]);
+    const transcript = caseState.assembly?.messages ?? session.messages;
+    const signature = JSON.stringify([session.id, session.phase, transcript]);
     if (signature !== assemblyRenderedRevision) {
       assemblyRenderedRevision = signature;
       const chat = $('#assembly-chat'); chat.replaceChildren();
-      for (const message of session.messages) {
+      for (const message of transcript) {
         const row = document.createElement('article'); row.className = `assembly-message${message.speaker_id === 'player' ? ' is-floriano' : ''}`;
         const portrait = message.speaker_id === 'player' ? document.createElement('span') : document.createElement('img');
         if (portrait instanceof HTMLImageElement) {portrait.src = portraitPath(message.speaker_id); portrait.alt = '';}

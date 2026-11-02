@@ -1,6 +1,6 @@
 # Conversa natural, relações, mestre da sessão e assembleia
 
-Status: proposta para a próxima implementação. Esta avaliação não altera as mecânicas em execução.
+Status: base implementada em develop. Contratos finais em contrato_refatoracao_narrativa_execucao.md; resultados e limitações em exploracao_narrativa/relatorio.md. O plano abaixo registra a direção original; a assembleia executada foi reduzida a 60 segundos, uma rodada e uma réplica, com possibilidade de expulsar Floriano.
 
 ## Objetivo
 
@@ -149,7 +149,7 @@ Calibrar esses pesos em cenários reproduzíveis. Evitar que inimizade determine
 | `feat/natural_investigation_ui` | Frontend | Retirar formulários de confronto, anexos no chat, roda de assembleia e estados de retomada. Avançar com schemas estáveis. |
 | `feat/narrative_evaluations` | Validação | Cenários, simulações e relatórios de qualidade/custo. |
 
-Congelar primeiro exemplos JSON e interfaces de cada serviço. Cada frente possui seus módulos; mudanças em `contracts/`, composição da aplicação e `turns/service.py` têm um integrador responsável para evitar edições concorrentes. Todos os merges seguem para `develop`; branches concluídas são removidas. Esta tabela define a delegação futura, sem lançar agentes de implementação antes da aprovação do plano.
+Congelar primeiro exemplos JSON e interfaces de cada serviço. Cada frente possui seus módulos; mudanças em `contracts/`, composição da aplicação e `turns/service.py` têm um integrador responsável para evitar edições concorrentes. Todos os merges seguem para `develop`; branches concluídas são removidas. A execução foi distribuída entre as frentes de diálogo/mestre, matemática social, interface e integração, conforme o contrato final.
 
 ## Compatibilidade de partidas
 

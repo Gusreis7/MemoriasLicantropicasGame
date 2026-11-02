@@ -1,7 +1,7 @@
 import {test, expect, type Page} from '@playwright/test';
 import type {CasePublic, GamePublic, Location, Message, WorldSnapshot} from '../shared/api';
 
-async function fixture(page: Page) {
+async function fixture(page: Page, expelPlayer = true) {
   const names = {capitu:'Capitu', bentinho:'Bentinho', escobar:'Escobar', rubiao:'Rubião'};
   const cast: GamePublic = {id:'narrative-ui', status:'active', characters:Object.entries(names).map(([id,name])=>({character:{id,name},alive:true}))};
   const location: Location = {id:'praca_verde',name:'Praça Verde',width:960,height:360,ground_y:300,background:'/assets/locations/praca_verde.png',exits:[]};
@@ -38,8 +38,9 @@ async function fixture(page: Page) {
     }
     if(path.endsWith('/assembly/resolve')){
       state.assembly_session={...state.assembly_session!,phase:'resolved',reply:body.reply};
-      state.assembly={suspect_id:'capitu',day:1,required_votes:3,expelled:true,outcome:'player_expelled',votes:[{voter_id:'player',target_id:'capitu',expel:false,reason:'Mantém sua acusação.'},...Object.keys(names).map(voter_id=>({voter_id,target_id:'player',expel:true,reason:'Retira sua confiança no detetive.'}))]};
-      state.status='lost';state.phase='finished';cast.status='lost';state.ending={result:'lost',werewolf_id:'escobar',method:'assembly',message:'Floriano foi expulso da cidade.'};state.journal.push({day:1,title:'O Clarim do Rio',headline:'A cidade expulsa Floriano',body:'A assembleia retirou sua confiança no detetive.',victim_id:null,victim_name:null,location_id:null,detention_outcome:'none'});state.revision++;return json(state);
+      state.assembly={suspect_id:'capitu',messages:[...state.assembly_session.messages,{speaker_id:'player',text:body.reply}],day:1,required_votes:3,expelled:true,outcome:'player_expelled',votes:[{voter_id:'player',target_id:'capitu',expel:false,reason:'Mantém sua acusação.'},...Object.keys(names).map(voter_id=>({voter_id,target_id:'player',expel:true,reason:'Retira sua confiança no detetive.'}))]};
+      state.status='lost';state.phase='finished';cast.status='lost';state.ending={result:'lost',werewolf_id:'escobar',method:'assembly',message:'Floriano foi expulso da cidade.'};state.journal.push({day:1,title:'O Clarim do Rio',headline:'A cidade expulsa Floriano',body:'A assembleia retirou sua confiança no detetive.',victim_id:null,victim_name:null,location_id:null,detention_outcome:'none'});if(!expelPlayer){state.assembly.expelled=false;state.assembly.outcome='no_majority';state.assembly.votes=state.assembly.votes.map(v=>({...v,target_id:null,expel:false}));state.status='active';state.phase='day';cast.status='active';state.ending=null;state.journal.pop();}
+      state.revision++;return json(state);
     }
     return route.fulfill({status:404,json:{detail:'Rota não prevista.'}});
   });
@@ -68,4 +69,13 @@ test('assembleia tem abertura, réplica curta e derrota quando a cidade expulsa 
   await expect(page.locator('#phase-title')).toHaveText('Floriano foi expulso da cidade.');await expect(page.locator('#victory-paper')).toBeVisible();await expect(page.locator('#victory-headline')).toHaveText('A cidade expulsa Floriano');
   const request=city.requests.find(r=>r.path.endsWith('/assembly/open'))!;expect(request.body.evidence_ids).toEqual(['evidence']);expect(request.body).not.toHaveProperty('votes');
   expect(city.requests.find(r=>r.path.endsWith('/assembly/resolve'))?.body).toEqual({reply:'Peço que avaliem o lenço antes de me acusar.'});
+});
+
+
+test('transcrição final conserva a réplica do jogador mesmo sem maioria',async({page})=>{
+  await fixture(page,false);await begin(page);await page.locator('#open-assembly').click();
+  await page.locator('#assembly-suspects input[value="capitu"]').check();await page.locator('#assembly-opening').fill('Ouçam antes de decidir sobre esta pista.');await page.locator('#start-assembly').click();
+  await expect(page.locator('#assembly-reply')).toBeVisible();await page.locator('#assembly-reply').fill('Registramos as divergências; procuremos outra fonte.');await page.locator('#finish-assembly').click();
+  await expect(page.locator('#assembly-result')).toContainText('não alcançou maioria');
+  await expect(page.locator('#assembly-chat')).toContainText('Registramos as divergências; procuremos outra fonte.');
 });

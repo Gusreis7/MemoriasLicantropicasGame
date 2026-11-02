@@ -146,6 +146,11 @@ class SocialService:
             game = await self._games.get(game_id)
             if game is None or world is None:
                 return False
+            if case.assembly_session and case.assembly_session.phase == "debate":
+                encounter = current_encounter(state)
+                if encounter is not None:
+                    return await self._finish(state, world, encounter, "interrupted", "public_assembly")
+                return False
             if self._enabled and case.phase == "day" and case.status == "active":
                 seeded = seed_social_state(state, tuple(m.character_id for m in game.characters), self.now())
                 if seeded != state:

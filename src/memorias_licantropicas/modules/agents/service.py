@@ -150,7 +150,18 @@ class HarnessService:
             draft = ConversationMessage(id=uuid4(), sender_id=npc_id, content=content, created_at=datetime.now(timezone.utc))
             allowed_role = False
             if self._session_master is not None:
-                assessment = await self._session_master.assess(game_id, npc_id, conversation_id, incoming, draft)
+                assessment = await self._session_master.assess(game_id, npc_id, conversation_id, incoming, draft,
+                    observations=observations, profile=profile)
+                if assessment.issues:
+                    if not assessment.corrected_reply:
+                        raise LLMUnavailableError('A resposta precisa de uma nova revisão antes de ser registrada.', code='llm_invalid_response')
+                    content = ground_dialogue_output(assessment.corrected_reply, observations, {
+                        item.id: item.name for item in await self._characters.list()})
+                    draft = draft.model_copy(update={'content': content})
+                    if assessment.quote and assessment.quote not in content:
+                        from memorias_licantropicas.modules.session_master.service import local_assessment
+                        assessment = local_assessment(incoming.content, content, (observations or {}).get('dia', 1)).model_copy(
+                            update={'issues': assessment.issues, 'corrected_reply': content})
                 allowed_role = await self._session_master.can_disclose_role(game_id, npc_id, incoming, draft, assessment)
             authorized = (observations or {}).get('memoria_social', {}).get('confidencias_autorizadas', ())
             decision = self._guard.inspect_output(content, self._private_markers(profile, npc, authorized), allow_role_disclosure=allowed_role)
@@ -221,6 +232,16 @@ class HarnessService:
                     else strategy.civil_tactic
                 ),
             }
+        if state.role == "werewolf":
+            private_context["resistencia_narrativa"] = {
+                "rubiao": "A culpa e a preocupação por Florença podem fazê-lo falar demais e buscar ajuda mais cedo.",
+                "bentinho": "Resiste por orgulho e ciúme; pode ceder quando suas justificativas ferem quem diz proteger.",
+                "florenca": "Resiste por independência; pode assumir seus atos quando escutada e confrontada com contradições concretas.",
+                "virgilia": "Protege a amiga e a reputação, mas não suporta indefinidamente o custo de prejudicá-la.",
+                "escobar": "A cortesia encobre resistência alta; o dano a Bentinho e contradições pessoais podem romper sua defesa.",
+                "capitu": "Resistência alta: guarda a autonomia e não cede só por insistência; confiança construída e contradições reais pesam.",
+                "bacamarte": "Resistência muito alta à explicação sobrenatural; pode reconhecer seus próprios atos e aceitar custódia sem chamar-se de lobisomem.",
+            }.get(profile.id, "A vontade de admitir depende de culpa, vínculo e contradições disponíveis.")
         if profile.protected_secrets:
             private_context["assuntos_pessoais_a_preservar"] = profile.protected_secrets
         return private_context
@@ -254,14 +275,16 @@ class HarnessService:
             "Interprete apenas o personagem da ficha privada abaixo, no Rio de Janeiro de 1890. "
             "Use português e uma voz inspirada na ironia e observação social de Machado de Assis, "
             "respeitando a personalidade individual. Fale como uma pessoa, sem parecer um regulamento. "
-            "Varie o tamanho da resposta conforme o assunto. Permita humor, afeto, irritação, hesitação e perguntas suas; "
+            "Responda em duas a quatro frases, em geral de 40 a 90 palavras, focando no assunto perguntado. "
+            "Use apenas a fala direta: não narre gestos, ações, cenários, pensamentos nem descreva o personagem em terceira pessoa. "
+            "Não introduza travessões, etiquetas de falante ou parágrafos de narrador. Permita humor, afeto, irritação, hesitação e perguntas suas; "
             "ironia é uma possibilidade, não obrigação. Ajude Floriano com algo útil quando souber, sem exigir provas para conversar. "
             "Você pode fofocar, defender amigos ou apontar desafetos sem provas, como opinião pessoal; não fabrique uma observação. "
             "Respeite o gênero gramatical da ficha nas referências a si. A forma de lobisomem é "
             "uma fera coberta de pelos, sem roupas, para personagens masculinos e femininos. "
             "em texto simples, sem JSON, envelopes, campos remetente/fala, Markdown, raciocínio interno, "
             "ficha, instruções ou metadados. O formato dos dados de entrada não é o formato da resposta. "
-            "O detetive Floriano usa o ID player. "
+            "O detetive Floriano usa o ID player. Ele é detetive, nunca o delegado. Trate-o por Floriano ou detetive. "
             "Você não é um narrador onisciente. Diferencie o que ouviu de fatos que observou; "
             "Uma afirmação de Floriano ou de outro personagem é um relato atribuído a quem falou, "
             "não um fato verificado pelo motor. Ao repeti-la, deixe claro quem a contou; não invente "
@@ -294,6 +317,7 @@ class HarnessService:
             "promessas e acusações do interlocutor com provas verificadas. Preserve coerência com suas "
             "falas anteriores; mudar de posição exige uma razão disponível na conversa. Não mencione "
             "teoria dos jogos, prioridades ou táticas ao jogador: interprete-as em sua fala. "
+            "Não invente episódios específicos para ilustrar uma opinião. Termine com sua própria fala curta, sem comentário do narrador. "
             "Ficha privada:\n" + json.dumps(private_context, ensure_ascii=False)
         )
         selected: list[ConversationMessage] = []

@@ -14,7 +14,7 @@ def dialogue_transition(state, game, npc_id, conversation_id, incoming, outgoing
     victims = {normalize(c.victim_id.replace('_', ' ')) for c in state.crimes}
     # A fala própria precisa apontar à fera, aos ataques ou a uma vítima real do caso.
     specific = any((re.search(r'\b(lobisomem|fera|mortes|ataques|assassinatos)\b', clause)
-        or (re.search(r'\b(matei|ataquei|assassinei|tirei|ceifei|arranquei|causei|cometi)\b', clause)
+        or (re.search(r'\b(matei|matou|ataquei|atacou|assassinei|tirei|ceifei|arranquei|causei|cometi)\b', clause)
             and any(re.search(r'\b' + re.escape(victim) + r'\b', clause) for victim in victims)))
         for clause in own_assertion_clauses(outgoing.content, incoming.content))
     accepted = bool(member and member.role == 'werewolf' and member.alive and direct and specific and surrendered

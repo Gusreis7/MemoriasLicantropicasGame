@@ -106,9 +106,12 @@ async def test_collected_evidence_and_testimony_lead_to_night_confirmed_victory(
     assert detained["accusations"][-1]["accepted"] and detained["detained_npc_id"] == wolf
     assert detained["status"] == "active" and detained["ending"] is None
     assert (await api_client.post(f"{base}/accusations", json={"suspect_id": wolf})).status_code == 409
-    clock[0] += timedelta(seconds=300)
-    assert (await api_client.get(f"{base}/investigation")).json()["phase"] == "night"
-    clock[0] += timedelta(seconds=8)
+    assert detained["phase"] == "night" and detained["seconds_remaining"] == 8
+    clock[0] += timedelta(seconds=7)
+    waiting = (await api_client.get(f"{base}/investigation")).json()
+    assert waiting["phase"] == "night" and waiting["status"] == "active"
+    assert waiting["seconds_remaining"] == 1 and waiting["ending"] is None
+    clock[0] += timedelta(seconds=1)
     finished = (await api_client.get(f"{base}/investigation")).json()
     assert finished["status"] == "won" and finished["phase"] == "finished"
     assert finished["ending"]["werewolf_id"] == wolf
