@@ -175,6 +175,8 @@ class KnowledgeService:
                 proposition = attributed_utterance(source.content, names.get(source.sender_id, source.sender_id),
                                                     names.get(listener_id, listener_id))
                 identifier = uuid5(NAMESPACE_URL, f"{game_id}:{npc_id}:{source.id}:{claim.kind}")
+                if any(entry.id == identifier for entry in additions):
+                    continue
                 parents = tuple(own_claims[item] for item in claim.parent_claim_ids)
                 # Repetição literal pela mesma fonte, inclusive dentro do lote, não cria corroboração.
                 if not parents:

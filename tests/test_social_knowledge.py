@@ -266,15 +266,17 @@ async def test_extraction_preserves_attribution_and_owner_privacy(social, storag
 ])
 async def test_model_subject_inversion_cannot_replace_the_actual_utterance(social, storage, game, catalog, text, paraphrase):
     record = await enqueue(storage, game, incoming=text)
-    payload = json.dumps({"claims": [{"message_id": str(record.incoming.id),
+    inverted = {"message_id": str(record.incoming.id),
         "source_span": "viu você no cais ontem", "proposition": paraphrase,
-        "subject_ids": ["player"], "kind": "report"}]})
+        "subject_ids": ["player"], "kind": "report"}
+    payload = json.dumps({"claims": [inverted, inverted]})
     knowledge = KnowledgeService(social, catalog, Extractor(payload))
     assert await knowledge.process_pending(game.id, 1)
     claim = next(item for item in (await social.get(game.id)).knowledge if item.kind == "report")
     assert claim.proposition == f"Floriano disse a Capitu: «{text}»"
     assert claim.source_span == text
     assert paraphrase not in claim.proposition
+    assert len([item for item in (await social.get(game.id)).knowledge if item.kind == "report"]) == 1
 
 
 async def test_extraction_batch_never_contains_other_npc_conversation(social, storage, game, catalog):
