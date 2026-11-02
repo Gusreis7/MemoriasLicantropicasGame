@@ -1,9 +1,17 @@
 {
-  "version": "1",
+  "version": "2",
   "portraits": [
     {
       "id": "bacamarte",
       "path": "/assets/portraits/bacamarte.png",
+      "width": 1254,
+      "height": 1254,
+      "displayWidth": 96,
+      "displayHeight": 96
+    },
+    {
+      "id": "bras_cubas",
+      "path": "/assets/portraits/bras_cubas.png",
       "width": 1254,
       "height": 1254,
       "displayWidth": 96,
