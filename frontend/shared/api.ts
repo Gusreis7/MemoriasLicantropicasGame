@@ -48,11 +48,11 @@ export interface CasePublic {
   server_time: string; phase_ends_at: string; seconds_remaining: number;
   journal: JournalEdition[]; crimes: CaseCrime[]; inventory: CaseEvidence[]; testimonies: CaseTestimony[];
   accusations: CaseAccusation[]; detained_npc_id: string | null;
-  assembly?: {suspect_id: string; day: number; required_votes: number; expelled: boolean; outcome: 'werewolf' | 'innocent' | 'no_majority' | 'player_expelled'; votes: Array<{voter_id: string; target_id?: string | null; expel: boolean; reason: string}>} | null;
+  assembly?: {suspect_id: string; nominated_id?: string | null; messages?: Array<{speaker_id: string; text: string}>; day: number; required_votes: number; expelled: boolean; outcome: 'werewolf' | 'innocent' | 'no_majority' | 'player_expelled'; votes: Array<{voter_id: string; target_id?: string | null; expel: boolean; reason: string}>} | null;
   assembly_session?: AssemblySession | null;
   expelled_npc_ids?: string[];
   interrogations?: CaseInterrogation[]; confrontations?: CaseConfrontation[];
-  ending: {result: 'won' | 'lost'; message: string; werewolf_id: string; method?: 'detention' | 'confession' | 'survival' | 'assembly'} | null;
+  ending: {result: 'won' | 'lost'; message: string; werewolf_id: string; method?: 'detention' | 'confession' | 'survival' | 'assembly' | 'player_expelled'} | null;
 }
 
 export class ApiError extends Error {
