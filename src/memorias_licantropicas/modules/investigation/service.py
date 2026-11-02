@@ -170,7 +170,8 @@ class InvestigationService:
                     or placement.location_id != world.player.location_id or abs(placement.x - world.player.x) > 64):
                 raise AccessDeniedError("Aproxime-se de uma testemunha viva e livre para apresentar o objeto.")
             existing = next((record for record in state.testimonies
-                             if record.witness_id == npc_id and record.evidence_id == evidence_id), None)
+                             if record.witness_id == npc_id
+                             and find_evidence(state, record.evidence_id).item_id == evidence.item_id), None)
             if existing is not None:
                 return CaseTransition(state=state)
             record = make_testimony(state, game, evidence, npc_id, names, self._turns.now())

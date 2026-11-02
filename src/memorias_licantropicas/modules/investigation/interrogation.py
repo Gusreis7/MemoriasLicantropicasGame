@@ -137,17 +137,18 @@ def make_confrontation(state, game, npc_id, evidence_ids, testimony_ids, interro
     assessment = evaluate_accusation(state, npc_id, evidence_ids, testimony_ids, now)
     by_testimony = {record.id: record for record in state.testimonies}
     statements = tuple(by_testimony[identifier] for identifier in testimony_ids)
-    linked = {record.evidence_id for record in statements
-              if record.recognition == "recognizes" and record.claimed_owner_id == npc_id}
-    items = {find_evidence(state, identifier).item_id for identifier in evidence_ids if identifier in linked}
+    selected_item_ids = {find_evidence(state, identifier).item_id for identifier in evidence_ids}
+    linked_statements = tuple(record for record in statements
+        if find_evidence(state, record.evidence_id).item_id in selected_item_ids
+        and record.recognition == "recognizes" and record.claimed_owner_id == npc_id)
+    items = {find_evidence(state, record.evidence_id).item_id for record in linked_statements}
     pressure = sum({"unique": 3, "singular": 2, "common": 1}[ITEMS_BY_ID[item].kind] for item in items)
-    pressure += int(bool(linked))
-    witnesses = {record.witness_id for record in statements
-                 if record.evidence_id in linked and record.witness_id != npc_id
-                 and record.recognition == "recognizes" and record.claimed_owner_id == npc_id}
+    pressure += int(bool(linked_statements))
+    witnesses = {record.witness_id for record in linked_statements if record.witness_id != npc_id}
     pressure += min(2, max(0, len(witnesses) - 1))
     denial_conflict = any(record.witness_id == npc_id and record.recognition == "denies"
-                          and record.evidence_id in linked for record in statements)
+                          and find_evidence(state, record.evidence_id).item_id in selected_item_ids
+                          for record in statements)
     pressure += 2 if denial_conflict else 0
     alibi_conflict = any(
         own.npc_id == npc_id and own.location_id is not None
