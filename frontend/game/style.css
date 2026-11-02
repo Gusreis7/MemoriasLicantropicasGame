@@ -255,8 +255,14 @@ kbd{font:10px/1.2 Arial,sans-serif;min-width:21px;padding:4px 5px;border:1px sol
 .journal-modal .button.primary:hover:not(:disabled){background:#4b4b43}
 .evidence-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .evidence-card{display:grid;grid-template-columns:68px minmax(0,1fr);gap:13px;align-items:center;padding:12px;background:#faf6e8;border:1px solid #c5ba95}
-.item-art{display:grid;place-items:center;flex:0 0 54px;width:54px;height:54px;background:#e9dfc7;border:1px solid #c2b58f;image-rendering:pixelated}
+.item-art{position:relative;display:grid;place-items:center;flex:0 0 54px;width:54px;height:54px;background:#e9dfc7;border:1px solid #c2b58f;image-rendering:pixelated}
+.item-stack-count{position:absolute;right:-7px;top:-7px;min-width:22px;padding:2px 4px;border:1px solid #493b2d;background:#3e3329;color:#fff3d8;font:700 11px/1.2 Arial,sans-serif;text-align:center;box-shadow:1px 1px 0 #b49a68}
+.evidence-stack-sources{margin-top:8px;border-top:1px solid #ded4b8;padding-top:6px;font:11px/1.6 Arial,sans-serif;color:#5c5141}
+.evidence-stack-sources summary{cursor:pointer;color:#63533a}
+.evidence-stack-sources ul{margin:5px 0 0;padding-left:17px}
+.evidence-stack-sources li+li{margin-top:4px}
 .item-art svg{display:block;width:46px;height:46px;shape-rendering:crispEdges}
+.item-art img{display:block;width:46px;height:46px;object-fit:contain;image-rendering:pixelated}
 .item-art-unique{background:#ece2c9;border-color:#a8884d}
 .item-art-singular{background:#e7e4d2;border-color:#879076}
 .item-art-common{background:#eee9dc;border-color:#c5ba95}
@@ -324,6 +330,7 @@ kbd{font:10px/1.2 Arial,sans-serif;min-width:21px;padding:4px 5px;border:1px sol
 .proof-choice input{margin-top:4px;accent-color:#496d4b}
 .proof-choice .item-art{width:34px;height:34px;flex-basis:34px}
 .proof-choice .item-art svg{width:30px;height:30px}
+.proof-choice .item-art img{width:30px;height:30px}
 .accusation-result{border-top:1px solid #c3b38b;margin-top:20px;padding-top:16px;font:12px/1.8 Arial,sans-serif;color:#667253}
 .accusation-result strong{color:#37543e}
 .phase-overlay{z-index:25;background:#041914ef}
