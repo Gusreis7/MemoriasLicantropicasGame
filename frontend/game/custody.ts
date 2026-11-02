@@ -40,14 +40,11 @@ export class CustodyScene extends Phaser.Scene {
       this.add.rectangle(480,46,318,12,0x30251d).setName('gate-rail').setStrokeStyle(2,0x98744c),
       this.add.rectangle(480,374,318,12,0x30251d).setName('gate-rail').setStrokeStyle(2,0x98744c),
     ]);
-    // Seat the full delegate sprite on the room's existing chair behind the desk.
-    this.add.image(145,405,'delegate-at-desk').setName('delegate-at-desk')
-      .setOrigin(.5,1).setDisplaySize(200,300).setDepth(2);
-    // Reuse the matching desk face as a foreground layer to occlude his lap and chair.
-    const roomTexture=this.textures.get('jail-room');
-    if(!roomTexture.has('desk-front'))roomTexture.add('desk-front',0,0,420,435,280);
-    this.add.image(0,420*540/941,'jail-room','desk-front').setName('delegate-desk-foreground')
-      .setOrigin(0,0).setDisplaySize(435*960/1672,280*540/941).setDepth(4);
+    // The delegate sits in the foreground of the desk, with the complete chair
+    // and shoes visible. The source is 2:3, so 150x225 keeps a human scale in
+    // the 960x540 room. Keep him on the floor in front of the desk artwork.
+    this.add.image(145,435,'delegate-at-desk').setName('delegate-at-desk')
+      .setOrigin(.5,1).setDisplaySize(150,225).setDepth(4);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN,()=>this.clearTimers());
     this.events.once(Phaser.Scenes.Events.DESTROY,()=>this.clearTimers());
     this.ready=true;this.applyMode();
