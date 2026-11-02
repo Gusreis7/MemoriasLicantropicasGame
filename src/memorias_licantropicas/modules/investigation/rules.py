@@ -47,10 +47,11 @@ def make_initial_investigation(game, now, day_seconds=300) -> InvestigationState
         game_id=game.id, phase_ends_at=now + timedelta(seconds=day_seconds), crimes=(initial,),
         activity_records=record_activities(game, make_initial_world(game.id), 0, "night", now,
                                           source="initial_scenario", crime=initial),
-        journal=(JournalEdition(day=1, headline="Brás Cubas encontrado morto",
-                    body="A cidade amanhece sob o impacto da morte de Brás Cubas. "
+        journal=(JournalEdition(day=1,
+                    headline="Primeira morte suspeita de lobisomem: Brás Cubas encontrado morto",
+                    body="A cidade amanhece sob o impacto da morte de Brás Cubas, a primeira morte suspeita atribuída a um lobisomem. "
                          "O detetive Floriano inicia a investigação na Praça Verde.",
-                    victim_id="bras_cubas", location_id="praca_verde"),),
+                    victim_id="bras_cubas", suspicious_death_count=1, location_id="praca_verde"),),
     )
 
 

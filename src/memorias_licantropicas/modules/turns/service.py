@@ -148,15 +148,22 @@ class TurnService:
                     for member in game.characters)})
                 profile = await self._characters.get(victim_id)
                 name = profile.name if profile else victim_id
-                headline = f"Morte de {name} abala a cidade"
-                body = f"{name} foi {participle(profile, 'encontrado', 'encontrada')} sem vida. Floriano investiga os vestígios deixados no local."
+                death_count = len(crimes)
+                headline = ("A primeira morte suspeita de lobisomem assombra o Rio" if death_count == 1
+                            else f"Já são {death_count} mortes suspeitas atribuídas a um lobisomem")
+                body = (f"{name} foi {participle(profile, 'encontrado', 'encontrada')} sem vida nesta manhã. "
+                        f"Este é o {death_count}º caso fatal desde o início dos acontecimentos. "
+                        "Moradores pedem explicações, enquanto Floriano examina os vestígios deixados no local.")
                 events.append(CaseEvent(type="character.killed", data={
                     "victim_id": victim_id, "killer_id": werewolf, "crime_id": str(crime.id),
                     "location_id": location_id, "day": state.day,
                 }))
             else:
-                headline = "Cidade amanhece sem novas vítimas"
-                body = "O Clarim do Rio não registra novas mortes nesta manhã. A investigação continua."
+                death_count = len(crimes)
+                headline = ("Cidade amanhece sem novas vítimas" if death_count == 0 else
+                            f"Sem nova vítima; {death_count} morte{'s' if death_count != 1 else ''} suspeita{'s' if death_count != 1 else ''} segue{'m' if death_count != 1 else ''} sem explicação")
+                body = ("O Clarim do Rio não registra novas mortes nesta manhã. A investigação continua." if death_count == 0 else
+                        f"A cidade desperta sem novo crime, mas {death_count} morte{'s' if death_count != 1 else ''} suspeita{'s' if death_count != 1 else ''} ainda aguarda explicação. Floriano prossegue com a investigação.")
             if state.detained_npc_id:
                 detention = "released"
                 detainee = await self._characters.get(state.detained_npc_id)
@@ -169,6 +176,7 @@ class TurnService:
             if status == "lost":
                 body += " Não restam civis vivos; o caso de Floriano terminou em derrota."
         edition = JournalEdition(illustration="victory" if status == "won" else "quiet" if not victim_id else "crime_docks" if location_id == "cais_lanternas" else "crime_garden" if location_id in {"casa_verde", "cabana_capitu"} else "crime_street", day=day, headline=headline, body=body, victim_id=victim_id,
+                                 suspicious_death_count=len(crimes),
                                  location_id=location_id, detention_outcome=detention)
         game = game.model_copy(update={"status": status})
         updated = state.model_copy(update={
@@ -270,6 +278,7 @@ class TurnService:
                 disposition = "entregue à custódia do delegado" if updated.ending_method == "confession" else f"{participle(profile, 'expulso', 'expulsa')} da cidade pela assembleia"
                 updated = updated.model_copy(update={"journal": (*updated.journal, JournalEdition(
                     day=updated.day, illustration="victory", headline="Floriano vence: a cidade está livre do lobisomem",
+                    suspicious_death_count=len(updated.crimes),
                     body=f"Floriano reuniu os indícios e desvendou o caso. {name} revelou sua forma de lobisomem e foi {disposition}. O Clarim do Rio celebra a vitória do detetive e o alívio dos moradores."))})
             updated_game = game.model_copy(update={"status": "won"}) if confession else game
             if confession:

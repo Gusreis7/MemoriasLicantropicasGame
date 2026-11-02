@@ -37,7 +37,7 @@ export interface CaseInterrogation {
   observations: Array<{npc_id: string; location_id: LocationID | null; companion_ids: string[]; activity: string; source: 'observed' | 'heard'}>;
 }
 export interface CaseConfrontation {id: string; npc_id: string; day: number; evidence_ids: string[]; testimony_ids: string[]; interrogation_ids: string[]; confessed: boolean; text: string}
-export interface JournalEdition {illustration?: string; day: number; title: string; headline: string; body: string; victim_id: string | null; victim_name: string | null; location_id: LocationID | null; detention_outcome: 'none' | 'released' | 'transformed'}
+export interface JournalEdition {illustration?: string; day: number; title: string; headline: string; body: string; victim_id: string | null; victim_name: string | null; suspicious_death_count?: number; location_id: LocationID | null; detention_outcome: 'none' | 'released' | 'transformed'}
 export interface CasePublic {
   game_id: string; revision: number; day: number; phase: 'day' | 'night' | 'finished'; status: 'active' | 'won' | 'lost';
   server_time: string; phase_ends_at: string; seconds_remaining: number;
