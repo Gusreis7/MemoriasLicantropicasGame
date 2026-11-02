@@ -1,4 +1,4 @@
-import {api, ApiError, type CasePublic, type CaseEvidence, type GamePublic, type CharacterManifest, type Conversation, type ExitSide, type Location, type LocationID, type Message, type HeardReport, type WorldSnapshot} from '../shared/api';
+import {api, ApiError, type CasePublic, type CaseEvidence, type CaseTestimony, type GamePublic, type CharacterManifest, type Conversation, type ExitSide, type Location, type LocationID, type Message, type HeardReport, type WorldSnapshot} from '../shared/api';
 import {closestNPC, MovementController} from './movement';
 import {ExitBoundary} from './exits';
 import {CaseClock, CasePoller, closestCrime, formatClock} from './case';
@@ -436,6 +436,17 @@ function stackEvidence(inventory: CaseEvidence[]) {
   }
   return [...stacks.values()];
 }
+function stackTestimonies(testimonies: CaseTestimony[], inventory: CaseEvidence[]) {
+  const itemByEvidenceId = new Map(inventory.map(evidence => [evidence.id, evidence.item_id]));
+  const seen = new Set<string>();
+  return testimonies.filter(testimony => {
+    const itemId = itemByEvidenceId.get(testimony.evidence_id) ?? testimony.evidence_id;
+    const key = `${testimony.witness_id}:${itemId}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
 function itemArt(itemId: string, kind: CaseEvidence['kind']) {
   const wrapper = document.createElement('span'); wrapper.className = `item-art item-art-${kind}`; wrapper.setAttribute('aria-hidden', 'true');
   if (itemId !== 'botao') {
@@ -614,7 +625,7 @@ function renderNotebook() {
   }
   if (!caseState.inventory.length) addText(inventory, 'p', 'Nenhum vestígio recolhido. Procure as marcas de cena do crime no cenário.', 'empty-case');
   const testimonyList = $('#testimony-list'); testimonyList.replaceChildren();
-  for (const testimony of caseState.testimonies) {
+  for (const testimony of stackTestimonies(caseState.testimonies, caseState.inventory)) {
     const item = document.createElement('article'); item.className = 'testimony-card';
     const evidence = caseState.inventory.find(item => item.id === testimony.evidence_id);
     if (evidence) item.append(itemArt(evidence.item_id, evidence.kind));
@@ -657,10 +668,9 @@ function renderPresentation() {
   let preview = $('#presented-evidence-art');
   if (!preview) {preview = document.createElement('span'); preview.id = 'presented-evidence-art'; preview.className = 'item-art-preview'; select.before(preview);}
   const selected = select.value; select.replaceChildren();
-  for (const evidence of caseState?.inventory ?? []) {
-    const option = document.createElement('option'); option.value = evidence.id;
-    const crime = caseState?.crimes.find(record => record.id === evidence.crime_id);
-    option.textContent = crime ? `${evidence.name} · dia ${crime.day + 1}, ${locationName(crime.location_id)}` : evidence.name;
+  for (const {item, copies} of stackEvidence(caseState?.inventory ?? [])) {
+    const option = document.createElement('option'); option.value = item.id;
+    option.textContent = `${item.name}${copies.length > 1 ? ` ×${copies.length}` : ''}`;
     select.append(option);
   }
   if ([...select.options].some(option => option.value === selected)) select.value = selected;
@@ -683,8 +693,12 @@ function renderInterrogation() {
     input.checked = selected.has(id); const caption = document.createElement('span'); caption.textContent = text;
     label.append(input, caption); proofs.append(label);
   };
-  for (const evidence of caseState.inventory) choice('confront-evidence', evidence.id, evidence.name);
-  for (const testimony of caseState.testimonies) choice('confront-testimony', testimony.id, `${testimony.witness_name}: ${testimony.text}`);
+  for (const {item, copies} of stackEvidence(caseState.inventory)) {
+    choice('confront-evidence', item.id, `${item.name}${copies.length > 1 ? ` ×${copies.length}` : ''}`);
+  }
+  for (const testimony of stackTestimonies(caseState.testimonies, caseState.inventory)) {
+    choice('confront-testimony', testimony.id, `${testimony.witness_name}: ${testimony.text}`);
+  }
   for (const record of caseState.interrogations ?? []) choice('confront-interrogation', record.id, `${record.npc_name} · ${periodLabel(record.day, record.period)}: ${record.text}`);
   if (!proofs.childElementCount) addText(proofs, 'p', 'Reúna provas e registre versões antes de confrontar.', 'empty-case');
 }
@@ -754,15 +768,14 @@ function renderAccusation() {
   const evidence = $('#accusation-evidence'); evidence.replaceChildren();
   for (const {item, copies} of stackEvidence(caseState.inventory)) {
     const label = document.createElement('label'); label.className = 'proof-choice';
-    const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.name = 'evidence'; checkbox.value = item.item_id;
-    checkbox.dataset.evidenceIds = copies.map(copy => copy.id).join(',');
+    const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.name = 'evidence'; checkbox.value = item.id;
     const caption = document.createElement('span'); caption.textContent = `${item.name} · ${itemKind(item)}${copies.length > 1 ? ` ×${copies.length}` : ''}`;
     label.append(checkbox, itemArt(item.item_id, item.kind), caption); evidence.append(label);
   }
   if (!caseState.inventory.length) addText(evidence, 'p', 'Você ainda não recolheu vestígios.', 'empty-case');
   const testimonies = $('#accusation-testimonies'); testimonies.replaceChildren();
   const inventorySnapshot = caseState.inventory;
-  caseState.testimonies.forEach(item => renderChoice(testimonies, 'testimony', item.id, `${item.witness_name}: ${item.text}`, inventorySnapshot.find(evidence => evidence.id === item.evidence_id), item.witness_id));
+  stackTestimonies(caseState.testimonies, inventorySnapshot).forEach(item => renderChoice(testimonies, 'testimony', item.id, `${item.witness_name}: ${item.text}`, inventorySnapshot.find(evidence => evidence.id === item.evidence_id), item.witness_id));
   if (!caseState.testimonies.length) addText(testimonies, 'p', 'Nenhum depoimento sobre objetos registrado.', 'empty-case');
   const attempted = caseState.accusations.some(accusation => accusation.day === caseState?.day);
   updateAccusationSelection(); renderAssembly();
@@ -829,7 +842,9 @@ async function presentEvidence() {
   try {
     const result = await api.present(world.game_id, evidenceID, dialogueNPC.npc_id);
     await applyCase(result);
-    const testimony = result.testimonies.find(item => item.evidence_id === evidenceID && item.witness_id === dialogueNPC?.npc_id);
+    const presentedItemID = result.inventory.find(item => item.id === evidenceID)?.item_id;
+    const testimony = result.testimonies.find(item => item.witness_id === dialogueNPC?.npc_id
+      && result.inventory.find(evidence => evidence.id === item.evidence_id)?.item_id === presentedItemID);
     status('#presentation-status', testimony?.text ?? 'Depoimento registrado no caderno.');
   } catch (error) {status('#presentation-status', explain(error), true);}
   finally {busy = false; setSending(false);}
@@ -840,7 +855,7 @@ async function submitAccusation(event: Event) {
   const suspectID = $('#accused-npc').querySelector<HTMLInputElement>('input:checked:not(:disabled)')?.value;
   if (!suspectID) {status('#accusation-status', 'Selecione um suspeito antes de apresentar a acusação.', true); return;}
   const evidence = [...document.querySelectorAll<HTMLInputElement>('#accusation-evidence input:checked')]
-    .flatMap(input => (input.dataset.evidenceIds ?? '').split(',').filter(Boolean));
+    .map(input => input.value);
   const testimony = [...document.querySelectorAll<HTMLInputElement>('#accusation-testimonies input:checked')].map(input => input.value);
   busy = true; $('#submit-accusation').setAttribute('disabled', ''); status('#accusation-status', 'O delegado examina os elementos apresentados…');
   try {

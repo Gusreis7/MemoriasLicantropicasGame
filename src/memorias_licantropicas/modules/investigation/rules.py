@@ -102,19 +102,22 @@ def make_testimony(state, game, evidence, npc_id, names, now) -> Testimony:
 def evaluate_accusation(state, suspect_id, evidence_ids, testimony_ids, now) -> Accusation:
     """Não recebe GameState nem papéis: só analisa o conjunto de provas apresentado."""
     selected = tuple(find_evidence(state, identifier) for identifier in evidence_ids)
+    selected_item_ids = {evidence.item_id for evidence in selected}
     by_id = {testimony.id: testimony for testimony in state.testimonies}
     if any(identifier not in by_id for identifier in testimony_ids):
         raise NotFoundError("Depoimento não encontrado nesta partida.")
     statements = tuple(by_id[identifier] for identifier in testimony_ids)
-    if any(statement.evidence_id not in evidence_ids for statement in statements):
+    testimony_items = {statement.id: find_evidence(state, statement.evidence_id).item_id
+                       for statement in statements}
+    if any(testimony_items[statement.id] not in selected_item_ids for statement in statements):
         raise ConflictError("Um depoimento precisa acompanhar seu vestígio na acusação.")
-    linked = {statement.evidence_id for statement in statements
-              if statement.recognition == "recognizes" and statement.claimed_owner_id == suspect_id}
-    # Uma mesma espécie de objeto vale uma vez, mesmo encontrada em cenas distintas.
-    item_ids = {evidence.item_id for evidence in selected if evidence.id in linked}
+    # Uma espécie selecionada representa a pilha inteira, mesmo que o depoimento
+    # tenha sido registrado sobre outra cópia recolhida em uma cena diferente.
+    item_ids = {testimony_items[statement.id] for statement in statements
+                if statement.recognition == "recognizes" and statement.claimed_owner_id == suspect_id}
     points = sum({"unique": 3, "singular": 2, "common": 1}[ITEMS_BY_ID[item_id].kind]
                  for item_id in item_ids)
-    if linked:
+    if item_ids:
         points += 1
     accepted = len(item_ids) >= 2 and points >= 4
     if accepted:
