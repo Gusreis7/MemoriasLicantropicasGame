@@ -17,7 +17,7 @@ export class CustodyScene extends Phaser.Scene {
   constructor(private character: CharacterAsset, private onAdmissionStage?: (stage:AdmissionStage)=>void) {super('custody');}
   preload() {
     this.load.image('jail-room','/assets/cinematics/jail.png');
-    this.load.image('station-delegate','/assets/portraits/delegado.png');
+    this.load.image('delegate-at-desk','/assets/custody/delegado-sentado.png');
     this.load.atlas('detainee',this.character.path,this.character.atlasPath!);
     this.load.atlas('wolf-reveal','/assets/cinematics/werewolf.png','/assets/cinematics/werewolf.json');
   }
@@ -40,10 +40,10 @@ export class CustodyScene extends Phaser.Scene {
       this.add.rectangle(480,46,318,12,0x30251d).setName('gate-rail').setStrokeStyle(2,0x98744c),
       this.add.rectangle(480,374,318,12,0x30251d).setName('gate-rail').setStrokeStyle(2,0x98744c),
     ]);
-    // The delegate remains at the desk throughout admission, the night and release.
-    this.add.image(215,289,'station-delegate').setName('delegate-at-desk')
-      .setOrigin(.5,1).setDisplaySize(105,105).setDepth(3);
-    this.add.rectangle(215,281,130,12,0x443023).setStrokeStyle(2,0x67452d).setDepth(4);
+    // His seated sprite stays behind the existing desk for every custody state.
+    // The desk line naturally hides his lower half while his arms rest at its edge.
+    this.add.image(194,244,'delegate-at-desk').setName('delegate-at-desk')
+      .setCrop(0,0,1024,870).setOrigin(.5,1).setDisplaySize(154,131).setDepth(3);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN,()=>this.clearTimers());
     this.events.once(Phaser.Scenes.Events.DESTROY,()=>this.clearTimers());
     this.ready=true;this.applyMode();
