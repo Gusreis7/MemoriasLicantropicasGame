@@ -40,10 +40,14 @@ export class CustodyScene extends Phaser.Scene {
       this.add.rectangle(480,46,318,12,0x30251d).setName('gate-rail').setStrokeStyle(2,0x98744c),
       this.add.rectangle(480,374,318,12,0x30251d).setName('gate-rail').setStrokeStyle(2,0x98744c),
     ]);
-    // His seated sprite stays behind the existing desk for every custody state.
-    // The desk line naturally hides his lower half while his arms rest at its edge.
-    this.add.image(194,244,'delegate-at-desk').setName('delegate-at-desk')
-      .setCrop(0,0,1024,870).setOrigin(.5,1).setDisplaySize(154,131).setDepth(3);
+    // Seat the full delegate sprite on the room's existing chair behind the desk.
+    this.add.image(145,405,'delegate-at-desk').setName('delegate-at-desk')
+      .setOrigin(.5,1).setDisplaySize(200,300).setDepth(2);
+    // Reuse the matching desk face as a foreground layer to occlude his lap and chair.
+    const roomTexture=this.textures.get('jail-room');
+    if(!roomTexture.has('desk-front'))roomTexture.add('desk-front',0,0,420,435,280);
+    this.add.image(0,420*540/941,'jail-room','desk-front').setName('delegate-desk-foreground')
+      .setOrigin(0,0).setDisplaySize(435*960/1672,280*540/941).setDepth(4);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN,()=>this.clearTimers());
     this.events.once(Phaser.Scenes.Events.DESTROY,()=>this.clearTimers());
     this.ready=true;this.applyMode();
