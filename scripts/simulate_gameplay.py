@@ -194,6 +194,13 @@ class Simulation:
                     case = await self.next_morning()
                     continue
                 case = await self.collect(case)
+                # Esta política escolhe examinar; collect permanece uma busca pura para
+                # que exploradores derivados possam comparar a ausência de exame.
+                for evidence in case.inventory:
+                    if not getattr(evidence, "examined", False):
+                        case = await self.investigation.inspect(self.game_id, evidence.id)
+                        self.actions["inspect"] += 1
+                        self.clock.advance(1)
                 case, living = await self.survey(case)
                 released = {accusation.suspect_id for accusation in case.accusations if accusation.accepted
                     and any(edition.day == accusation.day + 1 and edition.detention_outcome == "released"
