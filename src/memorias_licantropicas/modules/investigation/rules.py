@@ -6,10 +6,10 @@ from uuid import uuid4
 
 from memorias_licantropicas.contracts.errors import ConflictError, NotFoundError
 from memorias_licantropicas.contracts.investigation import (
-    Accusation, Crime, Evidence, InvestigationState, JournalEdition, Testimony,
+    Accusation, Crime, Evidence, InvestigationState, JournalEdition, Testimony, CaseEvent, CaseTransition,
 )
 from memorias_licantropicas.modules.investigation.catalog import (
-    INVENTORIES, ITEMS_BY_ID, OBSERVED_PEOPLE, PREFERRED_VICTIMS,
+    INVENTORIES, ITEMS_BY_ID, OBSERVED_PEOPLE, PREFERRED_VICTIMS, INSPECTION_DETAILS, items_of_kind,
 )
 
 
@@ -26,10 +26,13 @@ def choose_victim(game, detained_npc_id=None, excluded_ids=()) -> str | None:
 
 def make_crime(game, day, victim_id, location_id, now) -> Crime:
     wolf = next(npc.character_id for npc in game.characters if npc.role == "werewolf")
-    inventory = INVENTORIES[wolf]
     crime_id = uuid4()
-    # Nenhuma pista falsa física: o objeto comum é ambíguo, mas a origem é factual.
-    item_ids = (inventory[2 + day % 3], inventory[0] if day >= 3 else inventory[1])
+    # Comuns são contexto. A peça individualizável só surge depois da primeira noite.
+    common = items_of_kind(wolf, "common")
+    singular = items_of_kind(wolf, "singular")
+    personal = items_of_kind(wolf, "unique")
+    distinctive = singular[day % len(singular)] if day == 0 else personal[(game.id.int + day - 1) % len(personal)]
+    item_ids = (common[day % len(common)], distinctive)
     evidence = tuple(Evidence(
         id=uuid4(), crime_id=crime_id, item_id=item_id,
         description=f"Encontrado junto à cena: {ITEMS_BY_ID[item_id].description}",
@@ -64,6 +67,17 @@ def find_evidence(state, evidence_id, *, collected=True) -> Evidence:
     return evidence
 
 
+def _next_witness_hint(game, npc_id, item, names):
+    # Um encaminhamento por ofício/tipo visível, nunca por identidade do culpado.
+    textile = any(word in item.name.casefold() for word in ("fio", "fita", "tecido", "lenço", "leque", "dedal"))
+    candidates = ("capitu", "virgilia", "florenca", "escobar", "bacamarte", "bentinho", "rubiao") if textile else (
+        "escobar", "bacamarte", "virgilia", "capitu", "bentinho", "florenca", "rubiao")
+    available = {m.character_id for m in game.characters if m.alive and m.character_id != npc_id}
+    other = next((person for person in candidates if person in available), None)
+    return (f" Mostre também a {names.get(other, other)} e pergunte onde viu algo parecido." if other else
+            " Compare as marcas da peça com os relatos que já recolheu.")
+
+
 def make_testimony(state, game, evidence, npc_id, names, now) -> Testimony:
     """Observações pessoais não identificam quem efetivamente deixou um objeto comum."""
     item = ITEMS_BY_ID[evidence.item_id]
@@ -74,7 +88,7 @@ def make_testimony(state, game, evidence, npc_id, names, now) -> Testimony:
     recognition, owner, truthful = "unknown", None, True
     if own and npc.role == "werewolf":
         recognition, truthful = "denies", False
-        text = "Não reconheço esse objeto, detetive. Não posso dizer a quem pertence."
+        text = f"Não reconheço {item.name.lower()} como meu, detetive." + _next_witness_hint(game, npc_id, item, names)
     elif observers:
         recognition, owner = "recognizes", observers[0]
         if item.kind == "common":
@@ -84,7 +98,7 @@ def make_testimony(state, game, evidence, npc_id, names, now) -> Testimony:
             text = (f"Já vi {names.get(owner, owner)} usar um desses. É pouco comum, "
                     "mas conheço outras pessoas que poderiam ter um parecido.")
         else:
-            text = f"Reconheço esta peça: já a vi com {names.get(owner, owner)}. Guarde bem esse detalhe."
+            text = f"Reconheço esta peça: já a vi com {names.get(owner, owner)}. {INSPECTION_DETAILS[item.id]}"
     elif own:
         recognition, owner = "recognizes", npc_id
         if item.kind == "common":
@@ -94,41 +108,54 @@ def make_testimony(state, game, evidence, npc_id, names, now) -> Testimony:
         else:
             text = "Reconheço essa peça como minha, detetive. Não sei como foi parar aí."
     else:
-        text = "Não conheço a procedência desse objeto. Prefiro não inventar uma resposta."
+        text = "Não sei de quem é essa peça." + _next_witness_hint(game, npc_id, item, names)
     return Testimony(id=uuid4(), day=state.day, evidence_id=evidence.id, witness_id=npc_id,
                      recognition=recognition, claimed_owner_id=owner, text=text, truthful=truthful, created_at=now)
 
 
-def evaluate_accusation(state, suspect_id, evidence_ids, testimony_ids, now) -> Accusation:
-    """Não recebe GameState nem papéis: só analisa o conjunto de provas apresentado."""
-    selected = tuple(find_evidence(state, identifier) for identifier in evidence_ids)
-    selected_item_ids = {evidence.item_id for evidence in selected}
-    by_id = {testimony.id: testimony for testimony in state.testimonies}
-    if any(identifier not in by_id for identifier in testimony_ids):
-        raise NotFoundError("Depoimento não encontrado nesta partida.")
-    statements = tuple(by_id[identifier] for identifier in testimony_ids)
-    testimony_items = {statement.id: find_evidence(state, statement.evidence_id).item_id
-                       for statement in statements}
-    if any(testimony_items[statement.id] not in selected_item_ids for statement in statements):
-        raise ConflictError("Um depoimento precisa acompanhar seu vestígio na acusação.")
-    # Uma espécie selecionada representa a pilha inteira, mesmo que o depoimento
-    # tenha sido registrado sobre outra cópia recolhida em uma cena diferente.
-    item_ids = {testimony_items[statement.id] for statement in statements
-                if statement.recognition == "recognizes" and statement.claimed_owner_id == suspect_id}
-    points = sum({"unique": 3, "singular": 2, "common": 1}[ITEMS_BY_ID[item_id].kind]
-                 for item_id in item_ids)
-    if item_ids:
-        points += 1
-    accepted = len(item_ids) >= 2 and points >= 4
-    if accepted:
-        reason = ("Há ao menos dois tipos de vestígio ligados à pessoa acusada por depoimentos registrados. "
-                  "A corroboração justifica a custódia desta noite; ainda não é uma confirmação de culpa.")
-    elif len(item_ids) < 2:
-        reason = ("São necessários ao menos dois tipos de vestígio ligados à pessoa acusada por depoimentos. "
-                  "Repetir o mesmo objeto ou apresentar apenas uma suspeita não basta.")
+def inspect_evidence(state, evidence_id, now):
+    """Um exame canônico da peça recolhida; a identidade do dono continua investigável."""
+    evidence = find_evidence(state, evidence_id)
+    if getattr(evidence, "examined", False):
+        return CaseTransition(state=state)
+    item = ITEMS_BY_ID[evidence.item_id]
+    if item.kind == "unique":
+        text = (INSPECTION_DETAILS[evidence.item_id] +
+                " Na borda recém-rompida há resíduos compatíveis com as marcas da luta desta cena. "
+                "A peça tem uma ligação material com o ataque; isso não identifica, por si, quem a deixou.")
+    elif item.kind == "singular":
+        text = ("O acabamento é pouco habitual, mas não há assinatura, reparo ou marca que individualize este exemplar. "
+                "Um parecido pode pertencer a mais de uma pessoa; procure uma peça pessoal e compare os relatos.")
     else:
-        reason = ("Os objetos apresentados são comuns demais para justificar a custódia. "
-                  "Reúna um vestígio mais distintivo e corroboração registrada.")
+        text = ("É um objeto de fabricação corrente. As marcas de uso são genéricas e não individualizam seu dono. "
+                "Pode ajudar a reconstruir a cena, mas não sustenta uma prisão por si só.")
+    inspected = evidence.model_copy(update={"examined": True, "inspection_text": text,
+                                           "crime_link_verified": item.kind == "unique"})
+    crimes = tuple(crime.model_copy(update={"evidence": tuple(inspected if e.id == evidence.id else e
+                       for e in crime.evidence)}) if crime.id == evidence.crime_id else crime for crime in state.crimes)
+    return CaseTransition(state=state.model_copy(update={"crimes": crimes}), events=(CaseEvent(
+        type="evidence.examined", data={"evidence_id": str(evidence.id), "item_id": evidence.item_id,
+                                       "crime_id": str(evidence.crime_id), "day": state.day}),))
+
+
+def evaluate_accusation(state, suspect_id, evidence_ids, testimony_ids, now) -> Accusation:
+    """Custódia usa espécie, exame e fontes já registradas; não recebe o papel secreto."""
+    from memorias_licantropicas.modules.investigation.scoring import assess_dossier
+    assessment = assess_dossier(state, suspect_id, evidence_ids, testimony_ids)
+    missing = []
+    if len(assessment.linked_item_ids) < 2:
+        missing.append("relacionar pelo menos dois tipos distintos de vestígio à pessoa acusada")
+    if not assessment.examined_exclusive_ids:
+        missing.append("examinar uma peça pessoal e relacionar sua marca ao suspeito por depoimento")
+    if len(assessment.independent_witnesses) < 2 and not (assessment.independent_witnesses and assessment.alibi_conflict):
+        missing.append("ouvir duas fontes independentes, ou confrontar uma fonte com uma contradição de álibis já registrada")
+    if assessment.total < 5:
+        missing.append("reunir indícios mais específicos; objetos comuns têm peso muito baixo")
+    if assessment.accepted:
+        reason = ("A marca individualizada, o exame da ligação com a cena e a corroboração registrada justificam a custódia. "
+                  "Isso ainda não confirma que a pessoa seja o lobisomem; a noite esclarecerá a hipótese.")
+    else:
+        reason = "Ainda falta " + "; ".join(missing) + ". Repetir objetos ou a mesma fonte não reforça o conjunto."
     return Accusation(id=uuid4(), day=state.day, suspect_id=suspect_id,
                       evidence_ids=tuple(dict.fromkeys(evidence_ids)), testimony_ids=tuple(dict.fromkeys(testimony_ids)),
-                      accepted=accepted, reason=reason, created_at=now)
+                      accepted=assessment.accepted, reason=reason, created_at=now)

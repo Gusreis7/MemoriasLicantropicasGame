@@ -1,5 +1,6 @@
 """Atividades históricas, conhecimento acessível e confrontos sem inferência do LLM."""
 from uuid import uuid4
+from math import ceil
 
 from memorias_licantropicas.contracts.errors import ConflictError, NotFoundError
 from memorias_licantropicas.contracts.investigation import (
@@ -142,7 +143,9 @@ def make_confrontation(state, game, npc_id, evidence_ids, testimony_ids, interro
         if find_evidence(state, record.evidence_id).item_id in selected_item_ids
         and record.recognition == "recognizes" and record.claimed_owner_id == npc_id)
     items = {find_evidence(state, record.evidence_id).item_id for record in linked_statements}
-    pressure = sum({"unique": 3, "singular": 2, "common": 1}[ITEMS_BY_ID[item].kind] for item in items)
+    from memorias_licantropicas.modules.investigation.scoring import assess_dossier
+    dossier = assess_dossier(state, npc_id, evidence_ids, testimony_ids)
+    pressure = ceil(dossier.material_points)
     pressure += int(bool(linked_statements))
     witnesses = {record.witness_id for record in linked_statements if record.witness_id != npc_id}
     pressure += min(2, max(0, len(witnesses) - 1))
