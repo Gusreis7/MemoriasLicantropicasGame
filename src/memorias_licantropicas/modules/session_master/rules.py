@@ -24,17 +24,17 @@ def dialogue_transition(state, game, npc_id, conversation_id, incoming, outgoing
         'incoming': incoming.content, 'outgoing': outgoing.content, 'narrative_authorized': outgoing.narrative_authorized,
         'assessment': assessment.model_dump(mode='json'), 'accepted_confession': accepted,
         'rule_version': 'natural-dialogue-v1', 'created_at': now.isoformat()}
-    from memorias_licantropicas.modules.achievements.rules import award, discoveries_in_reply
+    from memorias_licantropicas.modules.achievements.rules import award, discoveries_in_reply, discovery_assertions
     discovered = discoveries_in_reply(npc_id, outgoing.content, assessment.discovery_ids) if outgoing.narrative_authorized else ()
     # Public fragments may be heard in different conversations; private disclosures require the owner's current voice.
     public_ids={'marriage_triangle','seminary_bond','treatment_bentinho','florenca_father'}
     if outgoing.narrative_authorized:
         for topic in public_ids:
-            passages=[event['outgoing'] for event in state.dialogue_events
-                      if topic in event.get('assessment',{}).get('eligible_discovery_ids',())]
-            if topic in assessment.eligible_discovery_ids: passages.append(outgoing.content)
+            passages=[discovery_assertions(event['npc_id'],event['outgoing']) for event in state.dialogue_events
+                      if event.get('narrative_authorized',False) and topic in event.get('assessment',{}).get('eligible_discovery_ids',())]
+            if topic in assessment.eligible_discovery_ids: passages.append(discovery_assertions(npc_id,outgoing.content))
             if passages:
-                discovered=tuple(dict.fromkeys((*discovered,*discoveries_in_reply(npc_id,'. '.join(passages),(topic,)))))
+                discovered=tuple(dict.fromkeys((*discovered,*discoveries_in_reply('', '. '.join(passages),(topic,)))))
     discovered_state = state
     for achievement_id in discovered:
         discovered_state = award(discovered_state, achievement_id, now, source_message_id=outgoing.id, source_npc_id=npc_id)

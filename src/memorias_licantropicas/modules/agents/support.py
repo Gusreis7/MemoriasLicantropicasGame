@@ -18,21 +18,71 @@ def words(text):
     return {w for w in re.findall(r'[a-z]+',normalized(text)) if len(w)>2 and w not in STOP}
 
 
+def _authored_voice(statement, npc_id):
+    """Only authored canonical facts change grammatical voice; quoted testimony never does."""
+    forms = {
+        'casamento': {
+            'capitu':'Eu sou casada com Bentinho; o ciúme dele tem provocado discussões.',
+            'bentinho':'Eu sou casado com Capitu; meu ciúme tem provocado discussões.',
+        },
+        'amizade': {
+            'capitu':'Escobar e eu somos amigos e nos encontramos nos parques e no trabalho. Isso alimenta o ciúme de Bentinho.',
+            'escobar':'Capitu e eu somos amigos e nos encontramos nos parques e no trabalho. Isso alimenta o ciúme de Bentinho.',
+        },
+        'seminario': {
+            'bentinho':'Escobar e eu estudamos juntos no seminário e mantivemos uma ligação antiga.',
+            'escobar':'Bentinho e eu estudamos juntos no seminário e mantivemos uma ligação antiga.',
+        },
+        'tratamento': {
+            'bentinho':'Eu faço acompanhamento com Bacamarte, mas resisto às consultas e à medicação. Não sei confirmar cada dose.',
+            'bacamarte':'Eu acompanho Bentinho, que resiste às consultas e à medicação. Não sei confirmar cada dose.',
+        },
+        'internacao': {
+            'florenca':'Contesto Bacamarte por ter internado meu pai e procuro quem me escute.',
+            'bacamarte':'Florença me contesta por eu ter internado o pai dela e procura quem a escute.',
+        },
+        'aproximacao': {
+            'rubiao':'Tento aproximar-me de Florença, embora ela não corresponda e se incomode com minha insistência.',
+            'florenca':'Rubião tenta aproximar-se de mim, embora eu não corresponda e me incomode com a insistência.',
+        },
+    }
+    prefixes = (
+        ('Capitu e Bentinho são casados;', 'casamento'),
+        ('Capitu e Escobar são amigos e se encontram', 'amizade'),
+        ('Bentinho e Escobar estudaram juntos no seminário', 'seminario'),
+        ('Bentinho faz acompanhamento com Bacamarte, mas resiste', 'tratamento'),
+        ('Florença contesta Bacamarte por ter internado seu pai', 'internacao'),
+        ('Rubião tenta aproximar-se de Florença, embora ela não corresponda', 'aproximacao'),
+    )
+    for prefix,topic in prefixes:
+        if statement.startswith(prefix):
+            return forms[topic].get(npc_id,statement)
+    return statement
+
+
 def _lead(statement, npc_id):
     text=normalized(statement)
     if 'seminario' in text:
-        return 'Pergunte também a Bentinho ou Escobar como foi essa amizade no seminário.'
+        other='Escobar' if npc_id=='bentinho' else 'Bentinho' if npc_id=='escobar' else 'Bentinho ou Escobar'
+        return f'Pergunte também a {other} como foi essa amizade no seminário.'
     if 'medicacao' in text or 'consultas' in text:
+        if npc_id=='bacamarte': return 'Converse com Bentinho sobre as consultas.'
+        if npc_id=='bentinho': return 'Converse com Bacamarte sobre o acompanhamento.'
         return 'Converse com Bacamarte sobre o acompanhamento e com Bentinho sobre as consultas.'
     if 'internado' in text or 'internou' in text:
+        if npc_id=='florenca': return 'Pergunte a Bacamarte por que decidiu internar meu pai.'
         return 'Florença pode lhe contar por que contesta a internação do pai.'
     if 'casad' in text or 'ciume' in text:
+        if npc_id=='bentinho': return 'Ouça também Capitu sobre essas discussões.'
+        if npc_id=='capitu': return 'Ouça também Bentinho sobre essas discussões.'
         return 'Ouça Capitu e Bentinho separadamente sobre essas discussões.'
     if 'amizade' in text or 'amigos' in text:
-        return 'Pergunte aos dois envolvidos pela versão deles.'
+        others=[name for identifier,name in NAMES.items() if identifier not in (npc_id,'player') and normalized(name) in text]
+        if others:return f'Pergunte também a {" ou ".join(others[:2])} pela versão dessa amizade.'
+        return 'Compare essa amizade com os relatos que já anotou no caderno.'
     if 'objeto' in text or 'peca' in text:
         return 'Compare esta informação com o que outra testemunha reconhece.'
-    return 'Pode perguntar mais sobre esse ponto; é algo de que consigo falar.'
+    return 'Compare esse relato com os que já anotou no caderno.'
 
 
 def is_alibi_question(question):
@@ -83,7 +133,7 @@ def dialogue_supports(profile, observations, question):
         if entry.get('origem')!='authored' and speaker and speaker!=profile.id:
             statement=f"Ouvi de {NAMES.get(speaker,speaker)}: {statement}"
         candidates.append({'id':str(entry.get('claim_id',f'memory:{index}')),
-            'statement':statement,'lead':_lead(statement,profile.id),'kind':'social',
+            'statement':statement,'lead':_lead(statement,profile.id),'kind':'social','authored':entry.get('origem')=='authored',
             'priority':2 if entry.get('origem')=='authored' else (9 if not asks_for_guidance(question) else 0)})
     # Do not fall back to an unrelated inventory or private biography.
     for candidate in candidates:
@@ -103,6 +153,7 @@ def supported_reply(profile, observations, question, support_id=None):
         return None
     chosen=next((s for s in supports if s['id']==support_id),supports[0])
     statement=chosen['statement'].strip()
+    if chosen.get('authored',False): statement=_authored_voice(statement,profile.id)
     return f"{OPENERS.get(profile.id,'Posso lhe contar o seguinte:')} {statement} {chosen['lead']}"
 
 

@@ -42,3 +42,7 @@ O harness deriva `eligible_discovery_ids` dos assuntos autorizados e `discovery_
 O contrato `Achievement` e `InvestigationState.achievements` são adicionados pelo coordenador. Em `TurnService._validated_confession`, a reconstrução do `ConversationMessage` de saída precisa preservar `narrative_authorized` registrado no evento: uma mesma fala pode confessar e desbloquear uma descoberta.
 
 A apresentação de objeto pode enriquecer o contexto opcional `ultimo_objeto_apresentado` e `seus_depoimentos_registrados.nome`/`item_id`. Nenhuma referência ao dono secreto é enviada como prova automática.
+
+## Correção determinística posterior à auditoria
+
+A correção posterior ao congelamento `9e7ca6f` não integra as métricas das 100 simulações antes/depois. Apoios autorais conhecidos usam a primeira pessoa quando o morador é sujeito; depoimentos e relatos retransmitidos mantêm o texto e a atribuição. O próximo passo aponta a outra fonte ou ao caderno. A descoberta do seminário resolve “eu” pelo emissor de cada mensagem, inclusive na agregação histórica, sem transformar citação, hipótese ou pergunta em fato. “Não toma os remédios” pode afirmar resistência ao tratamento; a negação do próprio acompanhamento continua sem conceder descoberta. As sete conquistas seguem opcionais e sem efeito no peso das provas.

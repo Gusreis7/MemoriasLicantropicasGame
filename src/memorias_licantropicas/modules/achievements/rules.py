@@ -30,26 +30,44 @@ def award(state,achievement_id,now,*,source_message_id=None,source_npc_id=None):
  return state.model_copy(update={'achievements':(*state.achievements,record)})
 
 
-def discoveries_in_reply(npc_id,content,allowed_ids):
- """Os IDs permitidos vêm do contexto privado; a pergunta do jogador nunca é usada."""
+def _assertion_clauses(content):
  text=normalize(content)
- # A named secret in a question, citation, denial or hypothetical is not a discovery.
  clauses=[]
  for raw in re.split(r'(?<=[.!?;])|\n',re.sub(r'[«“"].*?[»”"]','',text,flags=re.S)):
   if raw.strip().endswith('?'):continue
+  # Refusing the medication affirms resistance; negating the treatment itself does not.
+  raw=re.sub(r'\bnao toma\b', 'resiste a tomar', raw)
   if re.search(r'\b(nao|nunca|jamais|talvez|se|dizem que|ouvi dizer)\b',raw):continue
   clauses.append(raw)
- plain=' '.join(clauses)
+ return clauses
+
+
+def discovery_assertions(npc_id,content):
+ """Resolve first person per source before joining fragments from different speakers."""
+ names={'bentinho':'bentinho','escobar':'escobar','capitu':'capitu','florenca':'florenca',
+        'rubiao':'rubiao','virgilia':'virgilia','bacamarte':'bacamarte'}
+ name=names.get(npc_id)
+ clauses=_assertion_clauses(content)
+ if name:
+  clauses=[re.sub(r'\beu\b',name,re.sub(r'\bmeu pai\b',f'pai de {name}',clause)) for clause in clauses]
+ return ' '.join(clauses)
+
+
+def discoveries_in_reply(npc_id,content,allowed_ids):
+ """Os IDs permitidos vêm do contexto privado; a pergunta do jogador nunca é usada."""
+ plain=discovery_assertions(npc_id,content)
+ original=' '.join(_assertion_clauses(content))
  found=[]
  allowed=set(allowed_ids)
  def has(*groups):return all(any(re.search(pattern,plain) for pattern in group) for group in groups)
+ def own_has(*groups):return all(any(re.search(pattern,original) for pattern in group) for group in groups)
  checks={
  'marriage_triangle':has(('capitu',),('bentinho',),('escobar',),('casad|casamento|marido',),('amig|amizade',)),
  'seminary_bond':has(('bentinho',),('escobar',),('seminario',),('estud|amig|ligacao|juntos',)),
  'treatment_bentinho':has(('bentinho',),('bacamarte',),('tratamento|medicacao|remedio|consult',),('resist|evita|falta|recusa|nao toma',)),
- 'florenca_father':has(('florenca|meu pai',),('pai',),('intern|casa verde',),('bacamarte',)),
- 'capitu_separation':npc_id=='capitu' and has(('quero|desejo|penso|pretendo|decidi|vou',),('separ|deixar meu marido|deixar bentinho',)),
- 'escobar_affection':npc_id=='escobar' and has(('bentinho',),('amo|apaixon|sinto por|meu amor|alem da amizade|mais que amizade',)),
+ 'florenca_father':has(('florenca',),('pai',),('intern|casa verde',),('bacamarte',)),
+ 'capitu_separation':npc_id=='capitu' and own_has(('quero|desejo|penso|pretendo|decidi|vou',),('separ|deixar meu marido|deixar bentinho',)),
+ 'escobar_affection':npc_id=='escobar' and own_has(('bentinho',),('amo|apaixon|sinto por|meu amor|alem da amizade|mais que amizade',)),
  }
  for identifier,accepted in checks.items():
   if identifier in allowed and accepted:found.append(identifier)
