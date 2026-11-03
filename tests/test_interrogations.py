@@ -12,7 +12,7 @@ from memorias_licantropicas.contracts.model import GameCharacter, GameState
 from memorias_licantropicas.modules.investigation.interrogation import (
     CONFESSION_DIFFICULTY, make_confrontation, make_interrogation, npc_interrogation_context,
 )
-from memorias_licantropicas.modules.investigation.rules import make_crime, make_testimony
+from memorias_licantropicas.modules.investigation.rules import make_crime, make_testimony, inspect_evidence
 from memorias_licantropicas.modules.investigation.service import InvestigationService
 from memorias_licantropicas.modules.turns.service import TurnService
 from memorias_licantropicas.modules.world.gate import RedisPlayerGate
@@ -55,6 +55,9 @@ async def dossier(inquiry, wolf="capitu"):
     crimes = tuple(crime.model_copy(update={"evidence": tuple(item.model_copy(update={"collected": True})
         for item in crime.evidence)}) for crime in crimes)
     state = state.model_copy(update={"crimes": crimes})
+    for crime in crimes:
+        for item in crime.evidence:
+            state = inspect_evidence(state, item.id, inquiry.clock[0]).state
     statements = tuple(make_testimony(state, game, item, member.character_id, inquiry.names, inquiry.clock[0])
         for crime in crimes for item in crime.evidence for member in game.characters)
     state = state.model_copy(update={"testimonies": statements})
