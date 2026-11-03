@@ -182,6 +182,7 @@ class Achievement(Contract):
 
 
 class InvestigationState(Contract):
+    active_evidence_by_npc: dict[str, UUID] = Field(default_factory=dict)
     achievements: tuple[Achievement, ...] = ()
     game_id: UUID
     revision: int = Field(default=0, ge=0)

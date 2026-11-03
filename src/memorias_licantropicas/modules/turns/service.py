@@ -345,7 +345,8 @@ class TurnService:
             try:
                 instant = datetime.fromisoformat(record['created_at'])
                 incoming = ConversationMessage(id=record['incoming_id'], sender_id='player', content=record['incoming'], created_at=instant)
-                outgoing = ConversationMessage(id=record['outgoing_id'], sender_id=record['npc_id'], content=record['outgoing'], created_at=instant)
+                outgoing = ConversationMessage(id=record['outgoing_id'], sender_id=record['npc_id'], content=record['outgoing'], created_at=instant,
+                    narrative_authorized=bool(record.get('narrative_authorized', False)))
                 expected = dialogue_transition(state, game, record['npc_id'], UUID(record['conversation_id']), incoming, outgoing,
                     DialogueAssessment.model_validate(record['assessment']), instant)
                 return expected.state == candidate and any(e.type == 'werewolf.confessed' for e in expected.events)

@@ -197,10 +197,12 @@ class InvestigationService(AssemblyServiceMixin):
             existing = next((record for record in state.testimonies
                              if record.witness_id == npc_id
                              and find_evidence(state, record.evidence_id).item_id == evidence.item_id), None)
+            focused = {**state.active_evidence_by_npc, npc_id: evidence.id}
             if existing is not None:
-                return CaseTransition(state=state)
+                return CaseTransition(state=state.model_copy(update={"active_evidence_by_npc": focused}))
             record = make_testimony(state, game, evidence, npc_id, names, self._turns.now())
-            return CaseTransition(state=state.model_copy(update={"testimonies": (*state.testimonies, record)}),
+            return CaseTransition(state=state.model_copy(update={"testimonies": (*state.testimonies, record),
+                                                 "active_evidence_by_npc": focused}),
                 events=(CaseEvent(type="evidence.presented", data={"evidence_id": str(evidence.id),
                     "testimony_id": str(record.id), "witness_id": npc_id, "day": state.day}),))
         state = await self._turns.act(game_id, transition)
@@ -260,7 +262,17 @@ class InvestigationService(AssemblyServiceMixin):
                 memories.append({'dia': day, 'periodo': period, 'local_id': declared.location_id,
                     'companhias': declared.companion_ids, 'atividade': declared.activity,
                     'lembranca': declared.text})
+        last = None
+        last_id = state.active_evidence_by_npc.get(npc_id)
+        if last_id:
+            focused = find_evidence(state, last_id)
+            testimony = next((t for t in reversed(state.testimonies) if t.witness_id == npc_id
+                and find_evidence(state, t.evidence_id).item_id == focused.item_id), None)
+            last = {"evidence_id": str(focused.id), "item_id": focused.item_id,
+                    "nome": ITEMS_BY_ID[focused.item_id].name, "descricao": focused.description,
+                    "fala_registrada": testimony.text if testimony else None}
         return {
+            "ultimo_objeto_apresentado": last,
             "suas_atividades": memories,
             "cooperacao_com_investigacao": COOPERATION.get(npc_id, "Ajude a esclarecer o crime com o que sabe."),
             "dia": state.day,
@@ -273,6 +285,8 @@ class InvestigationService(AssemblyServiceMixin):
             "jornal_publico": [{"dia": edition.day, "manchete": edition.headline, "noticia": edition.body}
                                for edition in state.journal],
             "seus_depoimentos_registrados": [{"evidence_id": str(record.evidence_id), "fala": record.text,
+                "item_id": find_evidence(state, record.evidence_id).item_id,
+                "nome": ITEMS_BY_ID[find_evidence(state, record.evidence_id).item_id].name,
                                                "reconhecimento": record.recognition}
                                               for record in state.testimonies if record.witness_id == npc_id],
             "suas_versoes_de_interrogatorio": [{"dia": record.day, "periodo": record.period,
