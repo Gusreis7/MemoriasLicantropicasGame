@@ -14,7 +14,7 @@ from memorias_licantropicas.modules.characters.repository import CatalogCharacte
 from memorias_licantropicas.modules.investigation.catalog import INVENTORIES, ITEMS_BY_ID, OBSERVED_PEOPLE
 from memorias_licantropicas.modules.investigation.router import get_investigation_service, router
 from memorias_licantropicas.modules.investigation.rules import (
-    choose_victim, evaluate_accusation, make_crime, make_initial_investigation, make_testimony,
+    choose_victim, evaluate_accusation, make_crime, make_initial_investigation, make_testimony, inspect_evidence,
 )
 from memorias_licantropicas.modules.investigation.service import InvestigationService
 from memorias_licantropicas.modules.world.catalog import make_initial_world
@@ -98,12 +98,31 @@ async def submit_testimonies(case, npc="bentinho"):
     return case.turns.state
 
 
-async def test_inventory_has_five_items_and_shared_pools_are_balanced():
-    assert len(INVENTORIES) == 7 and len(ITEMS_BY_ID) == 20
+async def complete_dossier(case):
+    """Caso de duas manhãs; produz exame e corroboração pelos casos de uso reais."""
+    await collect_all(case)
+    second = make_crime(case.game, 1, "bras_cubas", "praca_verde", NOW)
+    case.turns.state = case.turns.state.model_copy(update={"day": 2, "crimes": (*case.turns.state.crimes, second)})
+    go_to(case)
+    for _ in second.evidence:
+        await case.service.search(case.game.id, second.id)
+    evidence_ids = tuple(e.id for c in case.turns.state.crimes for e in c.evidence)
+    for identifier in evidence_ids:
+        await case.service.inspect(case.game.id, identifier)
+    for member in case.game.characters:
+        placement = next(n for n in case.turns.world.npcs if n.npc_id == member.character_id)
+        go_to(case, placement.location_id, placement.x)
+        for identifier in evidence_ids:
+            await case.service.present(case.game.id, identifier, member.character_id)
+    return case.turns.state
+
+
+async def test_inventory_has_seven_items_and_shared_pools_are_balanced():
+    assert len(INVENTORIES) == 7 and len(ITEMS_BY_ID) == 34
     owners = Counter(item for items in INVENTORIES.values() for item in items)
     for inventory in INVENTORIES.values():
-        assert len(inventory) == len(set(inventory)) == 5
-        assert Counter(ITEMS_BY_ID[item].kind for item in inventory) == {"unique": 1, "singular": 1, "common": 3}
+        assert len(inventory) == len(set(inventory)) == 7
+        assert Counter(ITEMS_BY_ID[item].kind for item in inventory) == {"unique": 3, "singular": 1, "common": 3}
     assert len([item for item in ITEMS_BY_ID.values() if item.kind == "common"]) == 10
     for item in ITEMS_BY_ID.values():
         assert owners[item.id] == 1 if item.kind == "unique" else 2 <= owners[item.id] <= 3
@@ -218,8 +237,8 @@ async def test_unknown_witness_does_not_invent_provenance(case):
 
 
 async def test_delegate_accepts_corroboration_and_is_blind_to_private_origin_or_truthfulness(case):
-    state = await submit_testimonies(case)
-    evidence_ids = tuple(item.id for item in state.crimes[0].evidence)
+    state = await complete_dossier(case)
+    evidence_ids = tuple(item.id for crime in state.crimes for item in crime.evidence)
     testimony_ids = tuple(item.id for item in state.testimonies)
     decision = evaluate_accusation(state, "capitu", evidence_ids, testimony_ids, NOW)
     assert decision.accepted
@@ -245,8 +264,8 @@ async def test_delegate_rejects_repetition_unlinked_items_and_bare_accusations(c
 
 
 async def test_accusation_detains_and_consumes_only_one_attempt_per_day(case):
-    state = await submit_testimonies(case)
-    public = await case.service.accuse(case.game.id, "capitu", tuple(item.id for item in state.crimes[0].evidence),
+    state = await complete_dossier(case)
+    public = await case.service.accuse(case.game.id, "capitu", tuple(item.id for crime in state.crimes for item in crime.evidence),
                                       tuple(item.id for item in state.testimonies))
     assert public.accusations[0].accepted and public.detained_npc_id == "capitu"
     assert public.ending is None and public.status == "active"
@@ -259,18 +278,17 @@ async def test_accusation_detains_and_consumes_only_one_attempt_per_day(case):
 async def test_refusal_does_not_detain_and_dead_testimony_remains_usable(case):
     public = await case.service.accuse(case.game.id, "capitu", (), ())
     assert not public.accusations[0].accepted and public.detained_npc_id is None
-    case.turns.state = case.turns.state.model_copy(update={"day": 2})
-    await submit_testimonies(case)
+    await complete_dossier(case)
     case.turns.game = case.game.model_copy(update={"characters": tuple(npc.model_copy(update={"alive": False})
         if npc.character_id == "bentinho" else npc for npc in case.game.characters)})
     state = case.turns.state
-    public = await case.service.accuse(case.game.id, "capitu", tuple(item.id for item in state.crimes[0].evidence),
+    public = await case.service.accuse(case.game.id, "capitu", tuple(item.id for crime in state.crimes for item in crime.evidence),
                                       tuple(item.id for item in state.testimonies))
     assert public.accusations[-1].accepted
 
 
 @pytest.mark.parametrize("wolf", tuple(INVENTORIES))
-async def test_every_wolf_has_an_initial_deduction_path_with_living_civil_observers(case, wolf):
+async def test_every_wolf_needs_personal_trace_and_has_a_second_morning_deduction_path(case, wolf):
     game = case.game.model_copy(update={"characters": tuple(npc.model_copy(update={
         "role": "werewolf" if npc.character_id == wolf else "civil"}) for npc in case.game.characters)})
     state = make_initial_investigation(game, NOW)
@@ -280,15 +298,24 @@ async def test_every_wolf_has_an_initial_deduction_path_with_living_civil_observ
         for item in crime.evidence for npc in game.characters if npc.character_id != wolf)
     state = state.model_copy(update={"crimes": (crime,), "testimonies": records})
     decision = evaluate_accusation(state, wolf, tuple(item.id for item in crime.evidence), tuple(record.id for record in records), NOW)
-    assert decision.accepted
+    assert not decision.accepted  # Comum + singular não autorizam prisão imediata.
+    second = make_crime(game, 1, "bras_cubas", "praca_verde", NOW)
+    second = second.model_copy(update={"evidence": tuple(item.model_copy(update={"collected": True}) for item in second.evidence)})
+    state = state.model_copy(update={"day": 2, "crimes": (crime, second)})
+    for item in second.evidence:
+        state = inspect_evidence(state, item.id, NOW).state
+    records += tuple(make_testimony(state, game, item, npc.character_id, case.names, NOW)
+        for item in second.evidence for npc in game.characters if npc.character_id != wolf)
+    state = state.model_copy(update={"testimonies": records})
+    assert evaluate_accusation(state, wolf, tuple(item.id for c in state.crimes for item in c.evidence), tuple(record.id for record in records), NOW).accepted
 
 
 async def test_npc_context_uses_existing_lock_and_limits_observed_inventory(case):
     context = await case.service.npc_context_locked(case.game.id, "bentinho")
     assert case.turns.locked_calls == 1 and case.turns.sync_calls == 0
-    assert len(context["proprios_apetrechos"]) == 5
+    assert len(context["proprios_apetrechos"]) == 7
     assert {record["personagem_id"] for record in context["posses_observadas"]} == set(OBSERVED_PEOPLE["bentinho"])
-    assert len(context["posses_observadas"]) == 2
+    assert len(context["posses_observadas"]) == 3
     assert all(key not in str(context) for key in ("killer_id", "truthful", "role", "werewolf"))
 
 
@@ -300,28 +327,47 @@ async def test_investigation_actions_integrate_with_atomic_turn_engine(case, sto
     assert await storage.games.create(case.game)
     catalog = CatalogCharacterRepository()
     world_repository = RedisWorldRepository(storage.client, storage.prefix)
+    clock = [NOW]
     turns = TurnService(storage.client, storage.prefix, storage.games, catalog, world_repository,
-                        RedisPlayerGate(storage.client, storage.prefix), clock=lambda: NOW)
+                        RedisPlayerGate(storage.client, storage.prefix), clock=lambda: clock[0])
     service = InvestigationService(turns, catalog)
-    public = await service.get(case.game.id)
-    world = await world_repository.get(case.game.id)
-    await world_repository.save(world.model_copy(update={"revision": world.revision + 1,
-        "player": world.player.model_copy(update={"x": 600})}), expected_revision=world.revision)
-    public = await service.search(case.game.id, public.crimes[0].id)
-    public = await service.search(case.game.id, public.crimes[0].id)
-    world = await world_repository.get(case.game.id)
-    await world_repository.save(world.model_copy(update={"revision": world.revision + 1,
-        "player": world.player.model_copy(update={"location_id": "cafe_largo", "x": 460})}), expected_revision=world.revision)
-    for evidence in public.inventory:
-        public = await service.present(case.game.id, evidence.id, "bentinho")
-    unchanged = await service.present(case.game.id, public.inventory[0].id, "bentinho")
-    assert unchanged.revision == public.revision
-    public = await service.accuse(case.game.id, "capitu", tuple(item.id for item in public.inventory),
-                                  tuple(item.id for item in public.testimonies))
-    assert public.detained_npc_id == "capitu" and public.accusations[-1].accepted
-    assert (await storage.games.get(case.game.id)).characters == case.game.characters
+
+    async def at(location, x):
+        world = await world_repository.get(case.game.id)
+        await world_repository.save(world.model_copy(update={"revision": world.revision + 1,
+            "player": world.player.model_copy(update={"location_id": location, "x": x})}), world.revision)
+
+    async def collect_and_hear(public):
+        for crime in public.crimes:
+            await at(crime.location_id, crime.x)
+            for _ in range(crime.remaining_clues):
+                public = await service.search(case.game.id, crime.id)
+        for evidence in public.inventory:
+            public = await service.inspect(case.game.id, evidence.id)
+        world = await world_repository.get(case.game.id)
+        living = {m.character_id for m in (await storage.games.get(case.game.id)).characters if m.alive}
+        for npc in world.npcs:
+            if npc.npc_id not in living:
+                continue
+            await at(npc.location_id, npc.x)
+            for evidence in public.inventory:
+                public = await service.present(case.game.id, evidence.id, npc.npc_id)
+        return public
+
+    public = await collect_and_hear(await service.get(case.game.id))
+    public = await service.accuse(case.game.id, "capitu", tuple(item.id for item in public.inventory), tuple(item.id for item in public.testimonies))
+    assert not public.accusations[-1].accepted and public.phase == "day"
+    clock[0] = public.phase_ends_at
+    assert (await service.get(case.game.id)).phase == "night"
+    clock[0] += timedelta(seconds=8)
+    public = await collect_and_hear(await service.get(case.game.id))
+    members_before = (await storage.games.get(case.game.id)).characters
+    public = await service.accuse(case.game.id, "capitu", tuple(item.id for item in public.inventory), tuple(item.id for item in public.testimonies))
+    assert public.day == 2 and public.detained_npc_id == "capitu" and public.accusations[-1].accepted
+    assert (await storage.games.get(case.game.id)).characters == members_before
     records = await storage.client.lrange(f"{storage.prefix}:game:{{{case.game.id}}}:events", 0, -1)
-    assert sum('"type": "evidence.collected"' in record for record in records) == 2
+    assert sum('"type": "evidence.collected"' in record for record in records) == 4
+    assert sum('"type": "evidence.examined"' in record for record in records) == 4
 
 
 async def test_rest_commands_reject_client_truth_and_return_only_public_case(case):

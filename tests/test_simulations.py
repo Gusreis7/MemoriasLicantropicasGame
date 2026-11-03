@@ -62,10 +62,13 @@ async def test_unsupported_accusation_never_grants_a_free_victory(storage):
 
 
 @pytest.mark.anyio
-async def test_rash_public_tiebreak_can_detain_innocent_and_then_use_release(storage):
+async def test_premature_public_tiebreak_is_refused_before_distinctive_evidence(storage):
     simulation = Simulation(storage.client, storage.prefix, 13)
     result = await simulation.play("escobar", "rash")
     assert result["accusations"][0]["suspect_id"] == "bentinho"
-    assert result["accusations"][0]["accepted"]
-    assert result["wrong_detentions"] >= 1
+    assert not result["accusations"][0]["accepted"]
+    assert result["accusations"][0]["day"] == 1
+    assert result["wrong_detentions"] == 0
+    assert any(item["accepted"] and item["day"] >= 2 for item in result["accusations"])
+    assert result["actions"]["inspect"] > 0
     assert result["ending"]["werewolf_id"] == "escobar"
