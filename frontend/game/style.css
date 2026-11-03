@@ -294,6 +294,15 @@ kbd{font:10px/1.2 Arial,sans-serif;min-width:21px;padding:4px 5px;border:1px sol
 .notebook-section .evidence-card h4,.notebook-section .testimony-card h4{font-size:16px;margin:4px 0}
 .notebook-section .evidence-card p,.notebook-section .testimony-card p,.notebook-section .crime-list p{font-size:12px;line-height:1.65;color:#5c5547}
 .notebook-section .evidence-presenter{margin:0;padding:9px 0}
+.evidence-inspect{grid-column:2;justify-self:start;margin-top:5px}
+.evidence-inspect:disabled{opacity:.7;cursor:default}
+.inspection-result{padding:8px 10px;border-left:3px solid #77855d;background:#f0eedf;font-style:italic}
+.achievement-progress{margin:0 0 10px;color:#776b51;font:11px Arial,sans-serif}
+.achievement-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:8px}
+.achievement-seal{position:relative;min-width:0;padding:10px 10px 9px 34px;border:2px solid #b49a68;outline:1px solid #e0d0aa;outline-offset:-5px;background:#f3ebd5;color:#4d422f;image-rendering:pixelated}
+.achievement-mark{position:absolute;left:10px;top:10px;color:#9a7131;font-size:16px;text-shadow:1px 1px #e6d19a}
+.achievement-seal h5{margin:0 0 4px;font:bold 12px/1.3 Georgia,serif}
+.achievement-seal p{margin:0;color:#6e624c;font:10px/1.45 Arial,sans-serif}
 .notebook-status{color:#7b6843}
 .notebook-shortcuts{position:relative;display:flex;justify-content:center;gap:18px;flex-wrap:wrap;padding:12px 0 1px;color:#79684c;font:10px Arial,sans-serif}
 .notebook-shortcuts span{display:flex;align-items:center;gap:5px}

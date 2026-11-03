@@ -28,7 +28,8 @@ export type GrammaticalGender = 'masculine' | 'feminine';
 export interface PublicCharacter {id: string; name: string; grammatical_gender?: GrammaticalGender}
 export interface GamePublic {id: string; status: 'active' | 'won' | 'lost'; characters: Array<{character: PublicCharacter; alive: boolean}>}
 export interface CaseCrime {id: string; day: number; victim_id: string; victim_name: string; location_id: LocationID; x: number; remaining_clues: number}
-export interface CaseEvidence {id: string; crime_id: string; item_id: string; name: string; kind: 'unique' | 'singular' | 'common'; description: string}
+export interface CaseEvidence {id: string; crime_id: string; item_id: string; name: string; kind: 'unique' | 'singular' | 'common'; description: string; examined?: boolean; inspection_text?: string | null}
+export interface CaseAchievement {id: string; title: string; description: string; unlocked_at: string; source_message_id?: string | null; source_npc_id?: string | null}
 export interface CaseTestimony {id: string; day: number; evidence_id: string; witness_id: string; witness_name: string; recognition: 'recognizes' | 'denies' | 'unknown'; claimed_owner_id: string | null; text: string}
 export interface CaseAccusation {id: string; day: number; suspect_id: string; suspect_name: string; evidence_ids: string[]; testimony_ids: string[]; accepted: boolean; reason: string}
 export interface CaseInterrogation {
@@ -47,6 +48,7 @@ export interface CasePublic {
   game_id: string; revision: number; day: number; phase: 'day' | 'night' | 'finished'; status: 'active' | 'won' | 'lost';
   server_time: string; phase_ends_at: string; seconds_remaining: number;
   journal: JournalEdition[]; crimes: CaseCrime[]; inventory: CaseEvidence[]; testimonies: CaseTestimony[];
+  achievements?: CaseAchievement[]; achievement_total?: number;
   accusations: CaseAccusation[]; detained_npc_id: string | null;
   assembly?: {suspect_id: string; nominated_id?: string | null; messages?: Array<{speaker_id: string; text: string}>; day: number; required_votes: number; expelled: boolean; outcome: 'werewolf' | 'innocent' | 'no_majority' | 'player_expelled'; votes: Array<{voter_id: string; target_id?: string | null; expel: boolean; reason: string}>} | null;
   assembly_session?: AssemblySession | null;
@@ -88,6 +90,7 @@ export const api = {
   reports: (id: string) => request<{reports: HeardReport[]}>(`${base(id)}/social/reports`),
   search: (id: string, crimeID: string) => request<CasePublic>(`${base(id)}/crime-scenes/${encodeURIComponent(crimeID)}/search`, {}),
   present: (id: string, evidenceID: string, npcID: string) => request<CasePublic>(`${base(id)}/evidence/${encodeURIComponent(evidenceID)}/present`, {npc_id: npcID}),
+  inspectEvidence: (id: string, evidenceID: string) => request<CasePublic>(`${base(id)}/evidence/${encodeURIComponent(evidenceID)}/inspect`, {}),
   accuse: (id: string, suspectID: string, evidenceIDs: string[], testimonyIDs: string[]) => request<CasePublic>(`${base(id)}/accusations`, {
     suspect_id: suspectID, evidence_ids: evidenceIDs, testimony_ids: testimonyIDs,
   }),
