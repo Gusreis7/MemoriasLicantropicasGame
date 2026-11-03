@@ -52,7 +52,7 @@ app.innerHTML = `
       </aside>
       <div class="delegate-case">
         <header class="modal-heading"><div><p class="eyebrow">UM PEDIDO DE PRISÃO</p><h2 id="delegate-title">Apresente seu caso</h2></div><button id="close-delegate" class="icon-button" type="button" aria-label="Dispensar delegado">×</button></header>
-        <p class="case-note delegate-introduction">Escolha quem deseja acusar e apresente os vestígios e depoimentos que sustentam sua suspeita. A transformação na cela será a confirmação da culpa.</p>
+        <p class="case-note delegate-introduction">Examine marcas pessoais e ouça fontes diferentes; objetos comuns, sozinhos, não bastam. Escolha quem deseja acusar e apresente os vestígios e depoimentos que sustentam sua suspeita.</p>
         <form id="accusation-form">
           <fieldset class="suspect-fieldset"><legend><span class="case-step">01</span> Quem você acusa?</legend><p class="delegate-field-hint">Escolha um morador para examinar o pedido de prisão.</p><div id="accused-npc" class="suspect-gallery"></div><p id="accused-selection" class="accused-selection" role="status" aria-live="polite">Nenhum suspeito selecionado.</p></fieldset>
           <div class="accusation-records"><fieldset><legend><span class="case-step">02</span> Vestígios recolhidos</legend><div id="accusation-evidence"></div></fieldset><fieldset><legend><span class="case-step">03</span> Depoimentos registrados</legend><div id="accusation-testimonies"></div></fieldset></div>
@@ -810,6 +810,7 @@ function renderNotebook() {
     item.append(art);
     const details = document.createElement('div'); details.className = 'evidence-details';
     addText(details, 'span', itemKind(evidence), 'evidence-kind'); addText(details, 'h4', evidence.name);
+    if (PERSONAL_ITEM_ICONS.has(evidence.item_id)) addText(details, 'span', '✦ Rastro pessoal', 'evidence-kind personal-trace-stamp');
     addText(details, 'p', copies.length > 1 ? `Você recolheu ${copies.length} exemplares deste objeto.` : evidence.description);
     const inspected = copies.find(copy => copy.examined) ?? evidence;
     const inspect = document.createElement('button'); inspect.type = 'button'; inspect.className = 'button small evidence-inspect';
@@ -871,6 +872,7 @@ function renderAchievements() {
   const list = $('#achievement-list'); list.replaceChildren();
   for (const achievement of achievements) {
     const seal = document.createElement('article'); seal.className = 'achievement-seal';
+    seal.dataset.achievementId = achievement.id;
     addText(seal, 'span', '✦', 'achievement-mark'); addText(seal, 'h5', achievement.title); addText(seal, 'p', achievement.description);
     list.append(seal);
   }
