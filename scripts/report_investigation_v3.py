@@ -419,6 +419,19 @@ Tokens e custo somam exclusivamente `dialogue.usage.totals` uma vez por sondagem
 
 {pairs_text}
 
+## Revisão qualitativa crítica: fidelidade e voz
+
+O `actionable_proxy` marcou 94 de 99 respostas after completas. A amostra seguinte mostra por que esse 94/99 não é taxa de fidelidade: é um sinal lexical de possível utilidade, não uma checagem de suporte ou de coerência do personagem.
+
+- **Caso 34 · Virgília / follow-up sobre cera:** os suportes autorizados incluem “Já vi Dr. Bacamarte com um objeto igual” e assuntos sobre Florença, mas não mencionam Brás Cubas afogado nem vapor. A resposta acrescenta “se viajava com vela na mesma linha do vapor que afogou Brás”. Essa associação concreta não aparece nos suportes que conferi e deve ser tratada como conteúdo inventado, não como pista.
+- **Caso 81 · Virgília / relações:** os suportes registram que Bentinho e Escobar estudaram juntos no seminário (“Bentinho e Escobar estudaram juntos no seminário e mantiveram uma ligação antiga”). A fala after transfere a lembrança para “A amizade entre nós é de longa data, de seminário” e parece atribuir a história a Virgília e Florença. A relação de seminário foi atribuída ao par errado.
+- **Caso 1 · Bentinho / relações:** antes, Bentinho responde em primeira pessoa sobre resistir ao tratamento. Depois, fala de si em terceira pessoa (“Bentinho faz acompanhamento…”) e termina orientando Floriano a conversar “com Bentinho”, isto é, com o próprio interlocutor. A memória do tratamento está autorizada, mas a forma é uma piora clara de voz e continuidade.
+- **Caso 21 · Rubião / relações:** depois, Rubião repete de perto o suporte autorizado sobre a investida não correspondida (“Rubião tenta aproximar-se de Florença…”). Isso tem âncora, mas a formulação em terceira pessoa soa como resumo de ficha e não como uma fala dele. O actionability proxy aceita a resposta sem medir naturalidade.
+
+Esses casos foram conferidos contra `authorized_supports` em ambas as linhas JSONL; apenas as afirmações indicadas como não apoiadas foram julgadas sem suporte. A revisão é uma leitura qualitativa pequena e não estima prevalência. Próximos passos: aumentar a checagem automática de cada afirmação contra os suportes explícitos, validar a identidade gramatical da primeira pessoa e inspecionar manualmente uma amostra maior por tipo de pergunta antes de usar o proxy para decisões de qualidade.
+
+Uma correção posterior ao congelamento `9e7ca6f` está sendo feita em separado por outra agente: renderização determinística e descoberta/conquista ligada à fala em primeira pessoa. Ela não altera os 100 registros after que este relatório resume; a versão corrigida precisará de uma nova execução/avaliação para aparecer nos dados.
+
 ## Reprodutibilidade e hash SHA-256
 
 {markdown_table(['arquivo','SHA-256'], [[str(path.relative_to(root)), sha256(path)] for path in [paths['before'], paths['after'], benchmark_code]] + [['scripts/report_investigation_v3.py', sha256(report_code)]])}
