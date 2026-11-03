@@ -90,4 +90,11 @@ describe('contratos HTTP do jogo', () => {
     await api.accuse('game-id', 'capitu', ['evidence-id'], ['testimony-id']);
     expect(JSON.parse(fetch.mock.calls[2][1].body)).toEqual({suspect_id: 'capitu', evidence_ids: ['evidence-id'], testimony_ids: ['testimony-id']});
   });
+  it('examina um vestígio enviando corpo vazio e recebe o caderno atualizado', async () => {
+    const fetch = vi.fn().mockResolvedValue(new Response('{"inventory":[{"id":"ev","examined":true,"inspection_text":"Uma marca de tinta."}]}', {status: 200}));
+    vi.stubGlobal('fetch', fetch);
+    await expect(api.inspectEvidence('game-id', 'ev')).resolves.toMatchObject({inventory: [{examined: true, inspection_text: 'Uma marca de tinta.'}]});
+    expect(fetch.mock.calls[0][0]).toBe('/api/v1/games/game-id/evidence/ev/inspect');
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({});
+  });
 });
