@@ -41,14 +41,26 @@ def dialogue_transition(state, game, npc_id, conversation_id, incoming, outgoing
     changes = {'dialogue_events': (*state.dialogue_events, record), 'achievements':discovered_state.achievements}
     events = [CaseEvent(type='session.exchange_assessed', data={'id': event_id, 'npc_id': npc_id,
         'kind': assessment.kind, 'incoming_id': str(incoming.id), 'outgoing_id': str(outgoing.id)})]
-    if assessment.kind == 'alibi' and assessment.day is not None and assessment.period:
+    if (assessment.kind == 'alibi' and assessment.own_assertion and assessment.quote
+            and assessment.quote in outgoing.content and assessment.day is not None and assessment.period):
         from memorias_licantropicas.modules.investigation.interrogation import make_interrogation
         day, period = assessment.day, assessment.period
         if day <= state.day and not (period == 'night' and day >= state.day) and not any(
                 r.npc_id == npc_id and r.day == day and r.period == period for r in state.interrogations):
             names = {m.character_id: m.character_id for m in game.characters}
             declaration = make_interrogation(state, game, npc_id, day, period, names, now)
-            changes['interrogations'] = (*state.interrogations, declaration.model_copy(update={'text': outgoing.content}))
+            # Only what was actually said enters the public notebook, not all private observations.
+            text = normalize(outgoing.content)
+            places = {'praca_verde':'praca','cabana_capitu':'cabana','casa_verde':'casa verde',
+                      'cafe_largo':'cafe','cais_lanternas':'cais'}
+            mentioned = {key for key,alias in places.items() if re.search(r'\b'+alias+r'\b', text)}
+            observations = tuple(claim for claim in declaration.observations
+                if normalize(claim.npc_id.replace('_',' ')) in text and claim.location_id in mentioned)
+            companions = tuple(person for person in declaration.companion_ids
+                if normalize(person.replace('_',' ')) in text)
+            changes['interrogations'] = (*state.interrogations, declaration.model_copy(update={
+                'text': outgoing.content,'location_id': declaration.location_id if declaration.location_id in mentioned else None,
+                'companion_ids': companions,'observations': observations}))
             events.append(CaseEvent(type='character.interrogated', data={'interrogation_id': str(declaration.id),
                 'npc_id': npc_id, 'day': day, 'period': period, 'source': 'dialogue'}))
     if accepted:

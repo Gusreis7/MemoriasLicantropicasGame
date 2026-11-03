@@ -83,7 +83,8 @@ def local_assessment(incoming, outgoing, day):
     if direct:
         return DialogueAssessment(kind='admission', quote=outgoing[:2400], confidence=1, own_assertion=True, surrender=surrender)
     text = normalize(incoming)
-    if re.search(r'\b(onde|com quem|o que fazia|o que estava fazendo)\b', text):
+    from memorias_licantropicas.modules.agents.support import is_alibi_question
+    if is_alibi_question(incoming):
         period = 'night' if re.search(r'\b(noite|anoitecer|madrugada)\b', text) else 'day'
         match = re.search(r'\bdia\s+(\d+)\b', text)
         target_day = int(match.group(1)) if match else max(0, day - 1) if ('ontem' in text or period == 'night') else day
@@ -138,6 +139,9 @@ class SessionMasterService:
             if raw.startswith('```'):
                 raw = re.sub(r'^```(?:json)?\s*|\s*```$', '', raw)
             proposal = DialogueAssessment.model_validate_json(raw).model_copy(update={"discovery_ids":(), "eligible_discovery_ids":()})
+            from memorias_licantropicas.modules.agents.support import is_alibi_question
+            if proposal.kind == 'alibi' and not is_alibi_question(incoming.content):
+                proposal = proposal.model_copy(update={'kind':'conversation','period':None,'day':None})
             effective = outgoing.content
             if proposal.issues:
                 from memorias_licantropicas.modules.agents.guard import DialogueGuard

@@ -35,6 +35,16 @@ def _lead(statement, npc_id):
     return 'Pode perguntar mais sobre esse ponto; é algo de que consigo falar.'
 
 
+def is_alibi_question(question):
+    text=normalized(question)
+    return bool(re.search(
+        r'\b(?:onde|aonde)\s+(?:(?:voce|o senhor|a senhora)\s+)?(?:estava|esteve|ficou|passou|andou)\b|'
+        r'\bcom quem\b.{0,35}\b(?:estava|esteve|ficou|passou|andou|jantou|saiu)\b|'
+        r'\b(?:estava|esteve|ficou|passou|andou)\b.{0,35}\bcom quem\b|'
+        r'\b(?:o que|que)\s+(?:voce\s+)?(?:fazia|estava fazendo|fez)\b|'
+        r'\b(?:qual|seu) alibi\b',text))
+
+
 def dialogue_supports(profile, observations, question):
     """Lista somente o que a persona pode compartilhar agora, com origem estável."""
     if observations is None:
@@ -52,7 +62,7 @@ def dialogue_supports(profile, observations, question):
         if statement:
             candidates.append({'id':f'activity:{record.get("dia",index)}:{record.get("periodo","")}',
                 'statement':statement,'lead':'Confronte essa lembrança com a versão de quem estava por perto.',
-                'kind':'activity','priority':4 if {'onde','noite','ontem','quem','estava'} & words(question) else 0})
+                'kind':'activity','priority':4 if is_alibi_question(question) else 0})
     active=observations.get('ultimo_objeto_apresentado') or {}
     if active.get('fala_registrada'):
         candidates.append({'id':f"active-item:{active.get('evidence_id',active.get('item_id',''))}",

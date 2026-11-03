@@ -7,7 +7,7 @@ Checkpoint por case_id; --limit1 permite conferir a inicialização sem repetirc
 import argparse,asyncio,json,sys,statistics,re
 from pathlib import Path
 from time import monotonic
-from uuid import NAMESPACE_URL,uuid5
+from uuid import UUID,NAMESPACE_URL,uuid5
 from decimal import Decimal
 
 parser=argparse.ArgumentParser();parser.add_argument('--phase',choices=['before','after'],required=True)
@@ -19,7 +19,7 @@ sys.path.insert(0,str(source/'src'));sys.path.insert(1,str(source/'scripts'))
 import fakeredis
 from explore_narrative_balance import NarrativeSimulation,IDS
 from simulate_gameplay import rank_suspects
-from memorias_licantropicas.contracts.model import Conversation,LLMResponse
+from memorias_licantropicas.contracts.model import Conversation,LLMResponse,GameState,GameCharacter
 from memorias_licantropicas.contracts.errors import ConflictError,AccessDeniedError
 from memorias_licantropicas.modules.agents.service import HarnessService
 from memorias_licantropicas.modules.session_master.service import SessionMasterService
@@ -56,6 +56,14 @@ class OfflineLLM:
         return LLMResponse(content='Capitu e Bentinho são casados. Pergunte a Capitu sobre o ciúme dele.',model='offline')
 
 class EvaluationSimulation(NarrativeSimulation):
+    async def create(self,wolf):
+        profiles=await self.catalog.list()
+        game=GameState(id=getattr(self,'fixture_game_id',uuid5(NAMESPACE_URL,f'v3-fixture:{self.seed}')),
+            created_at=self.clock(),content_version=self.catalog.content_version,
+            characters=tuple(GameCharacter(character_id=p.id,role='werewolf' if p.id==wolf else 'civil') for p in profiles))
+        assert await self.games.create(game)
+        self.game_id=game.id
+        return await self.investigation.get(game.id)
     async def probe(self,index,persona,judge,usage):
         actor=IDS[(index//7)%len(IDS)]
         kind=QUESTIONS[index%len(QUESTIONS)]
@@ -155,6 +163,8 @@ async def main():
     output=args.output;output.mkdir(parents=True,exist_ok=True);path=output/f'{args.phase}.jsonl'
     prior=[json.loads(s) for s in path.read_text().splitlines()] if path.exists() else []
     done={r['case_id'] for r in prior};settings=Settings()
+    baseline_path=output/'before.jsonl'
+    baseline={r['case_id']:r for r in (json.loads(s) for s in baseline_path.read_text().splitlines())} if baseline_path.exists() else {}
     def raw(limit):
         if args.offline:return OfflineLLM()
         return BedrockMantleClient(base_url=settings.mantle_base_url,api_key=settings.bedrock_api_key.get_secret_value() if settings.bedrock_api_key else None,
@@ -167,6 +177,8 @@ async def main():
         async with semaphore:
             redis=fakeredis.FakeAsyncRedis(decode_responses=True)
             sim=EvaluationSimulation(redis,f'v3:{args.phase}:{index}',73000+index)
+            if args.phase=='after' and index in baseline:
+                sim.fixture_game_id=UUID(baseline[index]['dialogue']['usage']['game_id'])
             started=monotonic();result={'case_id':index,'seed':73000+index,'phase':args.phase,'wolf':IDS[index%len(IDS)],'policy':POLICIES[index%5],'provider':'offline' if args.offline else settings.bedrock_model}
             try:
                 case=await sim.create(result['wolf']);await sim.seed_social()
