@@ -61,6 +61,8 @@ class CrimePublic(Contract):
 
 
 class EvidencePublic(Contract):
+    examined: bool = False
+    inspection_text: str | None = None
     id: UUID
     crime_id: UUID
     item_id: str
@@ -130,7 +132,18 @@ class ConfrontationPublic(Contract):
     text: str
 
 
+class AchievementPublic(Contract):
+    id: str
+    title: str
+    description: str
+    unlocked_at: AwareDatetime
+    source_message_id: UUID | None = None
+    source_npc_id: str | None = None
+
+
 class CasePublic(Contract):
+    achievements: tuple[AchievementPublic, ...] = ()
+    achievement_total: int = 7
     game_id: UUID
     revision: int
     day: int

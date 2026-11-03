@@ -21,6 +21,9 @@ class ItemDefinition(Contract):
 
 
 class Evidence(Contract):
+    examined: bool = False
+    inspection_text: str | None = None
+    crime_link_verified: bool = False
     id: UUID
     crime_id: UUID
     item_id: str
@@ -169,7 +172,17 @@ class AssemblyRecord(Contract):
     created_at: AwareDatetime
 
 
+class Achievement(Contract):
+    id: str
+    title: str
+    description: str
+    unlocked_at: AwareDatetime
+    source_message_id: UUID | None = None
+    source_npc_id: str | None = None
+
+
 class InvestigationState(Contract):
+    achievements: tuple[Achievement, ...] = ()
     game_id: UUID
     revision: int = Field(default=0, ge=0)
     version: Literal["1"] = "1"
