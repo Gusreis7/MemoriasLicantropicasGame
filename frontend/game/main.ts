@@ -40,7 +40,7 @@ app.innerHTML = `
 
   <div id="dialogue-overlay" class="overlay dialogue-overlay" hidden><section class="dialogue-modal" role="dialog" aria-modal="true" aria-labelledby="dialogue-name"><aside class="persona-panel"><div class="persona-frame"><img id="persona-portrait" src="" alt=""/></div><p class="eyebrow">DEPOIMENTO</p><h2 id="dialogue-name"></h2><span class="persona-flourish" aria-hidden="true">— ✦ —</span><p>Nem toda verdade vem à primeira pergunta.</p></aside><div class="conversation-panel"><header class="conversation-heading"><div><span class="conversation-dot"></span><span>Conversa com Floriano</span></div><button id="close-dialogue" class="icon-button" type="button" aria-label="Encerrar conversa">×</button></header><div id="messages" class="messages" role="log" aria-live="polite"></div><div id="dialogue-status" class="status dialogue-status" role="status" aria-live="polite"></div><div id="evidence-presenter" class="evidence-presenter" hidden><label for="present-evidence">Mostrar um vestígio</label><div><select id="present-evidence"></select><button id="present-button" class="button small" type="button">Apresentar</button></div><p id="presentation-status" role="status" aria-live="polite"></p></div><form id="message-form" class="message-form"><label class="sr-only" for="message-input">Sua pergunta</label><textarea id="message-input" rows="2" maxlength="8000" placeholder="Pergunte, retome uma pista ou confronte uma versão…" required></textarea><button id="send-message" class="button primary" type="submit" aria-label="Enviar pergunta">Enviar <span aria-hidden="true">→</span></button></form><p class="form-hint">Pergunte sobre álibis e contradições na conversa. Enter envia · Shift + Enter quebra a linha</p></div></section></div>
   <div id="journal-overlay" class="overlay" hidden><section class="journal-modal case-modal" role="dialog" aria-modal="true" aria-labelledby="journal-title"><header class="newspaper-masthead"><div class="newspaper-dateline"><span>RIO DE JANEIRO</span><span>EDIÇÃO DA MANHÃ</span><button id="close-journal" class="icon-button" type="button" aria-label="Fechar jornal">×</button></div><h2 id="journal-title">O Clarim do Rio</h2><div class="newspaper-edition"><span>NOTÍCIAS DA CIDADE · 1890</span><span id="journal-day"></span></div></header><article class="newspaper-story"><p class="journal-motto">Os acontecimentos da cidade, à luz do dia.</p><p id="journal-death-toll" class="journal-death-toll"></p><h3 id="journal-headline"></h3><figure id="journal-victim" class="journal-victim" hidden><img id="journal-victim-image" alt=""/><figcaption id="journal-victim-caption"></figcaption></figure><figure id="journal-snapshot" class="journal-snapshot" hidden><img id="journal-image" src="/assets/press/crime-scene-snapshot.png" alt="Registro monocromático de uma rua carioca à noite, com um chapéu caído e pegadas no calçamento."/><figcaption id="journal-snapshot-caption"></figcaption></figure><p id="journal-body"></p><p id="journal-location" class="journal-location"></p></article><button id="read-journal" class="button primary" type="button">Continuar a investigação</button></section></div>
-  <div id="notebook-overlay" class="overlay notebook-overlay" hidden><section class="case-modal notebook-modal" role="dialog" aria-modal="true" aria-labelledby="notebook-title"><header class="notebook-heading"><div><p class="eyebrow">ANOTAÇÕES DE FLORIANO · 1890</p><h2 id="notebook-title">Caderno de campo</h2></div><button id="close-notebook" class="icon-button" type="button" aria-label="Fechar caderno">×</button></header><div class="notebook-book"><div class="notebook-page-stack" aria-hidden="true"></div><div class="notebook-page-markers" aria-hidden="true"><span class="notebook-page-marker notebook-page-marker-residents">01 · Moradores</span><span class="notebook-page-marker notebook-page-marker-clues">02 · Pistas</span><span class="notebook-page-marker notebook-page-marker-reports">03 · Relatos</span></div><div class="notebook-spread"><aside class="notebook-page notebook-suspect-page" aria-labelledby="notebook-suspects-title"><header class="notebook-page-heading"><span>FOLHA 01</span><h3 id="notebook-suspects-title">Os moradores</h3><p>Sete destinos, uma sombra.</p></header><div id="notebook-suspects" class="notebook-suspects" aria-live="polite"></div></aside><section class="notebook-page notebook-notes-page" aria-label="Anotações do caso"><div class="notebook-tabs" role="tablist" aria-label="Seções do caderno"><button id="notebook-tab-clues" class="notebook-tab" type="button" role="tab" aria-selected="true" aria-controls="notebook-clues" tabindex="0">Pistas <kbd>1</kbd></button><button id="notebook-tab-reports" class="notebook-tab" type="button" role="tab" aria-selected="false" aria-controls="notebook-reports" tabindex="-1">Relatos <kbd>2</kbd></button></div><div id="notebook-clues" class="notebook-tab-panel" role="tabpanel" aria-labelledby="notebook-tab-clues"><header class="notebook-page-heading"><span>FOLHA 02 · INDÍCIOS</span><h3>O que ficou para trás</h3><p>Vestígios, versões e contradições.</p></header><section class="notebook-section"><h4>Vestígios recolhidos</h4><div id="evidence-list" class="evidence-list"></div></section><section class="notebook-section"><h4>Depoimentos sobre objetos</h4><div id="testimony-list" class="testimony-list"></div></section><section class="notebook-section"><h4>Álibis e interrogatórios</h4><div id="interrogation-list" class="testimony-list"></div></section><section class="notebook-section"><h4>Confrontos</h4><div id="confrontation-list" class="testimony-list"></div></section><section class="notebook-section"><h4>Cenas conhecidas</h4><div id="crime-list" class="crime-list"></div></section></div><div id="notebook-reports" class="notebook-tab-panel" role="tabpanel" aria-labelledby="notebook-tab-reports" hidden><header class="notebook-page-heading"><span>FOLHA 02 · VOZES DA CIDADE</span><h3>O que dizem pelas ruas</h3><p>Uma notícia conserva a voz e a fonte de quem a contou.</p></header><p id="reports-status" class="status notebook-status" role="status" aria-live="polite"></p><div id="heard-report-list" class="testimony-list"></div></div></section></div></div><footer class="notebook-shortcuts"><span><kbd>C</kbd> guardar o caderno</span><span><kbd>1</kbd> pistas</span><span><kbd>2</kbd> relatos</span><span><kbd>Esc</kbd> fechar</span></footer></section></div>
+  <div id="notebook-overlay" class="overlay notebook-overlay" hidden><section class="case-modal notebook-modal" role="dialog" aria-modal="true" aria-labelledby="notebook-title"><header class="notebook-heading"><div><p class="eyebrow">ANOTAÇÕES DE FLORIANO · 1890</p><h2 id="notebook-title">Caderno de campo</h2></div><button id="close-notebook" class="icon-button" type="button" aria-label="Fechar caderno">×</button></header><div class="notebook-book"><div class="notebook-page-stack" aria-hidden="true"></div><div class="notebook-page-markers" aria-hidden="true"><span class="notebook-page-marker notebook-page-marker-residents">01 · Moradores</span><span class="notebook-page-marker notebook-page-marker-clues">02 · Pistas</span><span class="notebook-page-marker notebook-page-marker-reports">03 · Relatos</span></div><div class="notebook-spread"><aside class="notebook-page notebook-suspect-page" aria-labelledby="notebook-suspects-title"><header class="notebook-page-heading"><span>FOLHA 01</span><h3 id="notebook-suspects-title">Os moradores</h3><p>Sete destinos, uma sombra.</p></header><div id="notebook-suspects" class="notebook-suspects" aria-live="polite"></div></aside><section class="notebook-page notebook-notes-page" aria-label="Anotações do caso"><div class="notebook-tabs" role="tablist" aria-label="Seções do caderno"><button id="notebook-tab-clues" class="notebook-tab" type="button" role="tab" aria-selected="true" aria-controls="notebook-clues" tabindex="0">Pistas <kbd>1</kbd></button><button id="notebook-tab-reports" class="notebook-tab" type="button" role="tab" aria-selected="false" aria-controls="notebook-reports" tabindex="-1">Relatos <kbd>2</kbd></button></div><div id="notebook-clues" class="notebook-tab-panel" role="tabpanel" aria-labelledby="notebook-tab-clues"><header class="notebook-page-heading"><span>FOLHA 02 · INDÍCIOS</span><h3>O que ficou para trás</h3><p>Vestígios, versões e contradições.</p></header><section class="notebook-section"><h4>Vestígios recolhidos</h4><div id="evidence-list" class="evidence-list"></div></section><section id="achievements-section" class="notebook-section discoveries-section"><h4>Descobertas</h4><p id="achievement-progress" class="achievement-progress"></p><div id="achievement-list" class="achievement-list"></div></section><section class="notebook-section"><h4>Depoimentos sobre objetos</h4><div id="testimony-list" class="testimony-list"></div></section><section class="notebook-section"><h4>Álibis e interrogatórios</h4><div id="interrogation-list" class="testimony-list"></div></section><section class="notebook-section"><h4>Confrontos</h4><div id="confrontation-list" class="testimony-list"></div></section><section class="notebook-section"><h4>Cenas conhecidas</h4><div id="crime-list" class="crime-list"></div></section></div><div id="notebook-reports" class="notebook-tab-panel" role="tabpanel" aria-labelledby="notebook-tab-reports" hidden><header class="notebook-page-heading"><span>FOLHA 02 · VOZES DA CIDADE</span><h3>O que dizem pelas ruas</h3><p>Uma notícia conserva a voz e a fonte de quem a contou.</p></header><p id="reports-status" class="status notebook-status" role="status" aria-live="polite"></p><div id="heard-report-list" class="testimony-list"></div></div></section></div></div><footer class="notebook-shortcuts"><span><kbd>C</kbd> guardar o caderno</span><span><kbd>1</kbd> pistas</span><span><kbd>2</kbd> relatos</span><span><kbd>Esc</kbd> fechar</span></footer></section></div>
   <div id="delegate-overlay" class="overlay" hidden>
     <section class="case-modal delegate-modal" role="dialog" aria-modal="true" aria-labelledby="delegate-title">
       <aside class="delegate-persona">
@@ -52,7 +52,7 @@ app.innerHTML = `
       </aside>
       <div class="delegate-case">
         <header class="modal-heading"><div><p class="eyebrow">UM PEDIDO DE PRISÃO</p><h2 id="delegate-title">Apresente seu caso</h2></div><button id="close-delegate" class="icon-button" type="button" aria-label="Dispensar delegado">×</button></header>
-        <p class="case-note delegate-introduction">Escolha quem deseja acusar e apresente os vestígios e depoimentos que sustentam sua suspeita. A transformação na cela será a confirmação da culpa.</p>
+        <p class="case-note delegate-introduction">Examine marcas pessoais e ouça fontes diferentes; objetos comuns, sozinhos, não bastam. Escolha quem deseja acusar e apresente os vestígios e depoimentos que sustentam sua suspeita.</p>
         <form id="accusation-form">
           <fieldset class="suspect-fieldset"><legend><span class="case-step">01</span> Quem você acusa?</legend><p class="delegate-field-hint">Escolha um morador para examinar o pedido de prisão.</p><div id="accused-npc" class="suspect-gallery"></div><p id="accused-selection" class="accused-selection" role="status" aria-live="polite">Nenhum suspeito selecionado.</p></fieldset>
           <div class="accusation-records"><fieldset><legend><span class="case-step">02</span> Vestígios recolhidos</legend><div id="accusation-evidence"></div></fieldset><fieldset><legend><span class="case-step">03</span> Depoimentos registrados</legend><div id="accusation-testimonies"></div></fieldset></div>
@@ -69,6 +69,11 @@ app.innerHTML = `
 
 const $ = <T extends HTMLElement = HTMLElement>(selector: string) => document.querySelector<T>(selector)!;
 const STORAGE_KEY = 'memorias-licantropicas:game';
+const PERSONAL_ITEM_ICONS = new Set<string>([
+  'rosario_seminario', 'carta_santiago', 'pente_olho_cobre', 'sinete_lua', 'caderneta_seminario',
+  'abotoadeira_esmeralda', 'abotoadeira_sol', 'medalhao_quincas', 'camafeu_vn', 'frasco_violeta',
+  'dedal_andorinha', 'fivela_manifesto', 'estilete_casa_verde', 'selo_casa_verde',
+]);
 const locationDescription: Record<LocationID, string> = {
   praca_verde: 'Entre árvores e rumores, a cidade segue seu curso.',
   cabana_capitu: 'Há coisas que nem as cartas revelam.',
@@ -120,6 +125,7 @@ let assemblyTimeoutAttempt = '';
 let assemblyRenderedRevision = '';
 let assemblyDraftGame: string | null = null;
 let toastTimer: ReturnType<typeof setTimeout> | undefined;
+const inspectingEvidence = new Set<string>();
 
 function savedGame() { try { return localStorage.getItem(STORAGE_KEY); } catch { return null; } }
 function saveGame(id: string) { try { localStorage.setItem(STORAGE_KEY, id); } catch { /* A sessão ainda funciona sem armazenamento local. */ } }
@@ -588,13 +594,13 @@ function stackTestimonies(testimonies: CaseTestimony[], inventory: CaseEvidence[
 }
 function itemArt(itemId: string, kind: CaseEvidence['kind']) {
   const wrapper = document.createElement('span'); wrapper.className = `item-art item-art-${kind}`; wrapper.setAttribute('aria-hidden', 'true');
-  if (itemId !== 'botao') {
+  if (itemId !== 'botao' && !PERSONAL_ITEM_ICONS.has(itemId)) {
     const image = document.createElement('img'); image.src = `/assets/items/detail/${itemId}.png`;
     image.alt = ''; image.width = 64; image.height = 64; image.decoding = 'async'; wrapper.append(image);
   } else {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('viewBox', '0 0 64 64');
     const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
-    use.setAttribute('href', `/assets/items/item-icons.svg?v=2#${itemId}`); svg.append(use); wrapper.append(svg);
+    use.setAttribute('href', `/assets/items/item-icons.svg?v=3#${itemId}`); svg.append(use); wrapper.append(svg);
   }
   return wrapper;
 }
@@ -602,6 +608,11 @@ function itemArt(itemId: string, kind: CaseEvidence['kind']) {
 async function applyCase(next: CasePublic, initial = false) {
   if (!world || (!initial && $('#investigation').hidden) || next.game_id !== world.game_id || (caseState && next.revision < caseState.revision)) return;
   const previous = caseState;
+  if (previous && previous.game_id === next.game_id) {
+    const oldAchievements = new Set((previous.achievements ?? []).map(item => item.id));
+    const fresh = (next.achievements ?? []).filter(item => !oldAchievements.has(item.id));
+    if (fresh.length) toast(`Nova descoberta: ${fresh.map(item => item.title).join(', ')}`);
+  }
   const changed = !previous || previous.day !== next.day || previous.phase !== next.phase || previous.status !== next.status
     || previous.detained_npc_id !== next.detained_npc_id || pendingWorldSync;
   caseState = next; assemblyClockOffset = Date.now() - Date.parse(next.server_time); caseClock.accept(next); renderClock();
@@ -799,7 +810,14 @@ function renderNotebook() {
     item.append(art);
     const details = document.createElement('div'); details.className = 'evidence-details';
     addText(details, 'span', itemKind(evidence), 'evidence-kind'); addText(details, 'h4', evidence.name);
+    if (PERSONAL_ITEM_ICONS.has(evidence.item_id)) addText(details, 'span', '✦ Rastro pessoal', 'evidence-kind personal-trace-stamp');
     addText(details, 'p', copies.length > 1 ? `Você recolheu ${copies.length} exemplares deste objeto.` : evidence.description);
+    const inspected = copies.find(copy => copy.examined) ?? evidence;
+    const inspect = document.createElement('button'); inspect.type = 'button'; inspect.className = 'button small evidence-inspect';
+    inspect.textContent = inspected.examined ? 'Examinado' : 'Examinar'; inspect.disabled = Boolean(inspected.examined) || inspectingEvidence.has(inspected.id);
+    inspect.setAttribute('aria-label', `${inspected.examined ? 'Objeto examinado' : 'Examinar'}: ${evidence.name}`);
+    inspect.addEventListener('click', () => {inspect.disabled = true; inspect.textContent = 'Examinando…'; void inspectEvidence(inspected.id);}); details.append(inspect);
+    if (inspected.examined && inspected.inspection_text) addText(details, 'p', inspected.inspection_text, 'inspection-result');
     if (copies.length > 1) {
       const sources = document.createElement('details'); sources.className = 'evidence-stack-sources';
       addText(sources, 'summary', `Procedência dos ${copies.length} vestígios`);
@@ -814,6 +832,7 @@ function renderNotebook() {
     item.append(details); inventory.append(item);
   }
   if (!caseState.inventory.length) addText(inventory, 'p', 'Nenhum vestígio recolhido. Procure as marcas de cena do crime no cenário.', 'empty-case');
+  renderAchievements();
   const testimonyList = $('#testimony-list'); testimonyList.replaceChildren();
   for (const testimony of stackTestimonies(caseState.testimonies, caseState.inventory)) {
     const item = document.createElement('article'); item.className = 'testimony-card';
@@ -841,6 +860,36 @@ function renderNotebook() {
   }
   renderReports();
   selectNotebookTab(notebookTab);
+}
+
+function renderAchievements() {
+  const section = $('#achievements-section');
+  const achievements = caseState?.achievements ?? [];
+  const total = caseState?.achievement_total;
+  section.hidden = typeof total !== 'number';
+  if (typeof total !== 'number') return;
+  $('#achievement-progress').textContent = `${achievements.length} / ${total} descobertas`;
+  const list = $('#achievement-list'); list.replaceChildren();
+  for (const achievement of achievements) {
+    const seal = document.createElement('article'); seal.className = 'achievement-seal';
+    seal.dataset.achievementId = achievement.id;
+    addText(seal, 'span', '✦', 'achievement-mark'); addText(seal, 'h5', achievement.title); addText(seal, 'p', achievement.description);
+    list.append(seal);
+  }
+  if (!achievements.length) addText(list, 'p', 'As descobertas desta partida aparecerão aqui.', 'empty-case');
+}
+
+async function inspectEvidence(evidenceID: string) {
+  if (!caseState || inspectingEvidence.has(evidenceID)) return;
+  inspectingEvidence.add(evidenceID);
+  try {
+    const next = await api.inspectEvidence(caseState.game_id, evidenceID);
+    await applyCase(next);
+  } catch (error) { toast(explain(error)); }
+  finally {
+    inspectingEvidence.delete(evidenceID);
+    if (modal === 'notebook') renderNotebook();
+  }
 }
 
 function renderReports() {

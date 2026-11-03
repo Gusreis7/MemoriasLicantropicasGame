@@ -33,3 +33,30 @@ Congelar e2f2d62 em /tmp/ml-v3-baseline antes das alterações. Executar100 cen�
 Métricas: dia/caminho de vitória, recusas do delegado, influência de comuns versus raros, repetição de fontes, falsos positivos, informações úteis nas falas, evasão, metáforas, invenção, privacidade, conquistas por descoberta real, latência e tokens/custos. Predicados automáticos de utilidade são indicadores e exigem leitura qualitativa; não declaram uma resposta verdadeira somente por citar um nome.
 
 Calibrar sem forçar taxa global de50%: uma política que investiga bem deve ter caminho consistente e levar mais de um dia; pegar comuns e acumular confirmações não deve bastar. Mais dificuldade de prova deve vir acompanhada de mais clareza de informação.
+
+## Execução e decisões finais
+
+As três frentes foram implementadas em worktrees e branches próprias. A frente de interface/ícones e a redação dos resultados usaram modelo leve; regras probatórias, autorização de segredos e integração ficaram com agentes do modelo principal. O trabalho foi integrado na exploração `AED/aed_investigation_v3` antes da entrega em `develop`.
+
+- Foram acrescentados 14 exclusivos; cada NPC possui três exclusivos, um singular e três comuns. Itens repetidos continuam agrupados; examinar um exemplar atende à espécie sem multiplicar pontos.
+- O delegado exige pelo menos 5 pontos, dois tipos, exclusivo examinado e corroboração externa. Comuns valem 0,25 com teto conjunto 0,5. Uma contradição pública pode substituir a segunda fonte externa.
+- A API registra o último objeto apresentado por NPC, inclusive ao reapresentar um objeto antigo. Perguntas seguintes usam esse contexto sem criar outro depoimento.
+- Relatos públicos deixam de depender de confiança alta. O contexto prioriza até três apoios pertinentes; o mestre escolhe um apoio autorizado para reparos, em vez de inventar uma nova fala factual. Confidências pessoais continuam condicionadas à relação.
+- Sete conquistas são persistidas por partida e exibidas no caderno. Só contam descobertas ouvidas na fala final autorizada do NPC ou exame canônico, com desbloqueio idempotente; não dão bônus probatório.
+- Perguntas de encaminhamento foram separadas de perguntas de álibi. O caderno só recebe pessoas/locais/observações efetivamente declarados, sem promover a atividade oculta inteira a evidência pública.
+
+O estudo concluiu 100 cenários anteriores e 100 posteriores, com uma troca Qwen/mestre real por cenário e continuação programada da partida. A política completa venceu 40/40 nas duas versões, passando da primeira para a segunda manhã para a aceitação da prisão. Somente comuns passaram de 14/20 vitórias para 0/20; uma fonte, de 5/20 para 0/20. Isso valida os caminhos programados, não estabelece dificuldade para jogadores humanos. Parte do atraso decorre da disponibilidade do exclusivo na segunda manhã.
+
+O indicador lexical de utilidade passou de 58/100 para 94/100 tentativas (94/99 respostas concluídas). Houve uma resposta bloqueada por revisão. A auditoria encontrou invenção de detalhes e atribuição de relação ao par errado; fidelidade narrativa continua parcial. Os dados originais foram preservados, inclusive a falha. Custo estimado registrado: US$ 0,12955590 antes + US$ 0,07549245 depois = **US$ 0,20504835**, segundo o snapshot configurado, não a fatura AWS.
+
+Leia [o relatório completo](exploracao_investigacao_v3/relatorio.md), [as regras de provas](evidencias_especificidade_v3.md) e [os contratos de diálogo e descobertas](dialogo_descobertas_v3.md). A correção determinística de voz em primeira pessoa posterior ao congelamento do estudo tem validação de regressão separada; não foi retroativamente incluída nas métricas das 100 falas posteriores.
+
+## Validação da entrega
+
+- Backend completo: **676 testes passaram**, incluindo provas, mestre, segredos, compatibilidade e conquistas.
+- Frontend: **44 testes passaram**, TypeScript e build Vite concluídos.
+- Brave: **18 testes de fluxo passaram**, incluindo exame agrupado, notificações de conquista, continuação de conversa, assembleia e sequência da cadeia. Esses testes de interface usam respostas controladas; as chamadas Qwen reais estão no estudo separado.
+- Redis real de testes em Docker: **44 testes passaram** de persistência, API e integração investigativa, com namespace exclusivo e limpeza por teste.
+- Docker reconstruído com `compose.yaml` e `compose.aws-local.yaml`; HTTP 200 no jogo 7077, admin 7078 e health da API 7079. OpenAPI implantado inclui o exame e omite `crime_link_verified` da projeção pública. O admin sem login responde 401.
+
+Os dados do Redis da aplicação foram preservados. Alterações simultâneas nos arquivos de arte/proveniência do Brás Cubas foram mantidas no workspace e não incluídas nos commits desta frente.

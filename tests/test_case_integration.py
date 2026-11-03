@@ -81,26 +81,55 @@ async def test_clock_blocks_every_mutation_at_night_and_publishes_actual_death(a
 
 
 @pytest.mark.parametrize("wolf", tuple(INVENTORIES))
-async def test_collected_evidence_and_testimony_lead_to_night_confirmed_victory(api_client, storage, catalog, wolf):
+async def test_specific_examined_dossier_only_authorizes_detention_after_second_morning(api_client, storage, catalog, wolf):
     game, clock, base, case = await seed_case(api_client, storage, catalog, wolf)
-    await place(storage, game.id)
-    crime = case["crimes"][0]
-    for _ in range(3):  # A terceira busca é idempotente.
-        result = await api_client.post(f"{base}/crime-scenes/{crime['id']}/search", json={})
-        assert result.status_code == 200
-        case = result.json()
-    assert len(case["inventory"]) == 2
-    for npc in game.characters:
-        if npc.character_id == wolf:
-            continue
-        await place(storage, game.id, npc_id=npc.character_id)
+
+    async def collect_examine_and_ask(case):
+        for crime in case["crimes"]:
+            await place(storage, game.id, crime["location_id"], crime["x"])
+            for _ in range(crime["remaining_clues"] + 1):  # Busca extra continua idempotente.
+                result = await api_client.post(f"{base}/crime-scenes/{crime['id']}/search", json={})
+                assert result.status_code == 200
+                case = result.json()
         for evidence in case["inventory"]:
-            result = await api_client.post(f"{base}/evidence/{evidence['id']}/present", json={"npc_id": npc.character_id})
-            assert result.status_code == 200
-            case = result.json()
-    linked = [statement["id"] for statement in case["testimonies"] if statement["claimed_owner_id"] == wolf]
+            examined = await api_client.post(f"{base}/evidence/{evidence['id']}/inspect", json={})
+            assert examined.status_code == 200
+            case = examined.json()
+            assert "crime_link_verified" not in json.dumps(case)
+            updated = next(e for e in case["inventory"] if e["id"] == evidence["id"])
+            assert updated["examined"] and updated["inspection_text"]
+        current_game = await storage.games.get(game.id)
+        for npc in current_game.characters:
+            if not npc.alive or npc.character_id == wolf:
+                continue
+            await place(storage, game.id, npc_id=npc.character_id)
+            for evidence in case["inventory"]:
+                result = await api_client.post(f"{base}/evidence/{evidence['id']}/present", json={"npc_id": npc.character_id})
+                assert result.status_code == 200
+                case = result.json()
+        return case
+
+    case = await collect_examine_and_ask(case)
+    assert len(case["inventory"]) == 2
+    linked = [t["id"] for t in case["testimonies"] if t["claimed_owner_id"] == wolf]
+    early = await api_client.post(f"{base}/accusations", json={"suspect_id": wolf,
+        "evidence_ids": [e["id"] for e in case["inventory"]], "testimony_ids": linked})
+    assert early.status_code == 200
+    case = early.json()
+    assert not case["accusations"][-1]["accepted"]
+    assert case["detained_npc_id"] is None and case["phase"] == "day"
+
+    clock[0] = datetime.fromisoformat(case["phase_ends_at"])
+    assert (await api_client.get(f"{base}/investigation")).json()["phase"] == "night"
+    clock[0] += timedelta(seconds=8)
+    case = (await api_client.get(f"{base}/investigation")).json()
+    assert case["day"] == 2 and case["phase"] == "day"
+    case = await collect_examine_and_ask(case)
+    assert any(e["kind"] == "unique" and e["examined"] for e in case["inventory"])
+    members_before = (await storage.games.get(game.id)).characters
+    linked = [t["id"] for t in case["testimonies"] if t["claimed_owner_id"] == wolf]
     result = await api_client.post(f"{base}/accusations", json={"suspect_id": wolf,
-        "evidence_ids": [item["id"] for item in case["inventory"]], "testimony_ids": linked})
+        "evidence_ids": [e["id"] for e in case["inventory"]], "testimony_ids": linked})
     assert result.status_code == 200
     detained = result.json()
     assert detained["accusations"][-1]["accepted"] and detained["detained_npc_id"] == wolf
@@ -120,7 +149,7 @@ async def test_collected_evidence_and_testimony_lead_to_night_confirmed_victory(
     assert (await api_client.get(base)).json()["status"] == "won"
     after_expulsion = await RedisWorldRepository(storage.client, storage.prefix).get(game.id)
     assert wolf not in {npc.npc_id for npc in after_expulsion.npcs}
-    assert all(member.alive for member in (await storage.games.get(game.id)).characters)
+    assert (await storage.games.get(game.id)).characters == members_before
 
 
 async def test_inference_crossing_deadline_cannot_append_a_dialogue(api_client, storage, catalog, llm, monkeypatch):

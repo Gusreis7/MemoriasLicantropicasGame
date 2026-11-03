@@ -32,14 +32,8 @@ def argument_quality(text):
 
 
 def proof_strength(state, suspect_id, evidence_ids, testimony_ids, now):
-    assessment = evaluate_accusation(state, suspect_id, evidence_ids, testimony_ids, now)
-    statements = [t for t in state.testimonies if t.id in testimony_ids
-                  and t.recognition == 'recognizes' and t.claimed_owner_id == suspect_id]
-    # Repeated references to one witness are not independent sources.
-    sources = len({t.witness_id for t in statements})
-    if assessment.accepted:
-        return min(1., .72 + .14 * min(sources, 2))
-    return min(.45, .12 * len(set(evidence_ids)) + .10 * min(sources, 2))
+    from memorias_licantropicas.modules.investigation.scoring import assess_dossier, dossier_strength
+    return dossier_strength(assess_dossier(state, suspect_id, evidence_ids, testimony_ids))
 
 
 def _relationships(values):

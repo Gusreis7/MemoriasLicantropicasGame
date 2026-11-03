@@ -20,7 +20,7 @@ def seeded():
 def test_author_topics_seed_once_preserve_existing_memory_and_relationships():
     state=seeded()
     assert seed_social_state(state,IDS,NOW)==state
-    assert state.seeded_topics_version==1
+    assert state.seeded_topics_version==2
     assert len(state.relationships)==len(IDS)*len(IDS)
     assert relationship_for(state,'escobar','bentinho').loyalty==80
     assert relationship_for(state,'bentinho','escobar').suspicion==50

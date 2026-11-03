@@ -246,15 +246,19 @@ async def test_master_repairs_personality_and_grounding_in_existing_single_call(
             return LLMResponse(content=json.dumps({'kind':'conversation','quote':raw,'issues':[issue],'corrected_reply':repaired}),model='fake')
     llm=LLM()
     master=SessionMasterService(turns,storage.games,storage.memory,llm)
-    async def context(*args):return {'dia':1,'memoria_social':{'confidencias_autorizadas':[]}}
+    async def context(*args):return {'dia':1,'memoria_social':{'confidencias_autorizadas':[], 'memorias_relevantes':[
+        {'claim_id':'seminary-public','conteudo':'Bentinho e Escobar estudaram juntos no seminário e mantiveram uma ligação antiga.',
+         'origem':'authored','quem_falou':'escobar','tipo':'report','visibilidade':'public'}]}}
     harness=HarnessService(catalog,storage.games,storage.memory,llm,context_provider=context,session_master=master)
     identifier=uuid4()
     async with gate.hold(game.id):
         response=await harness.respond(game.id,'escobar',identifier,'player','Como anda sua amizade com Bentinho?')
-    assert response.message.content==repaired
+    assert 'seminário' in response.message.content
+    assert response.message.content!=raw
+    assert response.message.content!=repaired
     assert response.message.narrative_authorized
     assert len(llm.calls)==2
-    assert (await storage.memory.list_messages(game.id,identifier,'player'))[-1].content==repaired
+    assert (await storage.memory.list_messages(game.id,identifier,'player'))[-1].content==response.message.content
     assert (await turns.sync(game.id)).dialogue_events[-1]['assessment']['issues']==[issue]
 
 
