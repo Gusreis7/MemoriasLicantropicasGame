@@ -17,7 +17,7 @@ TOPICS = (
     ('rumor-afeto', ('virgilia','capitu'), ('escobar','bentinho'),
      'Às vezes me pergunto se a atenção de Escobar a Bentinho é apenas amizade de seminário. É uma impressão minha.', 'interpretation', 'public', 0),
     ('tratamento', ('capitu','bentinho','bacamarte'), ('bentinho','bacamarte'),
-     'Bentinho faz acompanhamento com Bacamarte, mas resiste às consultas e à medicação. Não sei confirmar cada dose.', 'report', 'trusted', 35),
+     'Bentinho faz acompanhamento com Bacamarte, mas resiste às consultas e à medicação. Não sei confirmar cada dose.', 'report', 'public', 0),
     ('separacao', ('capitu',), ('capitu','bentinho'),
      'Penso em me separar de Bentinho; ainda não contei essa decisão a ele.', 'report', 'private', 65),
     ('afeto-escobar', ('escobar',), ('escobar','bentinho'),
@@ -31,7 +31,7 @@ TOPICS = (
 
 def seed_social_state(state, character_ids, now):
     """Migração aditiva e idempotente: não apaga o que uma partida já ouviu."""
-    if state.seeded_topics_version >= 1:
+    if state.seeded_topics_version >= 2:
         return state
     ids = set(character_ids)
     entries = list(state.knowledge)
@@ -43,6 +43,9 @@ def seed_social_state(state, character_ids, now):
                 continue
             identifier = uuid5(NAMESPACE_URL, f'{root}:{owner}')
             if identifier in known:
+                # Update authored disclosure policy only; retain heard history and old causes.
+                entries=[entry.model_copy(update={'visibility':visibility,'disclosure_threshold':threshold})
+                         if entry.id==identifier and entry.origin=='authored' else entry for entry in entries]
                 continue
             entries.append(KnowledgeEntry(id=identifier, owner_id=owner, root_id=root,
                 source_message_id=root, speaker_id=owner, source_span=text, proposition=text,
@@ -55,4 +58,4 @@ def seed_social_state(state, character_ids, now):
     relations.extend(r for r in initial_relationships(tuple(sorted(ids)))
                      if (r.actor_id,r.target_id) not in pairs)
     return state.model_copy(update={'knowledge':tuple(entries), 'relationships':tuple(relations),
-                                    'seeded_topics_version':1})
+                                    'seeded_topics_version':2})
