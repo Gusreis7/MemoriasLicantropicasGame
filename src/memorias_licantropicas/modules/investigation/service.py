@@ -8,7 +8,7 @@ from memorias_licantropicas.contracts.investigation import CaseEvent, CaseTransi
 from memorias_licantropicas.modules.investigation.catalog import INVENTORIES, ITEMS_BY_ID, OBSERVED_PEOPLE
 from memorias_licantropicas.modules.investigation.rules import evaluate_accusation, find_evidence, make_testimony
 from memorias_licantropicas.modules.investigation.schema import (
-    AccusationPublic, CasePublic, CrimePublic, EndingPublic, EvidencePublic, JournalPublic, TestimonyPublic,
+    AchievementPublic, AccusationPublic, CasePublic, CrimePublic, EndingPublic, EvidencePublic, JournalPublic, TestimonyPublic,
     ActivityClaimPublic, InterrogationPublic, ConfrontationPublic,
 )
 
@@ -41,6 +41,7 @@ class InvestigationService(AssemblyServiceMixin):
                          "Floriano venceu a investigação." if state.status == "won" else
                          "Nenhum civil sobreviveu às noites. A investigação de Floriano terminou em derrota."))
         return CasePublic(
+            achievements=tuple(AchievementPublic(**a.model_dump()) for a in state.achievements),
             game_id=state.game_id, revision=state.revision, day=state.day, phase=state.phase, status=state.status,
             server_time=now, phase_ends_at=state.phase_ends_at,
             seconds_remaining=max(0, ceil((state.phase_ends_at - now).total_seconds())) if state.status == "active" else 0,
@@ -53,7 +54,7 @@ class InvestigationService(AssemblyServiceMixin):
                 remaining_clues=sum(not evidence.collected for evidence in crime.evidence)) for crime in state.crimes),
             inventory=tuple(EvidencePublic(id=evidence.id, crime_id=crime.id, item_id=evidence.item_id,
                 name=ITEMS_BY_ID[evidence.item_id].name, kind=ITEMS_BY_ID[evidence.item_id].kind,
-                description=evidence.description) for crime in state.crimes for evidence in crime.evidence if evidence.collected),
+                description=evidence.description, examined=evidence.examined, inspection_text=evidence.inspection_text) for crime in state.crimes for evidence in crime.evidence if evidence.collected),
             testimonies=tuple(TestimonyPublic(id=record.id, day=record.day, evidence_id=record.evidence_id,
                 witness_id=record.witness_id, witness_name=names.get(record.witness_id, record.witness_id),
                 recognition=record.recognition, claimed_owner_id=record.claimed_owner_id, text=record.text)
@@ -165,6 +166,21 @@ class InvestigationService(AssemblyServiceMixin):
             return CaseTransition(state=updated, events=(CaseEvent(type="evidence.collected", data={
                 "crime_id": str(crime.id), "evidence_id": str(evidence.id), "item_id": evidence.item_id,
                 "location_id": crime.location_id, "day": state.day}),))
+        return await self.public(await self._turns.act(game_id, transition))
+
+    async def inspect(self, game_id: UUID, evidence_id: UUID) -> CasePublic:
+        from memorias_licantropicas.modules.investigation.rules import inspect_evidence
+        from memorias_licantropicas.modules.achievements.rules import award
+        def transition(state, game, world):
+            result = inspect_evidence(state, evidence_id, self._turns.now())
+            evidence = find_evidence(result.state, evidence_id)
+            updated = result.state
+            if ITEMS_BY_ID[evidence.item_id].kind == "unique" and evidence.examined:
+                updated = award(updated, "personal_trace", self._turns.now())
+            events = result.events
+            if len(updated.achievements) > len(state.achievements):
+                events += (CaseEvent(type="achievement.unlocked", data={"achievement_id": "personal_trace"}),)
+            return CaseTransition(state=updated, events=events)
         return await self.public(await self._turns.act(game_id, transition))
 
     async def present(self, game_id: UUID, evidence_id: UUID, npc_id: str) -> CasePublic:

@@ -62,3 +62,8 @@ async def open_assembly(game_id: UUID, body: AssemblyOpenRequest, service: Servi
 @router.post("/assembly/resolve", response_model=CasePublic)
 async def resolve_assembly(game_id: UUID, body: AssemblyResolveRequest, service: Service):
     return await service.resolve_assembly(game_id, body.reply)
+
+
+@router.post("/evidence/{evidence_id}/inspect", response_model=CasePublic)
+async def inspect_evidence(game_id: UUID, evidence_id: UUID, body: SearchRequest, service: Service):
+    return await service.inspect(game_id, evidence_id)
