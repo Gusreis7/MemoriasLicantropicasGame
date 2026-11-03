@@ -295,7 +295,7 @@
     "docs/exploracao_investigacao_v3/after.jsonl": "bbc7db38a7eef10e8947ad4d6f004ebaacbf11351610d8a46b5685fd466a5b2f"
   },
   "benchmark_code_sha256": "527d63c4c575b041610063ca9ccc48aeef252698768e83f58d616b9b65ffb6c2",
-  "report_code_sha256": "6581fa9d127fe1a1d758171a13d36b0c79dd7f96e783f2651a0d95c6ae1a7c56",
+  "report_code_sha256": "d4306e67674a4e07098c2e7f31ff522d08114ae99d67465e00a26d38dd94ec5b",
   "benchmark_base_commit": "e2f2d62",
   "after_freeze_commit": "9e7ca6f",
   "pricing_snapshot": {
@@ -601,6 +601,6 @@
     "before_sha256": "70437ebc04824c1fbc17af6b92511ab8142666b32dd80f62be38042fb9160d4f",
     "after_sha256": "bbc7db38a7eef10e8947ad4d6f004ebaacbf11351610d8a46b5685fd466a5b2f",
     "benchmark_script_sha256": "527d63c4c575b041610063ca9ccc48aeef252698768e83f58d616b9b65ffb6c2",
-    "report_script_sha256": "6581fa9d127fe1a1d758171a13d36b0c79dd7f96e783f2651a0d95c6ae1a7c56"
+    "report_script_sha256": "d4306e67674a4e07098c2e7f31ff522d08114ae99d67465e00a26d38dd94ec5b"
   }
 }

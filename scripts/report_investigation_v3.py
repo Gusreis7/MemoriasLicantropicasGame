@@ -379,6 +379,8 @@ Este arquivo é gerado por `scripts/report_investigation_v3.py`. O conjunto afte
 
 As partidas são de um jogador programado que consulta exaustivamente o caderno. Taxa de vitória não é taxa de vitória humana nem prova de equilíbrio. Qwen é não determinístico: os casos repetem papéis, perguntas e estados programados, mas 100 partidas não são observações estatisticamente independentes. A política é correlacionada ao tipo de pergunta por `i % 5`; não se pode interpretar diferenças entre políticas como efeito causal da voz. Vinte cenários definem confiança 20 e afinidade 12 antes da fala para exercitar a condição de confidência; isso não representa confiança adquirida de fato em quatro dias. Os IDs de jogo after são fixados aos da baseline e a variante contém itens pessoais adicionais selecionados de forma estável.
 
+Cada cenário contém **uma troca real com Qwen e uma avaliação real do mestre**; a continuação até o fim da partida usa ações programadas e depoimentos do motor. Não são 200 partidas com todos os diálogos livres de todos os moradores. A mudança do primeiro para o segundo dia reflete também a disponibilidade obrigatória do exclusivo a partir da segunda manhã: não demonstra, sozinha, raciocínio investigativo mais difícil. A política avaliada busca custódia com o delegado; confissão e assembleia têm testes próprios, mas não foram comparadas nestas 200 partidas.
+
 Os indicadores `actionable_proxy`, `evasive_proxy`, `metaphor_proxy` e `named_next_step` são heurísticas lexicais documentadas em `scripts/benchmark_investigation_v3.py`. “Acionável” é só proxy de utilidade: não certifica correção semântica, verdade, nem se o próximo passo é útil. As citações abaixo são amostras curtas pareadas, não avaliação manual completa.
 
 ## Resultados gerais
@@ -436,7 +438,7 @@ Uma correção posterior ao congelamento `9e7ca6f` está sendo feita em separado
 
 {markdown_table(['arquivo','SHA-256'], [[str(path.relative_to(root)), sha256(path)] for path in [paths['before'], paths['after'], benchmark_code]] + [['scripts/report_investigation_v3.py', sha256(report_code)]])}
 
-O resumo `resumo.json` guarda os mesmos hashes, contagens e métricas em formato legível por máquina; `resultados.csv` permite filtrar políticas, pergunta e tarefa de uso. Para atualizar o relatório quando `after.jsonl` chegar a 100 linhas, execute:
+O resumo `resumo.json` guarda os mesmos hashes, contagens e métricas em formato legível por máquina; `resultados.csv` permite filtrar políticas, pergunta e tarefa de uso. Para reconstruir o relatório dos registros preservados, execute:
 
 ```sh
 python scripts/report_investigation_v3.py --root /caminho/para/repo --output-dir /caminho/para/docs/exploracao_investigacao_v3

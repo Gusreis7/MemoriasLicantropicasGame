@@ -1,6 +1,6 @@
 from uuid import uuid4
 import pytest
-from test_interrogations import inquiry,dossier
+from test_interrogations import inquiry,dossier,near
 from test_session_master_v2 import pair,NOW
 from memorias_licantropicas.modules.session_master.service import local_assessment
 from memorias_licantropicas.modules.session_master.rules import dialogue_transition
@@ -49,3 +49,19 @@ async def test_inspection_public_projection_awards_once_without_private_truth(in
     assert inspected.examined and inspected.inspection_text
     again=await inquiry.service.inspect(game.id,item.id)
     assert again.achievements==result.achievements and again.revision==result.revision
+
+async def test_representing_an_earlier_item_changes_conversation_focus_without_duplicate_testimony(inquiry):
+    state,_,_,_=await dossier(inquiry)
+    await inquiry.storage.client.set(inquiry.key+':investigation',state.model_dump_json())
+    await near(inquiry,'bentinho')
+    first,second=state.crimes[0].evidence[:2]
+    count=len(state.testimonies)
+    await inquiry.service.present(inquiry.game.id,first.id,'bentinho')
+    await inquiry.service.present(inquiry.game.id,second.id,'bentinho')
+    context=await inquiry.service.npc_context_locked(inquiry.game.id,'bentinho')
+    assert context['ultimo_objeto_apresentado']['item_id']==second.item_id
+    await inquiry.service.present(inquiry.game.id,first.id,'bentinho')
+    context=await inquiry.service.npc_context_locked(inquiry.game.id,'bentinho')
+    assert context['ultimo_objeto_apresentado']['item_id']==first.item_id
+    saved=await inquiry.turns.sync(inquiry.game.id)
+    assert len(saved.testimonies)==count
