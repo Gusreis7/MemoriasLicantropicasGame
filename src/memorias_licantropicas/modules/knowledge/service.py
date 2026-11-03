@@ -236,7 +236,7 @@ class KnowledgeService:
         for target, cause in reactions:
             latest = apply_relationship(latest, npc_id, target, cause, trust=-1, resentment=2)
         deltas = {
-            "cooperation": {"affinity": 1, "trust": 1},
+            "cooperation": {"affinity": 3, "trust": 5},
             "insult": {"trust": -2, "resentment": 3, "suspicion": 1},
             "confidence_breach": {"trust": -3, "resentment": 4},
         }
@@ -265,9 +265,20 @@ class KnowledgeService:
                                                encounter.started_at, str(encounter.id)), reverse=True)
         profile = next((p for p in profiles if p.id == npc_id), None)
         relation = relationship_for(state, npc_id, other_id)
-        confidences = list(profile.protected_secrets) if profile and closeness(relation) >= 65 else []
+        from memorias_licantropicas.modules.knowledge.mechanics import can_share, can_confide_personal
+        from memorias_licantropicas.modules.knowledge.seeds import TOPICS
+        from memorias_licantropicas.modules.achievements.rules import TOPIC_DISCOVERIES
+        confidences = list(profile.protected_secrets) if profile and can_confide_personal(npc_id, relation) else []
+        shared = [entry for entry in own if can_share(entry,state.relationships,npc_id,other_id)
+                  or entry.visibility == 'private' and entry.speaker_id == npc_id and confidences]
+        topic_roots = {uuid5(NAMESPACE_URL, f'{game_id}:author-topic:{topic}'):topic for topic,*_ in TOPICS}
+        allowed = {TOPIC_DISCOVERIES[topic_roots[entry.root_id]] for entry in shared
+                   if entry.root_id in topic_roots and topic_roots[entry.root_id] in TOPIC_DISCOVERIES}
+        if npc_id != 'capitu' or not confidences: allowed.discard('capitu_separation')
+        if npc_id != 'escobar' or not confidences: allowed.discard('escobar_affection')
         return {
             "confidencias_autorizadas": confidences,
+            "descobertas_autorizadas": sorted(allowed),
             "vinculos_conhecidos": [r.model_dump(mode="json") for r in state.relationships if r.actor_id == npc_id],
             "relacao_com_interlocutor": relationship_for(state, npc_id, other_id).model_dump(mode="json"),
             "memorias_relevantes": [{
@@ -276,8 +287,8 @@ class KnowledgeService:
                 "quem_falou": entry.speaker_id, "fonte_alegada": entry.claimed_source_id,
                 "trecho_ouvido": entry.source_span, "tipo": entry.kind,
                 "confianca": entry.confidence, "posicao": entry.stance, "dia": entry.day,
-                "visibilidade": entry.visibility, "revelar_so_com_vinculo": entry.disclosure_threshold,
-            } for entry in own[:12]],
+                "visibilidade": entry.visibility, "revelar_so_com_vinculo": entry.disclosure_threshold, "compartilhavel": True,
+            } for entry in shared[:8]],
             "encontros_anteriores": [{
                 "dia": encounter.day, "phase": encounter.phase,
                 "interlocutor_id": next(identifier for identifier in encounter.participant_ids if identifier != npc_id),

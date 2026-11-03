@@ -54,3 +54,14 @@ def vote_scores(voter_id, suspect_id, relationships, proof_strength, argument_st
     # O acusado pode defender-se e dirigir a reação contra Floriano, mas não se condena.
     return {suspect_id: 0.0 if voter_id == suspect_id else clamp(accuse),
             'player': clamp(backlash)}
+
+
+def can_confide_personal(npc_id, relation):
+    """Dois ou mais dias de ajuda real abrem algumas confidências; um elogio não."""
+    if relation.resentment > 15:
+        return False
+    if closeness(relation) >= 65:
+        return True  # Existing close friends can already receive a confidence.
+    if npc_id == 'escobar':
+        return relation.trust >= 20 and relation.affinity >= 12 and closeness(relation) >= 35
+    return relation.trust >= 10 and relation.affinity >= 6 and closeness(relation) >= 30

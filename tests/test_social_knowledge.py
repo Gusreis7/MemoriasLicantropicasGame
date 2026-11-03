@@ -490,7 +490,7 @@ async def test_unknown_claim_access_and_relationship_effects_are_bounded(game):
     assert apply_relationship(changed, "capitu", "virgilia", cause, trust=-5) == changed
 
 
-@pytest.mark.parametrize('disposition,expected_trust,expected_resentment', [('cooperation',1,0),('insult',-2,3),('confidence_breach',-3,4)])
+@pytest.mark.parametrize('disposition,expected_trust,expected_resentment', [('cooperation',5,0),('insult',-2,3),('confidence_breach',-3,4)])
 async def test_player_social_reaction_is_limited_per_day(social, storage, game, catalog, disposition, expected_trust, expected_resentment):
     text = {'cooperation':'Vou ajudá-la a encontrar quem espalhou isso.',
             'insult':'Você é uma mentirosa desprezível.',

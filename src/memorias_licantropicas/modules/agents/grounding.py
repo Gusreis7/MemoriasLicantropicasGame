@@ -22,6 +22,7 @@ def ground_dialogue_output(content, observations, names):
                 "Desse horário eu não me lembro bem, detetive. Está falando de ontem?")
     memory = observations.get("memoria_social", {})
     known_sources = {entry.get("quem_falou") for entry in memory.get("memorias_relevantes", ())}
+    known_sources.update(memory.get("fontes_conhecidas", ()))
     known_sources.update(entry.get("interlocutor_id") for entry in memory.get("encontros_anteriores", ()) if entry.get("falas"))
     for identifier, name in names.items():
         if identifier in known_sources or identifier == "player":
