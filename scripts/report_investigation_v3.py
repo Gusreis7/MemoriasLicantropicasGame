@@ -432,7 +432,7 @@ O `actionable_proxy` marcou 94 de 99 respostas after completas. A amostra seguin
 
 Esses casos foram conferidos contra `authorized_supports` em ambas as linhas JSONL; apenas as afirmações indicadas como não apoiadas foram julgadas sem suporte. A revisão é uma leitura qualitativa pequena e não estima prevalência. Próximos passos: aumentar a checagem automática de cada afirmação contra os suportes explícitos, validar a identidade gramatical da primeira pessoa e inspecionar manualmente uma amostra maior por tipo de pergunta antes de usar o proxy para decisões de qualidade.
 
-Uma correção posterior ao congelamento `9e7ca6f` está sendo feita em separado por outra agente: renderização determinística e descoberta/conquista ligada à fala em primeira pessoa. Ela não altera os 100 registros after que este relatório resume; a versão corrigida precisará de uma nova execução/avaliação para aparecer nos dados.
+Uma correção posterior ao congelamento `9e7ca6f` foi integrada no commit `a5df290`: renderização determinística e descoberta/conquista ligada à fala em primeira pessoa, com testes de regressão. Ela não altera os 100 registros after que este relatório resume; seus efeitos na fala livre não foram medidos por novas chamadas neste estudo.
 
 ## Reprodutibilidade e hash SHA-256
 

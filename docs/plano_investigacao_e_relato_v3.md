@@ -50,3 +50,13 @@ O estudo concluiu 100 cenários anteriores e 100 posteriores, com uma troca Qwen
 O indicador lexical de utilidade passou de 58/100 para 94/100 tentativas (94/99 respostas concluídas). Houve uma resposta bloqueada por revisão. A auditoria encontrou invenção de detalhes e atribuição de relação ao par errado; fidelidade narrativa continua parcial. Os dados originais foram preservados, inclusive a falha. Custo estimado registrado: US$ 0,12955590 antes + US$ 0,07549245 depois = **US$ 0,20504835**, segundo o snapshot configurado, não a fatura AWS.
 
 Leia [o relatório completo](exploracao_investigacao_v3/relatorio.md), [as regras de provas](evidencias_especificidade_v3.md) e [os contratos de diálogo e descobertas](dialogo_descobertas_v3.md). A correção determinística de voz em primeira pessoa posterior ao congelamento do estudo tem validação de regressão separada; não foi retroativamente incluída nas métricas das 100 falas posteriores.
+
+## Validação da entrega
+
+- Backend completo: **676 testes passaram**, incluindo provas, mestre, segredos, compatibilidade e conquistas.
+- Frontend: **44 testes passaram**, TypeScript e build Vite concluídos.
+- Brave: **18 testes de fluxo passaram**, incluindo exame agrupado, notificações de conquista, continuação de conversa, assembleia e sequência da cadeia. Esses testes de interface usam respostas controladas; as chamadas Qwen reais estão no estudo separado.
+- Redis real de testes em Docker: **44 testes passaram** de persistência, API e integração investigativa, com namespace exclusivo e limpeza por teste.
+- Docker reconstruído com `compose.yaml` e `compose.aws-local.yaml`; HTTP 200 no jogo 7077, admin 7078 e health da API 7079. OpenAPI implantado inclui o exame e omite `crime_link_verified` da projeção pública. O admin sem login responde 401.
+
+Os dados do Redis da aplicação foram preservados. Alterações simultâneas nos arquivos de arte/proveniência do Brás Cubas foram mantidas no workspace e não incluídas nos commits desta frente.

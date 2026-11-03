@@ -144,7 +144,7 @@ O `actionable_proxy` marcou 94 de 99 respostas after completas. A amostra seguin
 
 Esses casos foram conferidos contra `authorized_supports` em ambas as linhas JSONL; apenas as afirmações indicadas como não apoiadas foram julgadas sem suporte. A revisão é uma leitura qualitativa pequena e não estima prevalência. Próximos passos: aumentar a checagem automática de cada afirmação contra os suportes explícitos, validar a identidade gramatical da primeira pessoa e inspecionar manualmente uma amostra maior por tipo de pergunta antes de usar o proxy para decisões de qualidade.
 
-Uma correção posterior ao congelamento `9e7ca6f` está sendo feita em separado por outra agente: renderização determinística e descoberta/conquista ligada à fala em primeira pessoa. Ela não altera os 100 registros after que este relatório resume; a versão corrigida precisará de uma nova execução/avaliação para aparecer nos dados.
+Uma correção posterior ao congelamento `9e7ca6f` foi integrada no commit `a5df290`: renderização determinística e descoberta/conquista ligada à fala em primeira pessoa, com testes de regressão. Ela não altera os 100 registros after que este relatório resume; seus efeitos na fala livre não foram medidos por novas chamadas neste estudo.
 
 ## Reprodutibilidade e hash SHA-256
 
@@ -153,7 +153,7 @@ Uma correção posterior ao congelamento `9e7ca6f` está sendo feita em separado
 | docs/exploracao_investigacao_v3/before.jsonl | 70437ebc04824c1fbc17af6b92511ab8142666b32dd80f62be38042fb9160d4f |
 | docs/exploracao_investigacao_v3/after.jsonl | bbc7db38a7eef10e8947ad4d6f004ebaacbf11351610d8a46b5685fd466a5b2f |
 | scripts/benchmark_investigation_v3.py | 527d63c4c575b041610063ca9ccc48aeef252698768e83f58d616b9b65ffb6c2 |
-| scripts/report_investigation_v3.py | d4306e67674a4e07098c2e7f31ff522d08114ae99d67465e00a26d38dd94ec5b |
+| scripts/report_investigation_v3.py | 6ffd55fa60b982e0e3b4495b5a5c74dace2cf4d0e7c7f12e33eb5d718d3e214a |
 
 O resumo `resumo.json` guarda os mesmos hashes, contagens e métricas em formato legível por máquina; `resultados.csv` permite filtrar políticas, pergunta e tarefa de uso. Para reconstruir o relatório dos registros preservados, execute:
 
