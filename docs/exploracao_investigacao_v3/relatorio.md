@@ -131,6 +131,19 @@ Antes: “O principal é que Rubião insiste em cortejar Florença, embora ela n
 Depois: “Minha filha, se é assim que quer ajudar, saiba que Florença anda furiosa com…”  
 Antes, Virgília sugere ouvir Florença sobre Rubião; depois, descreve o ressentimento de Florença contra Bacamarte e sugere perguntar. A diferença muda o foco narrativo e não demonstra que uma versão seja verdadeira.
 
+## Revisão qualitativa crítica: fidelidade e voz
+
+O `actionable_proxy` marcou 94 de 99 respostas after completas. A amostra seguinte mostra por que esse 94/99 não é taxa de fidelidade: é um sinal lexical de possível utilidade, não uma checagem de suporte ou de coerência do personagem.
+
+- **Caso 34 · Virgília / follow-up sobre cera:** os suportes autorizados incluem “Já vi Dr. Bacamarte com um objeto igual” e assuntos sobre Florença, mas não mencionam Brás Cubas afogado nem vapor. A resposta acrescenta “se viajava com vela na mesma linha do vapor que afogou Brás”. Essa associação concreta não aparece nos suportes que conferi e deve ser tratada como conteúdo inventado, não como pista.
+- **Caso 81 · Virgília / relações:** os suportes registram que Bentinho e Escobar estudaram juntos no seminário (“Bentinho e Escobar estudaram juntos no seminário e mantiveram uma ligação antiga”). A fala after transfere a lembrança para “A amizade entre nós é de longa data, de seminário” e parece atribuir a história a Virgília e Florença. A relação de seminário foi atribuída ao par errado.
+- **Caso 1 · Bentinho / relações:** antes, Bentinho responde em primeira pessoa sobre resistir ao tratamento. Depois, fala de si em terceira pessoa (“Bentinho faz acompanhamento…”) e termina orientando Floriano a conversar “com Bentinho”, isto é, com o próprio interlocutor. A memória do tratamento está autorizada, mas a forma é uma piora clara de voz e continuidade.
+- **Caso 21 · Rubião / relações:** depois, Rubião repete de perto o suporte autorizado sobre a investida não correspondida (“Rubião tenta aproximar-se de Florença…”). Isso tem âncora, mas a formulação em terceira pessoa soa como resumo de ficha e não como uma fala dele. O actionability proxy aceita a resposta sem medir naturalidade.
+
+Esses casos foram conferidos contra `authorized_supports` em ambas as linhas JSONL; apenas as afirmações indicadas como não apoiadas foram julgadas sem suporte. A revisão é uma leitura qualitativa pequena e não estima prevalência. Próximos passos: aumentar a checagem automática de cada afirmação contra os suportes explícitos, validar a identidade gramatical da primeira pessoa e inspecionar manualmente uma amostra maior por tipo de pergunta antes de usar o proxy para decisões de qualidade.
+
+Uma correção posterior ao congelamento `9e7ca6f` está sendo feita em separado por outra agente: renderização determinística e descoberta/conquista ligada à fala em primeira pessoa. Ela não altera os 100 registros after que este relatório resume; a versão corrigida precisará de uma nova execução/avaliação para aparecer nos dados.
+
 ## Reprodutibilidade e hash SHA-256
 
 | arquivo | SHA-256 |
@@ -138,7 +151,7 @@ Antes, Virgília sugere ouvir Florença sobre Rubião; depois, descreve o ressen
 | docs/exploracao_investigacao_v3/before.jsonl | 70437ebc04824c1fbc17af6b92511ab8142666b32dd80f62be38042fb9160d4f |
 | docs/exploracao_investigacao_v3/after.jsonl | bbc7db38a7eef10e8947ad4d6f004ebaacbf11351610d8a46b5685fd466a5b2f |
 | scripts/benchmark_investigation_v3.py | 527d63c4c575b041610063ca9ccc48aeef252698768e83f58d616b9b65ffb6c2 |
-| scripts/report_investigation_v3.py | bceb7545845a9c01aa4dae121963a63e81130306fdfa878837984c4ca91413fc |
+| scripts/report_investigation_v3.py | 6581fa9d127fe1a1d758171a13d36b0c79dd7f96e783f2651a0d95c6ae1a7c56 |
 
 O resumo `resumo.json` guarda os mesmos hashes, contagens e métricas em formato legível por máquina; `resultados.csv` permite filtrar políticas, pergunta e tarefa de uso. Para atualizar o relatório quando `after.jsonl` chegar a 100 linhas, execute:
 
