@@ -1,0 +1,606 @@
+{
+  "status": "completed",
+  "phase_line_counts": {
+    "before": 100,
+    "after": 100
+  },
+  "unique_case_counts": {
+    "before": 100,
+    "after": 100
+  },
+  "paired_case_ids": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54,
+    55,
+    56,
+    57,
+    58,
+    59,
+    60,
+    61,
+    62,
+    63,
+    64,
+    65,
+    66,
+    67,
+    68,
+    69,
+    70,
+    71,
+    72,
+    73,
+    74,
+    75,
+    76,
+    77,
+    78,
+    79,
+    80,
+    81,
+    82,
+    83,
+    84,
+    85,
+    86,
+    87,
+    88,
+    89,
+    90,
+    91,
+    92,
+    93,
+    94,
+    95,
+    96,
+    97,
+    98,
+    99
+  ],
+  "missing_after_case_ids": [],
+  "missing_before_case_ids": [],
+  "phases": {
+    "before": {
+      "lines": 100,
+      "unique_case_ids": 100,
+      "paired_with_other_phase": 100,
+      "row_status_completed": 100,
+      "row_status_error": 0,
+      "completed_games": {
+        "games": 100,
+        "won": 79,
+        "lost": 21,
+        "refusals": 155,
+        "first_accepted_day_median": "1"
+      },
+      "completed_probes": 100,
+      "failed_probes": 0,
+      "failed_probe_details": [],
+      "probe_other_or_missing": 0,
+      "probe_metrics": {
+        "actionable_proxy": {
+          "rate": "0.58",
+          "count": 58,
+          "n": 100
+        },
+        "evasive_proxy": {
+          "rate": "0.06",
+          "count": 6,
+          "n": 100
+        },
+        "metaphor_proxy": {
+          "rate": "0.05",
+          "count": 5,
+          "n": 100
+        },
+        "named_next_step": {
+          "rate": "0.18",
+          "count": 18,
+          "n": 100
+        }
+      },
+      "words_median": "35",
+      "latency_seconds_median": "2.459",
+      "usage": {
+        "calls": 200,
+        "completed_calls": 200,
+        "failed_calls": 0,
+        "input_tokens": 781118,
+        "output_tokens": 20647,
+        "estimated_cost_usd": "0.12955590",
+        "unpriced_calls": 0,
+        "missing_token_calls": 0,
+        "purposes": {
+          "player_dialogue": {
+            "calls": 100,
+            "completed_calls": 100,
+            "failed_calls": 0,
+            "input_tokens": 438083,
+            "output_tokens": 6884,
+            "estimated_cost_usd": "0.06984285",
+            "unpriced_calls": 0,
+            "missing_token_calls": 0
+          },
+          "session_master": {
+            "calls": 100,
+            "completed_calls": 100,
+            "failed_calls": 0,
+            "input_tokens": 343035,
+            "output_tokens": 13763,
+            "estimated_cost_usd": "0.05971305",
+            "unpriced_calls": 0,
+            "missing_token_calls": 0
+          }
+        },
+        "pricing_snapshots": [
+          [
+            "qwen.qwen3-32b",
+            "0.15",
+            "0.60",
+            "2026-11-01"
+          ]
+        ]
+      },
+      "achievement_unlock_counts": {}
+    },
+    "after": {
+      "lines": 100,
+      "unique_case_ids": 100,
+      "paired_with_other_phase": 100,
+      "row_status_completed": 100,
+      "row_status_error": 0,
+      "completed_games": {
+        "games": 100,
+        "won": 40,
+        "lost": 60,
+        "refusals": 400,
+        "first_accepted_day_median": "2"
+      },
+      "completed_probes": 99,
+      "failed_probes": 1,
+      "failed_probe_details": [
+        {
+          "case_id": 16,
+          "error_code": "llm_invalid_response"
+        }
+      ],
+      "probe_other_or_missing": 0,
+      "probe_metrics": {
+        "actionable_proxy": {
+          "rate": "0.9494949494949494949494949495",
+          "count": 94,
+          "n": 99
+        },
+        "evasive_proxy": {
+          "rate": "0.03030303030303030303030303030",
+          "count": 3,
+          "n": 99
+        },
+        "metaphor_proxy": {
+          "rate": "0.01010101010101010101010101010",
+          "count": 1,
+          "n": 99
+        },
+        "named_next_step": {
+          "rate": "0.1515151515151515151515151515",
+          "count": 15,
+          "n": 99
+        }
+      },
+      "words_median": "35",
+      "latency_seconds_median": "2.834",
+      "usage": {
+        "calls": 200,
+        "completed_calls": 200,
+        "failed_calls": 0,
+        "input_tokens": 423151,
+        "output_tokens": 20033,
+        "estimated_cost_usd": "0.07549245",
+        "unpriced_calls": 0,
+        "missing_token_calls": 0,
+        "purposes": {
+          "player_dialogue": {
+            "calls": 100,
+            "completed_calls": 100,
+            "failed_calls": 0,
+            "input_tokens": 217503,
+            "output_tokens": 6198,
+            "estimated_cost_usd": "0.03634425",
+            "unpriced_calls": 0,
+            "missing_token_calls": 0
+          },
+          "session_master": {
+            "calls": 100,
+            "completed_calls": 100,
+            "failed_calls": 0,
+            "input_tokens": 205648,
+            "output_tokens": 13835,
+            "estimated_cost_usd": "0.03914820",
+            "unpriced_calls": 0,
+            "missing_token_calls": 0
+          }
+        },
+        "pricing_snapshots": [
+          [
+            "qwen.qwen3-32b",
+            "0.15",
+            "0.60",
+            "2026-11-01"
+          ]
+        ]
+      },
+      "achievement_unlock_counts": {
+        "personal_trace": 40,
+        "treatment_bentinho": 5,
+        "florenca_father": 6,
+        "escobar_affection": 1
+      }
+    }
+  },
+  "source_hashes_sha256": {
+    "docs/exploracao_investigacao_v3/before.jsonl": "70437ebc04824c1fbc17af6b92511ab8142666b32dd80f62be38042fb9160d4f",
+    "docs/exploracao_investigacao_v3/after.jsonl": "bbc7db38a7eef10e8947ad4d6f004ebaacbf11351610d8a46b5685fd466a5b2f"
+  },
+  "benchmark_code_sha256": "527d63c4c575b041610063ca9ccc48aeef252698768e83f58d616b9b65ffb6c2",
+  "report_code_sha256": "bceb7545845a9c01aa4dae121963a63e81130306fdfa878837984c4ca91413fc",
+  "benchmark_base_commit": "e2f2d62",
+  "after_freeze_commit": "9e7ca6f",
+  "pricing_snapshot": {
+    "input_usd_per_million": "0.15",
+    "output_usd_per_million": "0.60",
+    "checked_at": "2026-11-01"
+  },
+  "question_metrics": {
+    "before": {
+      "overall": {
+        "phase": "before",
+        "question_type": "overall",
+        "n": 100,
+        "actionable_proxy_rate": "0.58",
+        "evasive_proxy_rate": "0.06",
+        "metaphor_proxy_rate": "0.05",
+        "named_next_step_rate": "0.18",
+        "words_median": "35",
+        "latency_seconds_median": "2.459"
+      },
+      "alibi": {
+        "phase": "before",
+        "question_type": "alibi",
+        "n": 20,
+        "actionable_proxy_rate": "0.95",
+        "evasive_proxy_rate": "0.05",
+        "metaphor_proxy_rate": "0",
+        "named_next_step_rate": "0",
+        "words_median": "26.5",
+        "latency_seconds_median": "2.3645"
+      },
+      "followup": {
+        "phase": "before",
+        "question_type": "followup",
+        "n": 20,
+        "actionable_proxy_rate": "0.4",
+        "evasive_proxy_rate": "0.05",
+        "metaphor_proxy_rate": "0.05",
+        "named_next_step_rate": "0.15",
+        "words_median": "33.5",
+        "latency_seconds_median": "2.411"
+      },
+      "help": {
+        "phase": "before",
+        "question_type": "help",
+        "n": 20,
+        "actionable_proxy_rate": "0.6",
+        "evasive_proxy_rate": "0.05",
+        "metaphor_proxy_rate": "0.05",
+        "named_next_step_rate": "0.5",
+        "words_median": "41.5",
+        "latency_seconds_median": "2.619"
+      },
+      "object": {
+        "phase": "before",
+        "question_type": "object",
+        "n": 20,
+        "actionable_proxy_rate": "0.55",
+        "evasive_proxy_rate": "0.1",
+        "metaphor_proxy_rate": "0",
+        "named_next_step_rate": "0.15",
+        "words_median": "39.5",
+        "latency_seconds_median": "2.3835"
+      },
+      "relations": {
+        "phase": "before",
+        "question_type": "relations",
+        "n": 20,
+        "actionable_proxy_rate": "0.4",
+        "evasive_proxy_rate": "0.05",
+        "metaphor_proxy_rate": "0.15",
+        "named_next_step_rate": "0.1",
+        "words_median": "40.5",
+        "latency_seconds_median": "2.6005"
+      }
+    },
+    "after": {
+      "overall": {
+        "phase": "after",
+        "question_type": "overall",
+        "n": 99,
+        "actionable_proxy_rate": "0.9494949494949494949494949495",
+        "evasive_proxy_rate": "0.03030303030303030303030303030",
+        "metaphor_proxy_rate": "0.01010101010101010101010101010",
+        "named_next_step_rate": "0.1515151515151515151515151515",
+        "words_median": "35",
+        "latency_seconds_median": "2.834"
+      },
+      "alibi": {
+        "phase": "after",
+        "question_type": "alibi",
+        "n": 20,
+        "actionable_proxy_rate": "0.95",
+        "evasive_proxy_rate": "0.05",
+        "metaphor_proxy_rate": "0",
+        "named_next_step_rate": "0",
+        "words_median": "50",
+        "latency_seconds_median": "2.9665"
+      },
+      "followup": {
+        "phase": "after",
+        "question_type": "followup",
+        "n": 20,
+        "actionable_proxy_rate": "0.9",
+        "evasive_proxy_rate": "0",
+        "metaphor_proxy_rate": "0",
+        "named_next_step_rate": "0.15",
+        "words_median": "36.5",
+        "latency_seconds_median": "2.950"
+      },
+      "help": {
+        "phase": "after",
+        "question_type": "help",
+        "n": 20,
+        "actionable_proxy_rate": "1",
+        "evasive_proxy_rate": "0",
+        "metaphor_proxy_rate": "0.05",
+        "named_next_step_rate": "0.05",
+        "words_median": "32",
+        "latency_seconds_median": "2.7595"
+      },
+      "object": {
+        "phase": "after",
+        "question_type": "object",
+        "n": 20,
+        "actionable_proxy_rate": "0.95",
+        "evasive_proxy_rate": "0.05",
+        "metaphor_proxy_rate": "0",
+        "named_next_step_rate": "0.2",
+        "words_median": "34",
+        "latency_seconds_median": "2.842"
+      },
+      "relations": {
+        "phase": "after",
+        "question_type": "relations",
+        "n": 19,
+        "actionable_proxy_rate": "0.9473684210526315789473684211",
+        "evasive_proxy_rate": "0.05263157894736842105263157895",
+        "metaphor_proxy_rate": "0",
+        "named_next_step_rate": "0.3684210526315789473684210526",
+        "words_median": "33",
+        "latency_seconds_median": "2.697"
+      }
+    }
+  },
+  "usage_csv_rows": [
+    {
+      "phase": "before",
+      "task": "overall",
+      "calls": 200,
+      "completed_calls": 200,
+      "failed_calls": 0,
+      "input_tokens": 781118,
+      "output_tokens": 20647,
+      "estimated_cost_usd": "0.12955590",
+      "unpriced_calls": 0,
+      "missing_token_calls": 0
+    },
+    {
+      "phase": "before",
+      "task": "player_dialogue",
+      "calls": 100,
+      "completed_calls": 100,
+      "failed_calls": 0,
+      "input_tokens": 438083,
+      "output_tokens": 6884,
+      "estimated_cost_usd": "0.06984285",
+      "unpriced_calls": 0,
+      "missing_token_calls": 0
+    },
+    {
+      "phase": "before",
+      "task": "session_master",
+      "calls": 100,
+      "completed_calls": 100,
+      "failed_calls": 0,
+      "input_tokens": 343035,
+      "output_tokens": 13763,
+      "estimated_cost_usd": "0.05971305",
+      "unpriced_calls": 0,
+      "missing_token_calls": 0
+    },
+    {
+      "phase": "after",
+      "task": "overall",
+      "calls": 200,
+      "completed_calls": 200,
+      "failed_calls": 0,
+      "input_tokens": 423151,
+      "output_tokens": 20033,
+      "estimated_cost_usd": "0.07549245",
+      "unpriced_calls": 0,
+      "missing_token_calls": 0
+    },
+    {
+      "phase": "after",
+      "task": "player_dialogue",
+      "calls": 100,
+      "completed_calls": 100,
+      "failed_calls": 0,
+      "input_tokens": 217503,
+      "output_tokens": 6198,
+      "estimated_cost_usd": "0.03634425",
+      "unpriced_calls": 0,
+      "missing_token_calls": 0
+    },
+    {
+      "phase": "after",
+      "task": "session_master",
+      "calls": 100,
+      "completed_calls": 100,
+      "failed_calls": 0,
+      "input_tokens": 205648,
+      "output_tokens": 13835,
+      "estimated_cost_usd": "0.03914820",
+      "unpriced_calls": 0,
+      "missing_token_calls": 0
+    }
+  ],
+  "manual_comparisons": [
+    {
+      "case_id": 0,
+      "question_type": "help",
+      "actor": "bentinho",
+      "before": "Sob suspeita, Escobar aparece com mais frequência por conta de Capitu. Rubião talvez compreenda…",
+      "after": "Vou dizer uma coisa concreta: Capitu se encontra com Escobar nos parques e no…",
+      "comment": "A resposta depois nomeia a ligação Capitu–Escobar e sugere falar com ambos; antes, o encaminhamento recai em Rubião. O proxy acionável marca as duas respostas, sem julgar qual encaminhamento é melhor."
+    },
+    {
+      "case_id": 1,
+      "question_type": "relations",
+      "actor": "bentinho",
+      "before": "Bem que você me pergunta... O Bacamarte tem receitado remédios, mas eu prefiro tratar…",
+      "after": "Uma coisa eu lhe digo: Bentinho faz acompanhamento com Bacamarte, mas resiste às consultas…",
+      "comment": "Antes, Bentinho fala em primeira pessoa sobre a resistência ao tratamento; depois, a fala enumera a lembrança autorizada e indica Bacamarte e Bentinho. A formulação posterior é mais prescritiva, mas soa mais resumida."
+    },
+    {
+      "case_id": 3,
+      "question_type": "object",
+      "actor": "bentinho",
+      "before": "Já vi caixas iguais em mãos de muitos que fumam ou acendem velas sem…",
+      "after": "Uma coisa eu lhe digo: Sobre Caixa de fósforos: Já vi Rubião com um…",
+      "comment": "As duas falas recusam tratar item comum como autoria. Depois, a resposta associa o tipo a Rubião e aponta as anotações do caderno; isso continua sendo reconhecimento de objeto semelhante, não prova de quem deixou o exemplar."
+    },
+    {
+      "case_id": 7,
+      "question_type": "alibi",
+      "actor": "capitu",
+      "before": "Estava em minha cabana, sozinha, tratando de assuntos particulares. Naquele período, ninguém me via.…",
+      "after": "Estava na Cabana da Capitu naquela noite, sem companhia que confirme. Vi Virgília Neves…",
+      "comment": "Depois, Capitu menciona ter visto Virgília, informação ausente antes; também delimita que não sabe onde Virgília esteve depois. O proxy de evasão sobe por essa ressalva lexical, não por uma avaliação de sinceridade."
+    },
+    {
+      "case_id": 9,
+      "question_type": "followup",
+      "actor": "capitu",
+      "before": "Vi Escobar com botões semelhantes, mas nada que o ligue a crime algum. A…",
+      "after": "Posso lhe ajudar com isso: Sobre Botão de osso: Já vi Escobar com um…",
+      "comment": "A resposta posterior nomeia Escobar como alguém que já teve objeto semelhante e sugere comparar depoimentos. A anterior traz uma pergunta sobre autoria e intenção; ambas permanecem sem atribuir o objeto ao crime."
+    },
+    {
+      "case_id": 14,
+      "question_type": "followup",
+      "actor": "escobar",
+      "before": "Lenços de algodão são comuns, e este não me diz nada específico. Sobre perguntas:…",
+      "after": "Não sei de quem é o lenço. Pergunte a Capitu se reconhece um lenço…",
+      "comment": "A resposta posterior recomenda uma pessoa específica para reconhecer lenços. A fala anterior diz que o lenço é comum e orienta buscar quem o viu; a diferença observada é a especificidade do contato sugerido."
+    },
+    {
+      "case_id": 15,
+      "question_type": "help",
+      "actor": "escobar",
+      "before": "Capitu sofre com o ciúme de Bentinho, mas Virgília talvez observe melhor o comportamento…",
+      "after": "Conheço Bentinho e Capitu há anos, e sei que eles são casados, embora ele…",
+      "comment": "Depois, Escobar dá contexto mais explícito sobre casamento e ciúme, mas é mais longa. O detector de metáfora marca “sombra de um cão” por palavra-chave, exemplo de que o proxy não interpreta contexto."
+    },
+    {
+      "case_id": 20,
+      "question_type": "help",
+      "actor": "escobar",
+      "before": "É claro que quero ajudar. Se você quiser entender os moradores melhor, converse com…",
+      "after": "Bentinho e Capitu são casados, mas ele anda ciumento da proximidade dela comigo. Pergunte…",
+      "comment": "Depois, a resposta comprime o tema do ciúme e termina em pergunta a Bentinho; antes, oferecia outros contatos. O próximo-passo proxy cai por seu padrão lexical estreito, apesar da sugestão textual."
+    },
+    {
+      "case_id": 21,
+      "question_type": "relations",
+      "actor": "rubiao",
+      "before": "Minha Florença brilha como um raio, embora me evite. Desejo ser-lhe útil, mesmo à…",
+      "after": "Isso eu posso lhe contar: Rubião tenta aproximar-se de Florença, embora ela não corresponda…",
+      "comment": "Antes, Rubião responde com uma imagem afetiva breve; depois, descreve a falta de reciprocidade e oferece continuar a conversa. Isso compara duas formulações do tema, sem validar a leitura do personagem."
+    },
+    {
+      "case_id": 30,
+      "question_type": "help",
+      "actor": "virgilia",
+      "before": "O principal é que Rubião insiste em cortejar Florença, embora ela nem lhe dê…",
+      "after": "Minha filha, se é assim que quer ajudar, saiba que Florença anda furiosa com…",
+      "comment": "Antes, Virgília sugere ouvir Florença sobre Rubião; depois, descreve o ressentimento de Florença contra Bacamarte e sugere perguntar. A diferença muda o foco narrativo e não demonstra que uma versão seja verdadeira."
+    }
+  ],
+  "sources": {
+    "before_sha256": "70437ebc04824c1fbc17af6b92511ab8142666b32dd80f62be38042fb9160d4f",
+    "after_sha256": "bbc7db38a7eef10e8947ad4d6f004ebaacbf11351610d8a46b5685fd466a5b2f",
+    "benchmark_script_sha256": "527d63c4c575b041610063ca9ccc48aeef252698768e83f58d616b9b65ffb6c2",
+    "report_script_sha256": "bceb7545845a9c01aa4dae121963a63e81130306fdfa878837984c4ca91413fc"
+  }
+}
