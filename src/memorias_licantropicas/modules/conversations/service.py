@@ -26,7 +26,8 @@ def public_message(message: ConversationMessage, private_markers: tuple[str, ...
         if not decision.allowed:
             content = decision.reply or SAFE_DIALOGUE_REPLY
     return MessagePublic(id=message.id, speaker="player" if message.sender_id == PLAYER_ID else "npc",
-                         content=content, created_at=message.created_at)
+                         content=content, created_at=message.created_at,
+                         useful=message.sender_id!=PLAYER_ID and message.narrative_authorized and message.useful and content==message.content)
 
 
 class ConversationService:

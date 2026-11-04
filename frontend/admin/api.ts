@@ -25,7 +25,7 @@ export interface SocialEncounter {
 }
 export interface SocialState {
   game_id: string; revision: number; knowledge: SocialKnowledge[]; encounters: SocialEncounter[];
-  relationships: Array<{actor_id: string; target_id: string; affinity: number; trust: number; resentment: number; causes: string[]}>;
+  relationships: Array<{actor_id: string; target_id: string; sentiment_label?: string; sentiments?: Record<string, number>; affinity: number; trust: number; resentment: number; causes: string[]}>;
   days: Array<{day: number; slots: number[]; speech_calls: number; extraction_calls: number}>;
 }
 

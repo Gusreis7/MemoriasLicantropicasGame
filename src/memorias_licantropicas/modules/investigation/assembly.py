@@ -192,12 +192,9 @@ def apply_assembly_effects(state, game, world, now):
             'npcs':tuple(n for n in world.npcs if n.npc_id not in state.expelled_npc_ids),
             'player':world.player.model_copy(update={'direction':'idle','last_updated_at':now})})
     if status in ('won','lost'):
-        headline='Floriano vence: a cidade está livre do lobisomem' if status=='won' else 'Floriano é expulso: a investigação termina sem solução'
-        body=(f"A assembleia acolheu os argumentos: {NAMES.get(record.suspect_id,record.suspect_id)} foi {'expulsa' if record.suspect_id in ('capitu','florenca','virgilia') else 'expulso'} da cidade após a confirmação da licantropia. O Clarim celebra a vitória de Floriano." if status=='won' else
-              'A maioria dos moradores decidiu expulsar Floriano da cidade. Sem o detetive, a investigação terminou em derrota; o perigo permanece.')
-        state=state.model_copy(update={'journal':(*state.journal,JournalEdition(day=state.day,
-            illustration='victory' if status=='won' else 'crime_street',headline=headline,body=body,
-            suspicious_death_count=len(state.crimes)))})
+        from memorias_licantropicas.modules.session_master.editorial import final_edition
+        wolf=next(m.character_id for m in game.characters if m.role=='werewolf')
+        state=state.model_copy(update={'journal':(*state.journal,final_edition(state,NAMES,werewolf_id=wolf))})
     return state,next_game,next_world
 
 

@@ -11,7 +11,7 @@ async function fixture(page: Page, expelPlayer = true) {
     crimes:[],inventory:[{id:'evidence',crime_id:'crime',item_id:'lenco',name:'Lenço de linho',kind:'common',description:'Um tecido recolhido no cais.'}],testimonies:[],accusations:[],detained_npc_id:null,ending:null};
   const messages: Message[] = [];
   const requests: Array<{path:string;body:Record<string,unknown>}> = [];
-  const addMessage=(speaker:Message['speaker'],content:string)=>messages.push({id:`message-${messages.length}`,speaker,content,created_at:new Date().toISOString()});
+  const addMessage=(speaker:Message['speaker'],content:string)=>messages.push({id:`message-${messages.length}`,speaker,content,useful:speaker==='npc',created_at:new Date().toISOString()});
   await page.route('**/api/v1/**',async route=>{
     const path=new URL(route.request().url()).pathname;
     const body=route.request().method()==='POST' ? route.request().postDataJSON() : {};
@@ -25,6 +25,7 @@ async function fixture(page: Page, expelPlayer = true) {
     if(path.endsWith('/movement')){world.player.movement_seq=body.seq;return json(world);}
     if(path.endsWith('/approaches'))return json({id:'conversation',game_id:cast.id,npc_id:'capitu',created_at:new Date().toISOString()});
     if(path.endsWith('/close'))return route.fulfill({status:204});
+    if(path.endsWith('/social/reports'))return json({reports:messages.filter(m=>m.speaker==='npc').map(m=>({...m,speaker_id:'capitu',speaker_name:'Capitu',source_name:null}))});
     if(path.endsWith('/messages')){
       if(route.request().method()==='POST') {addMessage('player',body.content);addMessage('npc','O lenço era de uma cliente; já lhe disse que reconheço o bordado.');return json({conversation_id:'conversation',message:messages.at(-1)});}
       return json({conversation_id:'conversation',messages});
@@ -78,4 +79,20 @@ test('transcrição final conserva a réplica do jogador mesmo sem maioria',asyn
   await expect(page.locator('#assembly-reply')).toBeVisible();await page.locator('#assembly-reply').fill('Registramos as divergências; procuremos outra fonte.');await page.locator('#finish-assembly').click();
   await expect(page.locator('#assembly-result')).toContainText('não alcançou maioria');
   await expect(page.locator('#assembly-chat')).toContainText('Registramos as divergências; procuremos outra fonte.');
+});
+
+
+test('relato útil fica dourado no chat, no histórico reaberto e no caderno',async({page})=>{
+  await fixture(page);await begin(page);await page.locator('#approach').click();
+  await expect(page.locator('#message-input')).toBeEnabled();
+  await page.locator('#message-input').fill('O que reconhece neste objeto?');await page.locator('#send-message').click();
+  await expect(page.locator('#messages .message.npc.useful-report')).toHaveCount(1);
+  await expect(page.locator('#messages .message.player.useful-report')).toHaveCount(0);
+  await expect(page.locator('#messages .useful-report-label')).toContainText('Relato útil');
+  await page.locator('#close-dialogue').click();await page.locator('#approach').click();
+  await expect(page.locator('#messages .message.npc.useful-report')).toHaveCount(1);
+  await page.locator('#close-dialogue').click();await page.locator('#open-notebook').click();
+  await page.locator('#notebook-tab-reports').click();
+  await expect(page.locator('#heard-report-list .testimony-card.useful-report')).toHaveCount(1);
+  await expect(page.locator('#heard-report-list')).toContainText('O lenço era');
 });

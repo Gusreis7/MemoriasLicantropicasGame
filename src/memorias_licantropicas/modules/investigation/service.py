@@ -271,7 +271,9 @@ class InvestigationService(AssemblyServiceMixin):
             last = {"evidence_id": str(focused.id), "item_id": focused.item_id,
                     "nome": ITEMS_BY_ID[focused.item_id].name, "descricao": focused.description,
                     "fala_registrada": testimony.text if testimony else None}
+        from memorias_licantropicas.modules.investigation.night_story import plot_context
         return {
+            "seu_conflito_privado": plot_context(state,npc_id,names),
             "ultimo_objeto_apresentado": last,
             "suas_atividades": memories,
             "cooperacao_com_investigacao": COOPERATION.get(npc_id, "Ajude a esclarecer o crime com o que sabe."),

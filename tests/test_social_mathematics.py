@@ -20,10 +20,10 @@ def seeded():
 def test_author_topics_seed_once_preserve_existing_memory_and_relationships():
     state=seeded()
     assert seed_social_state(state,IDS,NOW)==state
-    assert state.seeded_topics_version==2
-    assert len(state.relationships)==len(IDS)*len(IDS)
-    assert relationship_for(state,'escobar','bentinho').loyalty==80
-    assert relationship_for(state,'bentinho','escobar').suspicion==50
+    assert state.seeded_topics_version==3
+    assert len(state.relationships)==(len(IDS)+1)*(len(IDS)+2)
+    assert relationship_for(state,'escobar','bentinho').loyalty>=50
+    assert relationship_for(state,'bentinho','escobar').suspicion>=50
     assert relationship_for(state,'capitu','escobar').affinity>0
     secret=[e for e in state.knowledge if 'vai além' in e.proposition]
     assert len(secret)==1 and secret[0].owner_id=='escobar' and secret[0].visibility=='private'

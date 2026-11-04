@@ -70,6 +70,7 @@ class Conversation(Contract):
 
 
 class ConversationMessage(Contract):
+    useful: bool = False
     narrative_authorized: bool = False
     id: UUID
     sender_id: str

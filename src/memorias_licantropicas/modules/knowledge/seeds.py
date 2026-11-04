@@ -31,7 +31,7 @@ TOPICS = (
 
 def seed_social_state(state, character_ids, now):
     """Migração aditiva e idempotente: não apaga o que uma partida já ouviu."""
-    if state.seeded_topics_version >= 2:
+    if state.seeded_topics_version >= 3:
         return state
     ids = set(character_ids)
     entries = list(state.knowledge)
@@ -52,10 +52,20 @@ def seed_social_state(state, character_ids, now):
                 subject_ids=tuple(s for s in subjects if s in ids), kind=kind,
                 confidence='medium' if kind == 'report' else 'low', stance='believes',
                 origin='authored', visibility=visibility, disclosure_threshold=threshold, day=1, created_at=now))
-    # Relações existentes preservam todos os efeitos. Inserir só pares ausentes.
-    relations = list(state.relationships)
-    pairs = {(r.actor_id,r.target_id) for r in relations}
-    relations.extend(r for r in initial_relationships(tuple(sorted(ids)))
-                     if (r.actor_id,r.target_id) not in pairs)
+    # Rebase sobre a nova matriz sem apagar os deltas e as causas da partida.
+    from memorias_licantropicas.modules.knowledge.rules import legacy_relationships
+    legacy={(r.actor_id,r.target_id):r for r in legacy_relationships(tuple(sorted(ids)))}
+    existing={(r.actor_id,r.target_id):r for r in state.relationships}
+    relations=[]
+    matrix_present=any(r.sentiments for r in state.relationships)
+    for base in initial_relationships(tuple(sorted(ids))):
+        pair=(base.actor_id,base.target_id); current=existing.pop(pair,None)
+        if current is None: relations.append(base); continue
+        old=legacy.get(pair)
+        values={key:getattr(current,key) for key in ('affinity','trust','resentment','suspicion','loyalty')} if matrix_present else {key:min(100,max(-100 if key in ('affinity','trust') else 0,
+                    getattr(base,key)+getattr(current,key)-(getattr(old,key) if old else 0)))
+                for key in ('affinity','trust','resentment','suspicion','loyalty')}
+        relations.append(current.model_copy(update={**values,'sentiment_label':base.sentiment_label,'sentiments':base.sentiments}))
+    relations.extend(existing.values())
     return state.model_copy(update={'knowledge':tuple(entries), 'relationships':tuple(relations),
-                                    'seeded_topics_version':2})
+                                    'seeded_topics_version':3})

@@ -37,7 +37,7 @@ async def test_wrong_expulsion_increases_real_social_resentment_and_preserves_li
     assert result.expelled_npc_ids == ('bentinho',)
     assert next(m for m in (await inquiry.storage.games.get(game.id)).characters if m.character_id == 'bentinho').alive
     social = await RedisSocialRepository(inquiry.storage.client, inquiry.storage.prefix).get(game.id)
-    assert social.relationships and all(r.resentment >= 5 for r in social.relationships)
+    assert social.relationships and all(r.resentment >= 5 for r in social.relationships if r.actor_id!=r.target_id and r.actor_id in {m.character_id for m in game.characters} and r.target_id in {*[m.character_id for m in game.characters],"player"})
     assert 'bentinho' not in {n.npc_id for n in (await inquiry.world.get(game.id)).npcs}
 
 async def test_assembly_blocked_at_night(inquiry):

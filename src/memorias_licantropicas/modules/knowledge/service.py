@@ -276,7 +276,9 @@ class KnowledgeService:
                    if entry.root_id in topic_roots and topic_roots[entry.root_id] in TOPIC_DISCOVERIES}
         if npc_id != 'capitu' or not confidences: allowed.discard('capitu_separation')
         if npc_id != 'escobar' or not confidences: allowed.discard('escobar_affection')
+        from memorias_licantropicas.modules.knowledge.affects import private_affect_context
         return {
+            "sentimentos_proprios": private_affect_context(state,npc_id,confidences),
             "confidencias_autorizadas": confidences,
             "descobertas_autorizadas": sorted(allowed),
             "vinculos_conhecidos": [r.model_dump(mode="json") for r in state.relationships if r.actor_id == npc_id],

@@ -308,6 +308,10 @@ async def test_unparsed_literal_memory_never_enters_social_prompt(social_case):
 async def test_hostile_encounter_has_limited_causal_relationship_change(social_case):
     case = social_case
     await start_encounter(case, owner="florenca", target="bacamarte", arrive=False)
+    social=await case.repository.get(case.game.id)
+    relations=tuple(r.model_copy(update={'affinity':-50,'resentment':50})
+                    if (r.actor_id,r.target_id)==('florenca','bacamarte') else r for r in social.relationships)
+    assert await case.repository.save(social.model_copy(update={'revision':social.revision+1,'relationships':relations}),social.revision)
     state = await case.repository.get(case.game.id)
     case.now[0] = state.encounters[-1].arrival_at
     assert await case.service.tick(case.game.id)

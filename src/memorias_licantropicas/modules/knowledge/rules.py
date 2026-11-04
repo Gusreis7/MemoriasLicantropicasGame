@@ -7,7 +7,7 @@ from memorias_licantropicas.contracts.errors import AccessDeniedError
 from memorias_licantropicas.contracts.social import KnowledgeEntry, Relationship
 
 
-def initial_relationships(character_ids):
+def legacy_relationships(character_ids):
     seeds = {
         ("bentinho", "capitu"): (15, -15, 25),
         ("bentinho", "escobar"): (-25, -35, 30),
@@ -39,6 +39,11 @@ def initial_relationships(character_ids):
                               suspicion=suspicions.get((actor,target),0),
                               loyalty=loyalties.get((actor,target),0))
                  for actor in ids for target in (*ids, "player") if actor != target)
+
+
+def initial_relationships(character_ids):
+    from memorias_licantropicas.modules.knowledge.affects import initial_affects
+    return initial_affects(character_ids)
 
 
 def relationship_for(state, actor_id, target_id):

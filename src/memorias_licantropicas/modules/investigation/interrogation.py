@@ -26,14 +26,14 @@ LOCATIONS = {"praca_verde": "Praça Verde", "cabana_capitu": "Cabana da Capitu",
              "cais_lanternas": "Cais das Lanternas"}
 
 
-def record_activities(game, world, day, period, now, *, source="world_snapshot", crime=None, excluded_ids=()):
+def record_activities(game, world, day, period, now, *, source="world_snapshot", crime=None, crimes=(), excluded_ids=()):
     """Posições do instante registrado, sem inventar trajetos ou presença durante toda a noite."""
     places = {npc.npc_id: npc.location_id for npc in world.npcs if npc.activity != "travelling"}
     positions = {npc.npc_id: npc.x for npc in world.npcs}
     living = {npc.character_id for npc in game.characters if npc.alive and npc.character_id not in excluded_ids}
-    if crime is not None:
-        places[crime.killer_id] = crime.location_id
-        positions[crime.killer_id] = crime.x
+    for event in ((*((crime,) if crime is not None else ()), *crimes)):
+        places[event.killer_id] = event.location_id
+        positions[event.killer_id] = event.x
     result = []
     for npc_id, location in places.items():
         if npc_id not in living:
@@ -74,7 +74,8 @@ def make_interrogation(state, game, npc_id, day, period, names, now):
             text="Recordo-me de alguns afazeres, detetive, mas não fixarei local ou companhia sem certeza. "
                  "Uma lacuna de memória não deve valer por prova contra ninguém.",
             truthful=True, source_record_ids=(own.id,), created_at=now)
-    if is_wolf and period == "night":
+    is_civil_offender=any(c.killer_id==npc_id and c.day==day and c.cause=="civil" for c in state.crimes)
+    if (is_wolf or is_civil_offender) and period == "night":
         # Encobrimento estável, sem consultar nem revelar o papel de terceiros.
         destinations = tuple(LOCATIONS)
         location = destinations[(destinations.index(location) + 1) % len(destinations)]

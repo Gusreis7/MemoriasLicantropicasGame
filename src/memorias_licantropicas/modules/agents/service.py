@@ -184,9 +184,13 @@ class HarnessService:
                 model, input_tokens, output_tokens = response.model, response.input_tokens, response.output_tokens
             else:
                 content = decision.reply or SAFE_DIALOGUE_REPLY
+        from memorias_licantropicas.modules.session_master.reports import useful_report
+        useful = decision.allowed and useful_report(content, observations,
+            kind=assessment.kind if assessment else 'conversation',
+            quote=assessment.useful_quote if assessment else '',suggested=assessment.useful if assessment else False)
         outgoing = ConversationMessage(
             id=uuid4(), sender_id=npc_id, content=content,
-            created_at=datetime.now(timezone.utc), narrative_authorized=decision.allowed,
+            created_at=datetime.now(timezone.utc), narrative_authorized=decision.allowed, useful=useful,
         )
         # Uma inferência iniciada no dia não pode persistir fala depois do anoitecer.
         if self._day_policy and speaker_id == PLAYER_ID:
@@ -195,6 +199,8 @@ class HarnessService:
             from memorias_licantropicas.modules.session_master.service import DialogueAssessment
             if not decision.allowed:
                 assessment = DialogueAssessment()
+            elif assessment is not None:
+                assessment = assessment.model_copy(update={"useful":useful, "useful_quote":content[:2400] if useful else ""})
             await self._session_master.persist_exchange(game_id, npc_id, conversation_id, incoming, outgoing, assessment or DialogueAssessment())
         else:
             await self._memory.append_messages(game_id, conversation_id, (incoming, outgoing))
@@ -295,6 +301,8 @@ class HarnessService:
             "Responda primeiro à pergunta. Quando souber algo, conte uma informação concreta dos apoios_de_conversa "
             "e ofereça uma pergunta, pessoa ou comparação que ajude a investigação. Se não souber essa resposta, "
             "diga isso simplesmente e conte um outro detalhe útil que conhece. Ajuda cotidiana não exige confiança íntima. "
+            "Seus sentimentos próprios orientam o tom e as escolhas sem recitar números. Amor e ódio podem coexistir. "
+            "Ser civil não garante inocência de um homicídio humano: respeite seu conflito privado, caso exista. "
             "A graça e a ironia podem aparecer no jeito de falar, sem metáforas que escondam a resposta. "
             "Não narre gestos nem pensamentos. Não escreva JSON, Markdown, etiquetas ou explicações do sistema. "
             "Floriano não é o delegado. Diferencie uma opinião de uma observação: pode defender amigos e acusar "

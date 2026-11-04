@@ -1,6 +1,6 @@
 """Contratos privados da convivência. Nunca projetar SocialState para o jogador."""
 
-from typing import Literal, Protocol
+from typing import Annotated, Literal, Protocol
 from uuid import UUID
 
 from pydantic import AwareDatetime, Field
@@ -40,6 +40,8 @@ class KnowledgeEntry(Contract):
 class Relationship(Contract):
     actor_id: str
     target_id: str
+    sentiment_label: str = "indiferença"
+    sentiments: dict[str, Annotated[int, Field(ge=0, le=100)]] = Field(default_factory=dict)
     affinity: int = Field(default=0, ge=-100, le=100)
     trust: int = Field(default=0, ge=-100, le=100)
     resentment: int = Field(default=0, ge=0, le=100)

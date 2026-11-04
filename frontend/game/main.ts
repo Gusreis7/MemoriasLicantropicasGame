@@ -498,11 +498,13 @@ async function approach() {
 }
 
 function appendMessage(message: Message) {
-  const item = document.createElement('article'); item.className = `message ${message.speaker}`;
+  const item = document.createElement('article'); item.className = `message ${message.speaker}${message.useful ? ' useful-report' : ''}`;
   const label = document.createElement('p'); label.className = 'message-author';
   label.textContent = message.speaker === 'player' ? 'FLORIANO' : dialogueNPC?.name.toLocaleUpperCase('pt-BR') ?? 'DEPOIMENTO';
   const content = document.createElement('p'); content.className = 'message-content'; content.textContent = message.content;
-  item.append(label, content); $('#messages').append(item);
+  item.append(label, content);
+  if (message.useful) addText(item,'small','✦ Relato útil · confira esta versão','useful-report-label');
+  $('#messages').append(item);
 }
 
 async function refreshHistory() {
@@ -895,7 +897,8 @@ async function inspectEvidence(evidenceID: string) {
 function renderReports() {
   const reports = $('#heard-report-list'); reports.replaceChildren();
   for (const report of heardReports) {
-    const item = document.createElement('article'); item.className = 'testimony-card';
+    const item = document.createElement('article'); item.className = `testimony-card${report.useful ? ' useful-report' : ''}`;
+    if (report.useful) addText(item,'small','✦ Relato útil','useful-report-label');
     addText(item, 'h4', report.speaker_name);
     addText(item, 'small', report.source_name ? `Fonte atribuída: ${report.source_name}` : 'Versão ouvida em conversa');
     addText(item, 'p', report.content); reports.append(item);

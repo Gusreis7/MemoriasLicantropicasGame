@@ -238,7 +238,7 @@ function renderSocial(state: SocialState): void {
   const relations = make('details', 'social-details'); relations.dataset.recordId = 'relations'; relations.open = expanded.has('relations');
   relations.append(make('summary', '', 'Relações direcionais'));
   for (const relation of state.relationships) {
-    relations.append(make('p', 'panel-description', `${nameOf(relation.actor_id)} → ${nameOf(relation.target_id)}: afinidade ${relation.affinity}, confiança ${relation.trust}, ressentimento ${relation.resentment} · ${relation.causes.length} causa(s)`));
+    relations.append(make('p', 'panel-description', `${nameOf(relation.actor_id)} → ${nameOf(relation.target_id)}: ${relation.sentiment_label ?? ""} ${Object.entries(relation.sentiments ?? {}).map(([name,value]) => `${name} ${value}`).join(", ")} · afinidade ${relation.affinity}, confiança ${relation.trust}, ressentimento ${relation.resentment} · ${relation.causes.length} causa(s)`));
   }
   panel.append(relations, make('h3', '', 'Encontros e falas confirmadas'));
   if (!state.encounters.length) panel.append(make('p', 'empty-copy', 'Nenhum encontro social registrado.'));
@@ -278,6 +278,8 @@ function renderState(record: GameState): void {
   if (cycle) {
     const phase = cycle.phase === 'day' ? 'Dia' : cycle.phase === 'night' ? 'Noite' : 'Encerrado';
     $('cycle-summary').textContent = `Dia ${cycle.day} · ${phase} · ${cycle.detained_npc_id ? `Sob custódia: ${nameOf(cycle.detained_npc_id)}` : 'Sem detenção'} · Prazo: ${formatDate(cycle.phase_ends_at)}`;
+    const story=cycle.night_story as {skipped_nights:number;plot?:{planner_id:string;target_id:string;status:string;stress:number}}|undefined;
+    if(story?.plot) $('cycle-summary').textContent+=` · Plano civil: ${nameOf(story.plot.planner_id)} → ${nameOf(story.plot.target_id)} · ${story.plot.status} · estresse ${story.plot.stress} · noites poupadas pela fera: ${story.skipped_nights}`;
     $('cycle-details').textContent = JSON.stringify(cycle, null, 2);
   }
   const alive = record.characters.filter(character => character.alive).length;

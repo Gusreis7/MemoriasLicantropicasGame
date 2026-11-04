@@ -385,7 +385,9 @@ class SocialService:
                                 require_player_idle=True, events=events)
 
     def _instructions(self, profile, member, actor, recipient, names, context, topics, encounter, state, case):
+        from memorias_licantropicas.modules.investigation.night_story import plot_context
         observations = {
+            "seu_conflito_privado": plot_context(case,actor,names),
             **npc_interrogation_context(case, actor),
             "dia": case.day,
             "jornal": [{"dia": item.day, "manchete": item.headline, "noticia": item.body} for item in case.journal],

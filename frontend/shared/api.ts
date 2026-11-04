@@ -15,8 +15,8 @@ export interface WorldSnapshot {
   travel_targets: LocationID[];
 }
 export interface Conversation {id: string; game_id: string; npc_id: string; created_at: string}
-export interface Message {id: string; speaker: 'player' | 'npc'; content: string; created_at: string}
-export interface HeardReport {id: string; speaker_id: string; speaker_name: string; content: string; created_at: string; source_name: string | null}
+export interface Message {useful?: boolean; id: string; speaker: 'player' | 'npc'; content: string; created_at: string}
+export interface HeardReport {useful?: boolean; id: string; speaker_id: string; speaker_name: string; content: string; created_at: string; source_name: string | null}
 export interface CharacterAsset {
   id: string; type: 'atlas' | 'spritesheet' | 'image'; path: string; atlasPath?: string;
   frameWidth: number; frameHeight: number; frames: number; frameNames?: string[];

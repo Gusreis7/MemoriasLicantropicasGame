@@ -35,7 +35,7 @@ async def test_player_can_talk_to_each_persona(api_client, storage, llm, npc_id)
     assert response.status_code == 200
     assert set(response.json()) == {"conversation_id", "message"}
     assert response.json()["message"]["speaker"] == "npc"
-    assert set(response.json()["message"]) == {"id", "speaker", "content", "created_at"}
+    assert set(response.json()["message"]) == {"id", "speaker", "content", "created_at", "useful"}
     history = (await api_client.get(f"{url}/messages")).json()["messages"]
     assert [message["speaker"] for message in history] == ["player", "npc"]
     await api_client.post(f"{url}/messages", json={"content": "Tem certeza?"})

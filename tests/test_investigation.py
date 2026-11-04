@@ -319,7 +319,7 @@ async def test_npc_context_uses_existing_lock_and_limits_observed_inventory(case
     assert all(key not in str(context) for key in ("killer_id", "truthful", "role", "werewolf"))
 
 
-async def test_investigation_actions_integrate_with_atomic_turn_engine(case, storage):
+async def test_investigation_actions_integrate_with_atomic_turn_engine(case, storage, single_wolf_attack):
     from memorias_licantropicas.modules.turns.service import TurnService
     from memorias_licantropicas.modules.world.gate import RedisPlayerGate
     from memorias_licantropicas.modules.world.repository import RedisWorldRepository

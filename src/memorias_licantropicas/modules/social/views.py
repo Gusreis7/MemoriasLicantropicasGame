@@ -11,6 +11,7 @@ from memorias_licantropicas.modules.conversations.service import public_message
 
 
 class HeardReport(Contract):
+    useful: bool = False
     id: UUID
     speaker_id: str
     speaker_name: str
@@ -44,5 +45,5 @@ class SocialReadService:
                 raise StorageUnavailableError("Registro de diálogo inconsistente.")
             message = public_message(record.outgoing, HarnessService._private_markers(profile, member))
             reports.append(HeardReport(id=message.id, speaker_id=record.npc_id,
-                speaker_name=profile.name, content=message.content, created_at=message.created_at))
+                speaker_name=profile.name, content=message.content, created_at=message.created_at, useful=message.useful))
         return HeardReports(reports=tuple(reports))

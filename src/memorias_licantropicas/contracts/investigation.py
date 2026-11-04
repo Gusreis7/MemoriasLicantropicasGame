@@ -40,6 +40,7 @@ class Crime(Contract):
     x: float = 600
     occurred_at: AwareDatetime
     killer_id: str
+    cause: Literal["werewolf", "civil"] = "werewolf"
     evidence: tuple[Evidence, ...]
 
 
@@ -181,7 +182,22 @@ class Achievement(Contract):
     source_npc_id: str | None = None
 
 
+class MurderPlot(Contract):
+    planner_id: str
+    target_id: str
+    status: Literal["planning", "succeeded", "frustrated", "interrupted"] = "planning"
+    attempts: int = Field(default=0, ge=0)
+    stress: int = Field(default=0, ge=0, le=100)
+
+
+class NightStory(Contract):
+    seed: str
+    skipped_nights: int = Field(default=0, ge=0, le=1)
+    plot: MurderPlot | None = None
+
+
 class InvestigationState(Contract):
+    night_story: NightStory | None = None
     active_evidence_by_npc: dict[str, UUID] = Field(default_factory=dict)
     achievements: tuple[Achievement, ...] = ()
     game_id: UUID

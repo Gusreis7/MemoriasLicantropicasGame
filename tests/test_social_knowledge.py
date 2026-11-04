@@ -13,7 +13,7 @@ from memorias_licantropicas.contracts.investigation import InvestigationState
 from memorias_licantropicas.contracts.social import Encounter, ExchangeRecord, KnowledgeEntry, SocialDay, SocialMessage, SocialState
 from memorias_licantropicas.infrastructure.social_repository import RedisSocialRepository
 from memorias_licantropicas.modules.agents.guard import SAFE_DIALOGUE_REPLY
-from memorias_licantropicas.modules.knowledge.rules import apply_relationship, relationship_for, transmit
+from memorias_licantropicas.modules.knowledge.rules import apply_relationship, initial_relationships, relationship_for, transmit
 from memorias_licantropicas.modules.knowledge.service import KnowledgeService
 from memorias_licantropicas.modules.world.repository import RedisWorldRepository
 
@@ -410,7 +410,8 @@ async def test_extraction_uses_original_day_and_small_causal_reaction(social, st
     entry = next(item for item in state.knowledge if item.kind == "report")
     assert entry.day == 1 and state.days[0].day == 2
     relation = relationship_for(state, "capitu", "virgilia")
-    assert relation.resentment == 2 and relation.trust == -1 and relation.causes == (entry.root_id,)
+    assert relation.resentment == 2 and relation.trust == relationship_for(
+        SocialState(game_id=game.id,relationships=initial_relationships(tuple(p.id for p in await catalog.list()))),"capitu","virgilia").trust-1 and relation.causes == (entry.root_id,)
 
 
 async def test_received_claim_does_not_disclose_unspoken_ancestor(game):

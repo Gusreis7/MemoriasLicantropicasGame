@@ -179,7 +179,7 @@ class Simulation:
         start = monotonic()
         case = await self.create(wolf)
         errors = []
-        for _ in range(8):
+        for _ in range(2 * len(await self.catalog.list()) + 2):
             if case.status != "active":
                 break
             try:

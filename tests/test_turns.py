@@ -17,7 +17,7 @@ pytestmark = pytest.mark.anyio
 
 
 @pytest.fixture
-async def cycle(storage, catalog):
+async def cycle(storage, catalog, single_wolf_attack):
     now = [datetime(2026, 11, 1, 12, tzinfo=UTC)]
     profiles = await catalog.list()
     game = GameState(id=uuid4(), created_at=now[0], content_version=catalog.content_version,

@@ -44,7 +44,7 @@ async def test_simulated_walk_uses_movement_and_elapsed_clock(storage):
 
 
 @pytest.mark.anyio
-async def test_public_policy_can_win_by_confession_without_private_decision_data(storage):
+async def test_public_policy_can_win_by_confession_without_private_decision_data(storage, single_wolf_attack):
     simulation = Simulation(storage.client, storage.prefix, 11)
     result = await simulation.play("rubiao", "confession")
     assert result["result"] == "won" and result["ending"]["method"] == "confession"
@@ -53,7 +53,7 @@ async def test_public_policy_can_win_by_confession_without_private_decision_data
 
 
 @pytest.mark.anyio
-async def test_unsupported_accusation_never_grants_a_free_victory(storage):
+async def test_unsupported_accusation_never_grants_a_free_victory(storage, single_wolf_attack):
     simulation = Simulation(storage.client, storage.prefix, 12)
     result = await simulation.play("capitu", "unsupported")
     assert result["result"] == "lost" and result["day"] == 7
@@ -62,7 +62,7 @@ async def test_unsupported_accusation_never_grants_a_free_victory(storage):
 
 
 @pytest.mark.anyio
-async def test_premature_public_tiebreak_is_refused_before_distinctive_evidence(storage):
+async def test_premature_public_tiebreak_is_refused_before_distinctive_evidence(storage, single_wolf_attack):
     simulation = Simulation(storage.client, storage.prefix, 13)
     result = await simulation.play("escobar", "rash")
     assert result["accusations"][0]["suspect_id"] == "bentinho"

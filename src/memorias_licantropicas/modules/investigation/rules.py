@@ -24,8 +24,8 @@ def choose_victim(game, detained_npc_id=None, excluded_ids=()) -> str | None:
     return preferred if preferred in candidates else choice(candidates)
 
 
-def make_crime(game, day, victim_id, location_id, now) -> Crime:
-    wolf = next(npc.character_id for npc in game.characters if npc.role == "werewolf")
+def make_crime(game, day, victim_id, location_id, now, *, killer_id=None, cause="werewolf") -> Crime:
+    wolf = killer_id or next(npc.character_id for npc in game.characters if npc.role == "werewolf")
     crime_id = uuid4()
     # Comuns são contexto. A peça individualizável só surge depois da primeira noite.
     common = items_of_kind(wolf, "common")
@@ -39,15 +39,16 @@ def make_crime(game, day, victim_id, location_id, now) -> Crime:
         deposited_by=wolf,
     ) for item_id in item_ids)
     return Crime(id=crime_id, day=day, victim_id=victim_id, location_id=location_id,
-                 occurred_at=now, killer_id=wolf, evidence=evidence)
+                 occurred_at=now, killer_id=wolf, cause=cause, evidence=evidence)
 
 
 def make_initial_investigation(game, now, day_seconds=300) -> InvestigationState:
     from memorias_licantropicas.modules.investigation.interrogation import record_activities
     from memorias_licantropicas.modules.world.catalog import make_initial_world
     initial = make_crime(game, 0, "bras_cubas", "praca_verde", now)
+    from memorias_licantropicas.modules.investigation.night_story import make_night_story
     return InvestigationState(
-        game_id=game.id, phase_ends_at=now + timedelta(seconds=day_seconds), crimes=(initial,),
+        night_story=make_night_story(game), game_id=game.id, phase_ends_at=now + timedelta(seconds=day_seconds), crimes=(initial,),
         activity_records=record_activities(game, make_initial_world(game.id), 0, "night", now,
                                           source="initial_scenario", crime=initial),
         journal=(JournalEdition(day=1,
@@ -86,7 +87,9 @@ def make_testimony(state, game, evidence, npc_id, names, now) -> Testimony:
     observers = tuple(person for person in OBSERVED_PEOPLE[npc_id]
                       if evidence.item_id in INVENTORIES[person])
     recognition, owner, truthful = "unknown", None, True
-    if own and npc.role == "werewolf":
+    if own and (npc.role == "werewolf" or (state.night_story and state.night_story.plot
+            and state.night_story.plot.planner_id==npc_id and state.night_story.plot.status=="succeeded"
+            and evidence.deposited_by==npc_id)):
         recognition, truthful = "denies", False
         text = f"Não reconheço {item.name.lower()} como meu, detetive." + _next_witness_hint(game, npc_id, item, names)
     elif observers:

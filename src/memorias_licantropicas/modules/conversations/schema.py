@@ -25,6 +25,7 @@ class ConversationPublic(PublicSchema):
 
 
 class MessagePublic(PublicSchema):
+    useful: bool = False
     id: UUID
     speaker: Literal["player", "npc"]
     content: str

@@ -15,6 +15,8 @@ from memorias_licantropicas.infrastructure.usage import usage_scope
 
 class DialogueAssessment(BaseModel):
     model_config = ConfigDict(extra='forbid', frozen=True)
+    useful: bool = False
+    useful_quote: str = Field(default="", max_length=2400)
     kind: Literal['conversation', 'alibi', 'suspicion', 'confidence', 'partial_admission', 'admission'] = 'conversation'
     quote: str = Field(default='', max_length=2400)
     confidence: float = Field(default=0, ge=0, le=1)
@@ -118,7 +120,10 @@ class SessionMasterService:
                 'partial_admission, admission), quote (trecho literal da fala do personagem), confidence (0 a 1), '
                 'own_assertion (bool), surrender (bool), period (day/night/null), day (inteiro/null). '
                 'Admissão requer fala própria sobre ser a fera ou praticar os ataques; surrender exige entrega explícita. '
-                'Não indique culpado nem resultado da partida. Avalie também a qualidade da fala contra os dados autorizados: '
+                'Não indique culpado nem resultado da partida. Verifique se é um relato útil: useful (bool) e useful_quote (trecho literal do NPC). '
+                'Útil esclarece pessoa, objeto, lugar, relação, motivo ou próximo contato; mera saudação ou enigma não basta. '
+                'Uma suspeita útil continua sendo opinião, nunca prova. Confissão de um crime humano não prova ser lobisomem. '
+                'Avalie também a qualidade da fala contra os dados autorizados: '
                 'issues é uma lista com invented_event, unauthorized_confidence, narrator_style, wrong_address, ou vazia. '
                 'invented_event: inventa encontro, local, fonte ou acontecimento específico sem apoio nas observações; '
                 'suspeitas e acusações enviesadas são permitidas como opiniões, não como fatos presenciados. '

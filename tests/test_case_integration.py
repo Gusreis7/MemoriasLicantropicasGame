@@ -81,7 +81,7 @@ async def test_clock_blocks_every_mutation_at_night_and_publishes_actual_death(a
 
 
 @pytest.mark.parametrize("wolf", tuple(INVENTORIES))
-async def test_specific_examined_dossier_only_authorizes_detention_after_second_morning(api_client, storage, catalog, wolf):
+async def test_specific_examined_dossier_only_authorizes_detention_after_second_morning(api_client, storage, catalog, wolf, single_wolf_attack):
     game, clock, base, case = await seed_case(api_client, storage, catalog, wolf)
 
     async def collect_examine_and_ask(case):

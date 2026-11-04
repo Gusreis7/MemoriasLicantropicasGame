@@ -88,9 +88,8 @@ class TurnService:
             await self._repository.commit(previous=state,state=updated,previous_game=game,game=next_game,
                 previous_world=world,world=next_world,events=result.events,occurred_at=now)
             state,game,world=updated,next_game,next_world
-        # Uma noite mata no máximo um civil. Uma detenção inocente pode proteger
-        # a última vítima uma vez; depois ela é solta. O catch-up termina no fim.
-        for _ in range(2 * len(game.characters) + 4):
+        # Duas causas de morte; cada noite poupada obriga ataque na seguinte.
+        for _ in range(4 * len(game.characters) + 8):
             if state.status != "active" or state.phase == "finished" or now < state.phase_ends_at:
                 return state
             boundary = state.phase_ends_at
@@ -120,98 +119,65 @@ class TurnService:
 
     async def _resolve_night(self, state, game, world, boundary):
         from memorias_licantropicas.modules.investigation.rules import choose_victim, make_crime
+        from memorias_licantropicas.modules.investigation.night_story import resolve_story
+        from memorias_licantropicas.modules.investigation.interrogation import record_activities
+        from memorias_licantropicas.modules.session_master.editorial import morning_edition, final_edition
 
-        werewolf = next(member.character_id for member in game.characters if member.role == "werewolf")
-        day = state.day + 1
-        detention = "none"
-        victim_id = None
-        location_id = None
-        crimes = state.crimes
-        activity_records = state.activity_records
-        events = []
-        if state.detained_npc_id == werewolf:
-            status = "won"
-            detention = "transformed"
-            headline = "Floriano vence: lobisomem desmascarado na cadeia"
-            profile = await self._characters.get(werewolf)
-            name = profile.name if profile else werewolf
-            body = (f"Floriano desvendou o caso: {name} se transformou na cela. "
-                    "A cidade testemunhou a prova final. "
-                    f"{name} foi {participle(profile, 'expulso', 'expulsa')} da cidade, encerrando o caso de Floriano.")
-            events.append(CaseEvent(type="werewolf.expelled", data={"character_id": werewolf, "day": day}))
+        wolf = next(member.character_id for member in game.characters if member.role == "werewolf")
+        names = {profile.id: profile.name for profile in await self._characters.list()}
+        day, events, fresh = state.day + 1, [], []
+        records = state.activity_records
+        story = state.night_story
+        detention = 'transformed' if state.detained_npc_id == wolf else 'released' if state.detained_npc_id else 'none'
+        if detention == 'transformed':
+            status = 'won'
+            events.append(CaseEvent(type='werewolf.expelled',data={'character_id':wolf,'day':day}))
         else:
-            victim_id = choose_victim(game, detained_npc_id=state.detained_npc_id, excluded_ids=state.expelled_npc_ids)
-            if victim_id is not None:
-                victim = next((member for member in game.characters if member.character_id == victim_id), None)
-                if (victim is None or not victim.alive or victim.role != "civil"
-                        or victim_id == state.detained_npc_id):
-                    raise StorageUnavailableError("Vítima inválida na resolução noturna.")
-                placement = next((npc for npc in world.npcs if npc.npc_id == victim_id), None)
-                location_id = placement.location_id if placement else "praca_verde"
-                crime = make_crime(game, state.day, victim_id, location_id, boundary)
-                from memorias_licantropicas.modules.investigation.interrogation import record_activities
-                activity_records += record_activities(game, world, state.day, "night", boundary,
-                    source="night_resolution", crime=crime,
-                    excluded_ids=(state.detained_npc_id,) if state.detained_npc_id else ())
-                crimes += (crime,)
-                game = game.model_copy(update={"characters": tuple(
-                    member.model_copy(update={"alive": False}) if member.character_id == victim_id else member
-                    for member in game.characters)})
-                profile = await self._characters.get(victim_id)
-                name = profile.name if profile else victim_id
-                death_count = len(crimes)
-                headline = ("A primeira morte suspeita de lobisomem assombra o Rio" if death_count == 1
-                            else f"Já são {death_count} mortes suspeitas atribuídas a um lobisomem")
-                body = (f"{name} foi {participle(profile, 'encontrado', 'encontrada')} sem vida nesta manhã. "
-                        f"Este é o {death_count}º caso fatal desde o início dos acontecimentos. "
-                        "Moradores pedem explicações, enquanto Floriano examina os vestígios deixados no local.")
-                events.append(CaseEvent(type="character.killed", data={
-                    "victim_id": victim_id, "killer_id": werewolf, "crime_id": str(crime.id),
-                    "location_id": location_id, "day": state.day,
-                }))
-            else:
-                death_count = len(crimes)
-                headline = ("Cidade amanhece sem novas vítimas" if death_count == 0 else
-                            f"Sem nova vítima; {death_count} morte{'s' if death_count != 1 else ''} suspeita{'s' if death_count != 1 else ''} segue{'m' if death_count != 1 else ''} sem explicação")
-                body = ("O Clarim do Rio não registra novas mortes nesta manhã. A investigação continua." if death_count == 0 else
-                        f"A cidade desperta sem novo crime, mas {death_count} morte{'s' if death_count != 1 else ''} suspeita{'s' if death_count != 1 else ''} ainda aguarda explicação. Floriano prossegue com a investigação.")
-            if state.detained_npc_id:
-                detention = "released"
-                detainee = await self._characters.get(state.detained_npc_id)
-                detainee_name = detainee.name if detainee else state.detained_npc_id
-                body += f" {detainee_name} não se transformou e foi {participle(detainee, 'solto', 'solta')} pela manhã."
-                events.append(CaseEvent(type="suspect.released", data={
-                    "character_id": state.detained_npc_id, "day": day,
-                }))
-            status = "active" if any(member.role == "civil" and member.alive and member.character_id not in state.expelled_npc_ids for member in game.characters) else "lost"
-            if status == "lost":
-                body += " Não restam civis vivos; o caso de Floriano terminou em derrota."
-        edition = JournalEdition(illustration="victory" if status == "won" else "quiet" if not victim_id else "crime_docks" if location_id == "cais_lanternas" else "crime_garden" if location_id in {"casa_verde", "cabana_capitu"} else "crime_street", day=day, headline=headline, body=body, victim_id=victim_id,
-                                 suspicious_death_count=len(crimes),
-                                 location_id=location_id, detention_outcome=detention)
-        game = game.model_copy(update={"status": status})
-        updated = state.model_copy(update={
-            "revision": state.revision + 1, "day": day,
-            "phase": "day" if status == "active" else "finished", "status": status,
-            "phase_ends_at": boundary + timedelta(seconds=self._day_seconds) if status == "active" else boundary,
-            "crimes": crimes, "journal": state.journal + (edition,), "detained_npc_id": None,
-            "activity_records": activity_records,
-            "ending_method": "detention" if status == "won" else "survival" if status == "lost" else None,
-        })
-        world = world.model_copy(update={"revision": world.revision + 1,
-            "npcs": tuple(placement for placement in world.npcs
-                          if status != "won" or placement.npc_id != werewolf),
-            "player": world.player.model_copy(update={"location_id": "praca_verde", "x": 160,
-                "facing": "right", "direction": "idle", "last_updated_at": boundary})})
-        events.extend((
-            CaseEvent(type="night.resolved", data={"day": state.day, "victim_id": victim_id,
-                                                  "detention_outcome": detention}),
-            CaseEvent(type="journal.published", data={"day": day, "headline": headline,
-                "victim_id": victim_id, "location_id": location_id, "detention_outcome": detention}),
-        ))
-        if status != "active":
-            events.append(CaseEvent(type=f"game.{status}", data={"day": day, "werewolf_id": werewolf}))
-        return updated, game, world, tuple(events)
+            previous_plot=story.plot if story else None
+            story, attacks = resolve_story(state, game, choose_victim)
+            for killer, victim_id, cause in attacks:
+                victim=next((m for m in game.characters if m.character_id==victim_id),None)
+                if victim is None or not victim.alive or victim.role!='civil' or victim_id==state.detained_npc_id:
+                    raise StorageUnavailableError('Vítima inválida na resolução noturna.')
+                placement=next((npc for npc in world.npcs if npc.npc_id==victim_id),None)
+                location=placement.location_id if placement else 'praca_verde'
+                crime=make_crime(game,state.day,victim_id,location,boundary,killer_id=killer,cause=cause)
+                fresh.append(crime)
+                game=game.model_copy(update={'characters':tuple(m.model_copy(update={'alive':False})
+                     if m.character_id==victim_id else m for m in game.characters)})
+                events.append(CaseEvent(type='character.killed',data={'victim_id':victim_id,'killer_id':killer,
+                     'crime_id':str(crime.id),'location_id':location,'day':state.day,'cause':cause}))
+            # Um único retrato do período noturno; os dois ataques conservam cenas próprias.
+            records += record_activities(game,world,state.day,'night',boundary,source='night_resolution',
+                crimes=tuple(fresh),excluded_ids=(state.detained_npc_id,) if state.detained_npc_id else ())
+            if story.plot and story.plot.status=='frustrated' and (not previous_plot or previous_plot.status!='frustrated'):
+                events.append(CaseEvent(type='civil_plot.frustrated',data={'character_id':story.plot.planner_id,
+                    'target_id':story.plot.target_id,'stress':story.plot.stress,'day':state.day}))
+            if detention=='released':
+                events.append(CaseEvent(type='suspect.released',data={'character_id':state.detained_npc_id,'day':day}))
+            status='active' if any(m.role=='civil' and m.alive and m.character_id not in state.expelled_npc_ids for m in game.characters) else 'lost'
+        crimes=(*state.crimes,*fresh)
+        method='detention' if status=='won' else 'survival' if status=='lost' else None
+        updated=state.model_copy(update={'revision':state.revision+1,'day':day,
+            'phase':'day' if status=='active' else 'finished','status':status,
+            'phase_ends_at':boundary+timedelta(seconds=self._day_seconds) if status=='active' else boundary,
+            'crimes':crimes,'detained_npc_id':None,'activity_records':records,'ending_method':method,'night_story':story})
+        edition=(final_edition(updated,names,werewolf_id=wolf,detention=detention) if status!='active' else
+                 morning_edition(day,crimes,fresh,names,detention,state.detained_npc_id))
+        updated=updated.model_copy(update={'journal':(*state.journal,edition)})
+        game=game.model_copy(update={'status':status})
+        living={m.character_id for m in game.characters if m.alive}
+        world=world.model_copy(update={'revision':world.revision+1,
+            'npcs':tuple(n for n in world.npcs if n.npc_id in living and not(status=='won' and n.npc_id==wolf)),
+            'player':world.player.model_copy(update={'location_id':'praca_verde','x':160,
+                    'facing':'right','direction':'idle','last_updated_at':boundary})})
+        victims=[c.victim_id for c in fresh]
+        events.extend((CaseEvent(type='night.resolved',data={'day':state.day,'victim_id':victims[0] if victims else None,
+                       'victim_ids':victims,'detention_outcome':detention}),
+            CaseEvent(type='journal.published',data={'day':day,'headline':edition.headline,
+                       'victim_ids':victims,'detention_outcome':detention})))
+        if status!='active':events.append(CaseEvent(type=f'game.{status}',data={'day':day,'werewolf_id':wolf}))
+        return updated,game,world,tuple(events)
 
     async def require_day_locked(self, game_id: UUID, *, allow_assembly=False) -> InvestigationState:
         state = await self._sync_locked(game_id)
@@ -304,14 +270,10 @@ class TurnService:
             })
             events += (CaseEvent(type="night.started", data={"day": state.day, "reason": "accepted_detention"}),)
         if confession:
-            winner_id = next(m.character_id for m in game.characters if m.role == "werewolf")
-            profile = await self._characters.get(winner_id)
-            name = profile.name if profile else winner_id
-            disposition = "entregue à custódia do delegado" if updated.ending_method == "confession" else f"{participle(profile, 'expulso', 'expulsa')} da cidade pela assembleia"
-            updated = updated.model_copy(update={"journal": (*updated.journal, JournalEdition(
-                day=updated.day, illustration="victory", headline="Floriano vence: a cidade está livre do lobisomem",
-                suspicious_death_count=len(updated.crimes),
-                body=f"Floriano reuniu os indícios e desvendou o caso. {name} revelou sua forma de lobisomem e foi {disposition}. O Clarim do Rio celebra a vitória do detetive e o alívio dos moradores."))})
+            from memorias_licantropicas.modules.session_master.editorial import final_edition
+            winner_id=next(m.character_id for m in game.characters if m.role=='werewolf')
+            names={p.id:p.name for p in await self._characters.list()}
+            updated=updated.model_copy(update={'journal':(*updated.journal,final_edition(updated,names,werewolf_id=winner_id))})
         updated_game = game.model_copy(update={"status": "won"}) if confession else game
         if confession:
             updated_world = world.model_copy(update={"revision": world.revision + 1,
@@ -346,7 +308,7 @@ class TurnService:
                 instant = datetime.fromisoformat(record['created_at'])
                 incoming = ConversationMessage(id=record['incoming_id'], sender_id='player', content=record['incoming'], created_at=instant)
                 outgoing = ConversationMessage(id=record['outgoing_id'], sender_id=record['npc_id'], content=record['outgoing'], created_at=instant,
-                    narrative_authorized=bool(record.get('narrative_authorized', False)))
+                    narrative_authorized=bool(record.get('narrative_authorized', False)), useful=bool(record.get('useful',False)))
                 expected = dialogue_transition(state, game, record['npc_id'], UUID(record['conversation_id']), incoming, outgoing,
                     DialogueAssessment.model_validate(record['assessment']), instant)
                 return expected.state == candidate and any(e.type == 'werewolf.confessed' for e in expected.events)

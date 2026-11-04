@@ -1,0 +1,20 @@
+{
+  "games": 100,
+  "llm_calls": 0,
+  "estimated_llm_cost_usd": "0",
+  "night_death_counts": {
+    "1": 578,
+    "0": 190,
+    "2": 11
+  },
+  "civil_homicides": 16,
+  "plot_outcomes": {
+    "frustrated": 44,
+    "interrupted": 40,
+    "succeeded": 16
+  },
+  "ending_day_min": 6,
+  "ending_day_max": 12,
+  "invariant_failures": 0,
+  "method": "Passive programmed player; no dialogue quality or human balance measurement."
+}

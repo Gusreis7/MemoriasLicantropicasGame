@@ -80,6 +80,7 @@ class AdminConversation(AdminSchema):
 
 
 class AdminMessage(AdminSchema):
+    useful: bool = False
     id: UUID
     sender_id: str
     content: str

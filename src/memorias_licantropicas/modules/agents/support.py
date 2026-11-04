@@ -173,10 +173,10 @@ def has_useful_anchor(content, supports):
 def compact_observations(profile, observations, question):
     if observations is None:return None
     supports=dialogue_supports(profile,observations,question)
-    result={key:observations[key] for key in ('dia','fase','ultimo_objeto_apresentado','suas_atividades','seus_depoimentos_registrados','suas_versoes_de_interrogatorio','seus_confrontos') if key in observations}
+    result={key:observations[key] for key in ('dia','fase','seu_conflito_privado','ultimo_objeto_apresentado','suas_atividades','seus_depoimentos_registrados','suas_versoes_de_interrogatorio','seus_confrontos') if key in observations}
     # Facts not chosen as supports remain unavailable for embellishment.
     social=observations.get('memoria_social',{})
-    result['memoria_social']={key:social.get(key,[]) for key in ('confidencias_autorizadas','descobertas_autorizadas','relacao_com_interlocutor')}
+    result['memoria_social']={key:social.get(key,[]) for key in ('confidencias_autorizadas','descobertas_autorizadas','relacao_com_interlocutor','sentimentos_proprios')}
     result['apoios_de_conversa']=supports
     result['memoria_social']['memorias_relevantes']=[entry for entry in social.get('memorias_relevantes',()) if str(entry.get('claim_id')) in {s['id'] for s in supports}]
     result['memoria_social']['fontes_conhecidas']=sorted({entry.get('quem_falou') for entry in social.get('memorias_relevantes',()) if entry.get('quem_falou')} | {entry.get('interlocutor_id') for entry in social.get('encontros_anteriores',()) if entry.get('interlocutor_id') and entry.get('falas')})
