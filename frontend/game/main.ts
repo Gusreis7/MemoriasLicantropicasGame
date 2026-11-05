@@ -8,6 +8,7 @@ import {CustodyScene, makeCustodyGame, type CustodyMode} from './custody';
 import {personWords} from '../shared/language';
 import {POPULATION} from './population';
 import './style.css';
+import {cancelNightAttack, newNightVictim, playNightAttack} from './night-attack';
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
 app.innerHTML = `
@@ -183,7 +184,7 @@ async function launch(resume: boolean) {
     const [snapshot, places, characters, publicGame] = await Promise.all([api.world(id), api.locations(), api.manifest(), api.game(id)]);
     caseState = null; heardReports = []; pendingWorldSync = false; transitioning = false; cast = publicGame.characters;
     locations = places; manifest = characters;
-    controller?.dispose(); game?.destroy(true); custodyGame?.destroy(true); custodyGame=null;custodyScene=null;custodyNpc=null;
+    cancelNightAttack(); controller?.dispose(); game?.destroy(true); custodyGame?.destroy(true); custodyGame=null;custodyScene=null;custodyNpc=null;
     exitBoundary = new ExitBoundary();
     controller = new MovementController(snapshot, api.move, () => api.world(id), applySnapshot, error => toast(explain(error)));
     scene = new CityScene(manifest, locations, snapshot, {
@@ -618,6 +619,8 @@ function itemArt(itemId: string, kind: CaseEvidence['kind']) {
 async function applyCase(next: CasePublic, initial = false) {
   if (!world || (!initial && $('#investigation').hidden) || next.game_id !== world.game_id || (caseState && next.revision < caseState.revision)) return;
   const previous = caseState;
+  const nightWitnesses = world.visible_npcs.slice();
+  const nightLocation = world.location.id;
   if (previous && previous.game_id === next.game_id) {
     const oldAchievements = new Set((previous.achievements ?? []).map(item => item.id));
     const fresh = (next.achievements ?? []).filter(item => !oldAchievements.has(item.id));
@@ -639,6 +642,12 @@ async function applyCase(next: CasePublic, initial = false) {
       controller?.accept(snapshot); cast = publicGame.characters; renderCase();
     }
     pendingWorldSync = false;
+    const victim = !initial && previous ? newNightVictim(previous.journal, next.journal) : null;
+    if (victim) {
+      setModal(null); scene?.setInputEnabled(false);
+      await playNightAttack(victim, manifest, victim.location_id === nightLocation ? nightWitnesses : []);
+      if (caseState?.revision !== next.revision || world?.game_id !== next.game_id) return;
+    }
     if (next.status === 'won' && next.ending?.method === 'detention') {
       await showCustody(next.ending.werewolf_id,'transformed'); showPhase();
     } else if (next.phase === 'night' && next.detained_npc_id) {
@@ -671,7 +680,7 @@ function renderClock() {
   $('#skip-day').toggleAttribute('disabled', busy || transitioning || Boolean(modal) || caseClock.blocked() || Boolean(activeAssembly()));
   renderAssemblyClock();
   $('#open-map').toggleAttribute('disabled', caseClock.blocked() || Boolean(activeAssembly()));
-  if (caseState.phase === 'day' && caseState.status === 'active' && !caseClock.seconds() && modal !== 'phase' && modal !== 'custody' && !activeAssembly()) {
+  if (!transitioning && caseState.phase === 'day' && caseState.status === 'active' && !caseClock.seconds() && modal !== 'phase' && modal !== 'custody' && !activeAssembly()) {
     scene?.setInputEnabled(false); showPhase();
   }
   if (modal === 'custody') $('#custody-clock').textContent = caseState.status === 'won' ? 'Transformação confirmada pelo delegado' : caseState.phase === 'night' ? `Amanhecer em ${formatClock(caseClock.seconds())}` : `${gameTime} · Anoitecer às 18h`;

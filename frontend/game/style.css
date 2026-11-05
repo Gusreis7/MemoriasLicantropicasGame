@@ -489,3 +489,4 @@ kbd{font:10px/1.2 Arial,sans-serif;min-width:21px;padding:4px 5px;border:1px sol
 /* O dourado distingue uma pista verbal; não significa confirmação de autoria. */
 .message.useful-report,.testimony-card.useful-report,.proof-choice.useful-report{border:2px solid #b5852d;box-shadow:inset 3px 0 #d5ac50;background-color:#e8dff1;color:#352246}
 .useful-report-label{display:block;margin-top:6px;color:#76500d;font-weight:700;letter-spacing:.025em}
+.night-attack-overlay{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;background:#020810ed;padding:16px}.night-attack-dialog{width:min(1100px,100%);color:#e9e6d5;text-align:center}.night-attack-dialog canvas{display:block;width:100%;height:auto;image-rendering:pixelated;border:1px solid #7c8f9b;box-shadow:0 0 90px #000}.night-attack-dialog [role=status]{min-height:3em;margin:18px auto;max-width:650px}.night-attack-dialog button{color:#f4e7c7;border-color:#c4ac7c}
