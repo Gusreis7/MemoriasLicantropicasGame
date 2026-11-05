@@ -69,7 +69,7 @@ class Services:
 
 
 def build_services(settings: Settings) -> Services:
-    if not settings.aws_profile and not (settings.bedrock_api_key and settings.bedrock_api_key.get_secret_value().strip()):
+    if not settings.aws_use_default_credentials and not settings.aws_profile and not (settings.bedrock_api_key and settings.bedrock_api_key.get_secret_value().strip()):
         logger.warning("dialogue_configuration code=llm_credentials_missing")
     redis = Redis.from_url(
         settings.redis_url, decode_responses=True,
@@ -79,7 +79,8 @@ def build_services(settings: Settings) -> Services:
     games = RedisGameRepository(redis, prefix=settings.redis_prefix)
     memory = RedisMemoryRepository(redis, prefix=settings.redis_prefix)
     world_repository = RedisWorldRepository(redis, settings.redis_prefix)
-    player_gate = RedisPlayerGate(redis, settings.redis_prefix, 2 * settings.llm_timeout_seconds + 15)
+    gate_timeout = settings.llm_turn_timeout_seconds + 15
+    player_gate = RedisPlayerGate(redis, settings.redis_prefix, gate_timeout)
     turns = TurnService(redis, settings.redis_prefix, games, characters, world_repository, player_gate)
     investigation = InvestigationService(turns, characters, memory)
     pricing_matches = (settings.bedrock_model == settings.llm_pricing_model
@@ -143,7 +144,7 @@ def build_services(settings: Settings) -> Services:
         llm=llm,
         conversations=ConversationService(
             characters, games, memory, harness,
-            RedisConversationGate(redis, settings.redis_prefix, 2 * settings.llm_timeout_seconds + 15),
+            RedisConversationGate(redis, settings.redis_prefix, gate_timeout),
             world, player_gate,
         ),
         world=world,

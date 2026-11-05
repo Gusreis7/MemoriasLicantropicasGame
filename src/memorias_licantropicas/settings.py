@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     bedrock_base_url: str | None = None
     bedrock_model: str = Field(default="qwen.qwen3-32b", min_length=1)
     llm_timeout_seconds: float = Field(default=30, gt=0, le=120)
+    llm_turn_timeout_seconds: float = Field(default=60, gt=0, le=120)
     llm_max_tokens: int = Field(default=512, ge=1, le=2048)
     llm_history_limit: int = Field(default=20, ge=1, le=100)
     llm_pricing_model: str = "qwen.qwen3-32b"

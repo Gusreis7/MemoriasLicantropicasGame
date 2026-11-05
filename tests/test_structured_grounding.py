@@ -3,28 +3,27 @@ from uuid import uuid4
 
 import pytest
 
-from memorias_licantropicas.infrastructure.llm.json_output import parse_json_object
-from memorias_licantropicas.modules.knowledge.service import parse_extraction, attributed_utterance
+from memorias_licantropicas.infrastructure.llm.structured import parse_model_output, StructuredOutputError
+from memorias_licantropicas.contracts.generation import Extraction
+from memorias_licantropicas.modules.knowledge.service import attributed_utterance
 from memorias_licantropicas.modules.agents.grounding import ground_dialogue_output
 
 
-@pytest.mark.parametrize("text", ['{}', '```json\n{}\n```', '```\n{}\n```'])
-def test_accepts_only_complete_json_envelope(text):
-    assert parse_json_object(text) == {}
+def test_extraction_requires_complete_typed_document():
+    assert parse_model_output('{"claims": []}', Extraction).claims == ()
 
 
-@pytest.mark.parametrize("text", ['Aqui: {}', '```json\n{}\n``` depois', '{"a":1,"a":2}', '[]'])
-def test_rejects_prose_duplicates_and_nonobject(text):
-    with pytest.raises(ValueError):
-        parse_json_object(text)
+@pytest.mark.parametrize("text", ['Aqui: {}', '```json\n{"claims": []}\n```', '{"claims":[],"claims":[]}', '[]'])
+def test_rejects_prose_fences_duplicates_and_nonobject(text):
+    with pytest.raises(StructuredOutputError):
+        parse_model_output(text, Extraction)
 
 
-def test_bad_claim_does_not_erase_independently_valid_claim():
+def test_invalid_claim_rejects_batch_instead_of_silent_partial_acceptance():
     good = {"message_id": str(uuid4()), "source_span": "Virgília esteve no cais.", "proposition": "Virgília esteve no cais.", "kind": "report"}
     bad = {**good, "kind": "accusation"}
-    parsed = parse_extraction('```json\n' + json.dumps({"claims": [bad, good]}) + '\n```')
-    assert len(parsed.claims) == 1
-    assert parsed.claims[0].kind == "report"
+    with pytest.raises(StructuredOutputError):
+        parse_model_output(json.dumps({"claims": [bad, good]}), Extraction)
 
 
 def test_unrecorded_presence_and_invented_source_are_replaced():

@@ -59,7 +59,7 @@ async def test_detective_accusation_circulates_with_provenance_and_returns_to_hi
     assert len(await repository.exchanges(game.id, 0)) == 1
 
     def extract(messages):
-        source = json.loads(messages[1].content)
+        source = json.loads(messages[-1].content)
         assert source["npc_id"] == "capitu"
         assert {item["speaker_id"] for item in source["messages"]} == {"player", "capitu"}
         return json.dumps({"claims": [{"message_id": str(incoming.id), "source_span": proposition,
