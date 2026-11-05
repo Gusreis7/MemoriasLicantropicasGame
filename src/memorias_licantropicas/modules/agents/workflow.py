@@ -55,7 +55,8 @@ TECHNICAL_FALLBACK = (
     "Não consegui organizar minha resposta agora, detetive. Pode reformular a pergunta?"
 )
 PARSE_FAILURES = {
-    "invalid_json",
+    "invalid_tool_response",
+    "invalid_tool_arguments",
     "invalid_schema",
     "llm_invalid_response",
     "llm_response_truncated",
@@ -103,9 +104,9 @@ class _InvocationClient:
     def __init__(self, client, audit):
         self._client, self._audit = client, audit
 
-    async def complete(self, messages):
+    async def complete(self, messages, *, tools=(), tool_choice=None):
         self._audit.attempts += 1
-        return await self._client.complete(messages)
+        return await self._client.complete(messages, tools=tools, tool_choice=tool_choice)
 
 
 class DialogueWorkflow:
@@ -491,7 +492,7 @@ class DialogueWorkflow:
                 "A revisão encontrou: " + ", ".join(codes) + ". "
                 "Use exclusivamente fatos autorizados pertinentes; mantenha fontes e versões. "
                 "Responda à pergunta diretamente. Preserve seus segredos privados. "
-                "Retorne somente o objeto JSON com o campo fala, conforme o contrato."
+                "Use a ferramenta de resposta da persona, mantendo sua voz."
             ),
         )
         prompt = state["prompt"]

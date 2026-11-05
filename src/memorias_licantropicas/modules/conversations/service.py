@@ -8,7 +8,7 @@ from memorias_licantropicas.contracts.repository import (
 )
 from memorias_licantropicas.modules.agents.service import HarnessService, PLAYER_ID
 from memorias_licantropicas.modules.agents.guard import DialogueGuard, SAFE_DIALOGUE_REPLY
-from memorias_licantropicas.modules.agents.output import parse_dialogue_output
+from memorias_licantropicas.infrastructure.legacy_history import read_persisted_dialogue
 from memorias_licantropicas.modules.characters.catalog import supports_content_version
 from memorias_licantropicas.modules.conversations.schema import (
     ConversationHistory, ConversationPublic, MessagePublic, MessageReply,
@@ -19,7 +19,7 @@ def public_message(message: ConversationMessage, private_markers: tuple[str, ...
     content = message.content
     if message.sender_id != PLAYER_ID:
         try:
-            content = parse_dialogue_output(content, message.sender_id)
+            content = read_persisted_dialogue(content, message.sender_id)
         except LLMUnavailableError:
             content = SAFE_DIALOGUE_REPLY
         decision = DialogueGuard().inspect_output(content, () if message.narrative_authorized else private_markers,
