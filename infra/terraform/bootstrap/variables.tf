@@ -1,0 +1,63 @@
+variable "aws_region" {
+  type    = string
+  default = "us-east-1"
+}
+variable "project" {
+  type    = string
+  default = "memorias-licantropicas"
+  validation {
+    condition     = can(regex("^[a-z][a-z0-9-]{2,24}$", var.project))
+    error_message = "Use um prefixo curto e estável em minúsculas."
+  }
+}
+variable "domain_name" {
+  type    = string
+  default = "memoriaslicantropicasgame.gustavodreis.dev.br"
+  validation {
+    condition     = var.domain_name == "memoriaslicantropicasgame.gustavodreis.dev.br"
+    error_message = "Esta base está restrita ao domínio do jogo."
+  }
+}
+variable "vpc_id" {
+  type = string
+}
+variable "public_subnet_ids" {
+  type = list(string)
+  validation {
+    condition     = length(distinct(var.public_subnet_ids)) >= 2
+    error_message = "O ALB precisa de subnets públicas em pelo menos duas AZs."
+  }
+}
+variable "availability_zone" {
+  type    = string
+  default = "us-east-1a"
+}
+variable "github_oidc_subject_prefix" {
+  type        = string
+  description = "Prefixo sub efetivo do repositório; confira IDs imutáveis ou formato legado no GitHub."
+  validation {
+    condition     = can(regex("^repo:Gusreis7(@[0-9]+)?/MemoriasLicantropicasGame(@[0-9]+)?$", var.github_oidc_subject_prefix))
+    error_message = "Informe o sub exato do repo, sem wildcard; IDs devem ser reais, não placeholders."
+  }
+}
+variable "create_github_oidc_provider" {
+  type        = bool
+  default     = false
+  description = "Na conta consultada o provider do GitHub já existe; reutilizar é o padrão."
+}
+variable "admin_password_parameter" {
+  type    = string
+  default = "/memorias-licantropicas/production/admin-password"
+}
+variable "data_size_gib" {
+  type    = number
+  default = 20
+}
+variable "redis_image" {
+  type    = string
+  default = "redis@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499"
+  validation {
+    condition     = can(regex("^redis@sha256:[a-f0-9]{64}$", var.redis_image))
+    error_message = "Fixe a imagem oficial Redis por digest."
+  }
+}

@@ -1,8 +1,9 @@
 """Configuração local/ambiente; nenhuma credencial é necessária no startup."""
 
 from decimal import Decimal
+from pathlib import Path
 
-from pydantic import Field, SecretStr, field_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -15,6 +16,9 @@ class Settings(BaseSettings):
     redis_url: str = Field(default="redis://localhost:6379/0", repr=False)
     redis_prefix: str = Field(default="ml:v1", min_length=1)
     aws_region: str = Field(default="us-east-1", min_length=1)
+    aws_use_default_credentials: bool = False
+    api_docs_enabled: bool = True
+    allowed_hosts: str = "*"
     aws_profile: str | None = None
     aws_profile_source_dir: str | None = Field(default=None, repr=False)
     bedrock_api_key: SecretStr | None = Field(
@@ -35,9 +39,21 @@ class Settings(BaseSettings):
     social_poll_seconds: float = Field(default=1, ge=0.1, le=60)
     admin_username: str = "admin"
     admin_password: SecretStr | None = None
+    admin_password_file: Path | None = Field(default=None, repr=False)
     admin_session_seconds: int = Field(default=28800, ge=60, le=86400)
     admin_cookie_secure: bool = False
     admin_allowed_origins: str = "http://localhost:7078,http://127.0.0.1:7078"
+
+    @model_validator(mode="after")
+    def load_password_file(self):
+        if (self.admin_password is None or not self.admin_password.get_secret_value()) and self.admin_password_file is not None:
+            self.admin_password = SecretStr(self.admin_password_file.read_text().rstrip("\r\n"))
+        return self
+
+    @field_validator("admin_password_file", mode="before")
+    @classmethod
+    def empty_password_path_is_disabled(cls, value):
+        return None if isinstance(value, str) and not value.strip() else value
 
     @field_validator("bedrock_base_url", mode="before")
     @classmethod

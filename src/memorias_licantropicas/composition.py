@@ -100,7 +100,7 @@ def build_services(settings: Settings) -> Services:
                             settings.aws_profile, settings.aws_region,
                             refresh_source_dir=settings.aws_profile_source_dir,
                         )
-                        if settings.aws_profile else None),
+                        if settings.aws_profile or settings.aws_use_default_credentials else None),
     )
     llm = MeteredLLMClient(raw_llm, usage, configured_model=settings.bedrock_model)
     social_repository = RedisSocialRepository(redis, settings.redis_prefix)
@@ -113,7 +113,7 @@ def build_services(settings: Settings) -> Services:
                                 settings.aws_profile, settings.aws_region,
                                 refresh_source_dir=settings.aws_profile_source_dir,
                             )
-                            if settings.aws_profile else None),
+                            if settings.aws_profile or settings.aws_use_default_credentials else None),
         )
         return MeteredLLMClient(raw, usage, configured_model=settings.bedrock_model)
     speech_llm, extraction_llm = social_client(400), social_client(800)

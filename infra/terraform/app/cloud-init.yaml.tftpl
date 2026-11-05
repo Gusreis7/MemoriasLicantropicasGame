@@ -1,0 +1,22 @@
+#cloud-config
+write_files:
+%{ for destination, content in files ~}
+  - path: ${destination}
+    permissions: '0644'
+    encoding: b64
+    content: ${base64encode(content)}
+%{ endfor ~}
+  - path: /usr/local/sbin/ml-deploy
+    permissions: '0700'
+    encoding: b64
+    content: ${base64encode(deploy_script)}
+  - path: /usr/local/sbin/ml-bootstrap
+    permissions: '0700'
+    encoding: b64
+    content: ${base64encode(bootstrap_script)}
+  - path: /usr/local/sbin/ml-container-firewall
+    permissions: '0700'
+    encoding: b64
+    content: ${base64encode(firewall_script)}
+runcmd:
+  - [/usr/local/sbin/ml-bootstrap]

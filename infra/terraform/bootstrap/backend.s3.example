@@ -1,0 +1,7 @@
+# Após o primeiro bootstrap local: adicione backend "s3" {} em backend.tf
+# e migre com terraform init -migrate-state -backend-config=backend.s3.hcl.
+bucket       = "memorias-licantropicas-ACCOUNT_ID-tfstate"
+key          = "bootstrap/terraform.tfstate"
+region       = "us-east-1"
+encrypt      = true
+use_lockfile = true
