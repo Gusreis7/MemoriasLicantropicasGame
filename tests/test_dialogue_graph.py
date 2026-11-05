@@ -206,7 +206,7 @@ async def test_total_turn_timeout_cancels_inference_without_partial_messages(
     traces = await capture_traces(harness)
     cancelled = asyncio.Event()
 
-    async def slow_model(messages):
+    async def slow_model(messages, *, tools=(), tool_choice=None):
         try:
             await asyncio.sleep(5)
         finally:
@@ -227,7 +227,7 @@ async def test_external_cancellation_is_preserved(harness, storage, game, llm):
     traces = await capture_traces(harness)
     started = asyncio.Event()
 
-    async def blocked(messages):
+    async def blocked(messages, *, tools=(), tool_choice=None):
         started.set()
         await asyncio.Event().wait()
 
@@ -253,7 +253,7 @@ async def test_shared_compiled_graph_isolates_concurrent_games_and_prompts(
     traces = await capture_traces(harness)
     arrived, prompts = asyncio.Event(), []
 
-    async def concurrent_model(messages):
+    async def concurrent_model(messages, *, tools=(), tool_choice=None):
         prompts.append(messages)
         if len(prompts) == 2:
             arrived.set()
