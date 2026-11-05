@@ -713,6 +713,7 @@ function showPhase() {
   const ending = caseState.ending;
   const victorious = ending?.result === 'won';
   const expelled = caseState.assembly?.outcome === 'player_expelled';
+  $('#phase-overlay').classList.toggle('is-night-waiting', caseState.phase === 'night' && !ending);
   $('#victory-paper').hidden = !ending;
   $('#phase-overlay .phase-modal').classList.toggle('is-victory',!!ending);
   $('#victory-paper .press-picture').hidden = !victorious;
