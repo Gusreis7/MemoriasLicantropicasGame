@@ -1,6 +1,7 @@
 """Prepara .env sem sobrescrever configuração existente nem imprimir segredos."""
 
 import argparse
+import os
 import secrets
 from pathlib import Path
 
@@ -21,11 +22,16 @@ def main() -> None:
         lines.append("ADMIN_USERNAME=admin")
     path.write_text("\n".join(lines) + "\n")
     path.chmod(0o600)
+    sudo_uid, sudo_gid = os.environ.get("SUDO_UID", ""), os.environ.get("SUDO_GID", "")
+    if os.geteuid() == 0 and sudo_uid.isdigit() and sudo_gid.isdigit():
+        os.chown(path, int(sudo_uid), int(sudo_gid))
     print("Configuração local pronta. Usuário e senha estão em ADMIN_USERNAME/ADMIN_PASSWORD no .env.")
     print("O arquivo não é versionado. Reinicie a API depois de alterar as credenciais.")
-    if values.get("AWS_PROFILE", "").strip().strip("\"'") and not values.get("AWS_BEARER_TOKEN_BEDROCK", "").strip().strip("\"'"):
-        print("Para usar o perfil AWS no Docker, inclua o overlay de credenciais:")
-        print("docker compose -f compose.yaml -f compose.aws-local.yaml up -d --build")
+    if (os.environ.get("ML_CONFIG_FROM_LAUNCHER") != "1"
+            and values.get("AWS_PROFILE", "").strip().strip("\"'")
+            and not values.get("AWS_BEARER_TOKEN_BEDROCK", "").strip().strip("\"'")):
+        print("Para iniciar com o perfil AWS no Docker, execute:")
+        print("make setup")
 
 
 if __name__ == "__main__":

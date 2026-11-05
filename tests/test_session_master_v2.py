@@ -225,7 +225,7 @@ async def test_semantic_master_cannot_bypass_provenance_or_crime_rules(game,utte
     ('narrator_style', 'Escobar baixou os olhos, suspirou longamente e examinou a praça antes de falar.', 'Pois não, detetive. Se souber de algo que ajude, eu conto.'),
     ('wrong_address', 'Senhor delegado, o senhor precisa resolver isso.', 'Detetive, essa história está deixando Bentinho nervoso. O que o senhor já descobriu?'),
 ])
-async def test_master_repairs_personality_and_grounding_in_existing_single_call(storage,catalog,game,issue,raw,repaired):
+async def test_master_repairs_facts_with_support_and_style_in_persona(storage,catalog,game,issue,raw,repaired):
     import json
     await storage.games.create(game)
     world=RedisWorldRepository(storage.client,storage.prefix)
@@ -237,12 +237,17 @@ async def test_master_repairs_personality_and_grounding_in_existing_single_call(
         async def complete(self,prompt):
             self.calls.append(prompt)
             if len(self.calls)==1: return LLMResponse(content=raw,model='fake')
+            if len(self.calls)==3:
+                assert prompt[-2].role=='system' and 'Refaça sua resposta' in prompt[-2].content
+                return LLMResponse(content=repaired,model='fake')
             payload=json.loads(prompt[-1].content)
             assert payload['persona']['nome']=='Escobar'
             assert payload['persona']['segredos_pessoais']
             assert payload['persona']['segredos_autorizados']==[]
             assert payload['observacoes_autorizadas']['dia']==1
             assert 'detetive' in payload['interlocutor']
+            if len(self.calls)==4:
+                return LLMResponse(content=json.dumps({'kind':'conversation','issues':[]}),model='fake')
             return LLMResponse(content=json.dumps({'kind':'conversation','quote':raw,'issues':[issue],'corrected_reply':repaired}),model='fake')
     llm=LLM()
     master=SessionMasterService(turns,storage.games,storage.memory,llm)
@@ -253,13 +258,17 @@ async def test_master_repairs_personality_and_grounding_in_existing_single_call(
     identifier=uuid4()
     async with gate.hold(game.id):
         response=await harness.respond(game.id,'escobar',identifier,'player','Como anda sua amizade com Bentinho?')
-    assert 'seminário' in response.message.content
     assert response.message.content!=raw
-    assert response.message.content!=repaired
+    style = issue in ('narrator_style','wrong_address')
+    if style:
+        assert response.message.content==repaired
+    else:
+        assert 'seminário' in response.message.content
+        assert response.message.content!=repaired
     assert response.message.narrative_authorized
-    assert len(llm.calls)==2
+    assert len(llm.calls)==(4 if style else 2)
     assert (await storage.memory.list_messages(game.id,identifier,'player'))[-1].content==response.message.content
-    assert (await turns.sync(game.id)).dialogue_events[-1]['assessment']['issues']==[issue]
+    assert (await turns.sync(game.id)).dialogue_events[-1]['assessment']['issues']==([] if style else [issue])
 
 
 async def test_invalid_master_repair_does_not_persist_a_flagged_secret(storage,catalog,game):

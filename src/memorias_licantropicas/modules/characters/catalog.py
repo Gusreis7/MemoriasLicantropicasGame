@@ -7,6 +7,15 @@ from memorias_licantropicas.contracts.model import CharacterProfile
 from memorias_licantropicas.modules.characters.strategies import STRATEGIES
 
 CONTENT_VERSION = "3"
+# V2 tem o mesmo elenco, objetivos e fatos de base. V3 acrescenta apenas
+# proteção de segredos; partidas já criadas não precisam ter seu estado alterado.
+SUPPORTED_CONTENT_VERSIONS = frozenset({"2", CONTENT_VERSION})
+
+
+def supports_content_version(game_version: str, catalog_version: str) -> bool:
+    return game_version == catalog_version or (
+        catalog_version == CONTENT_VERSION and game_version in SUPPORTED_CONTENT_VERSIONS
+    )
 
 _PROFILES: tuple[CharacterProfile, ...] = (
     CharacterProfile(

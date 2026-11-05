@@ -9,6 +9,7 @@ from memorias_licantropicas.contracts.repository import (
 from memorias_licantropicas.modules.agents.service import HarnessService, PLAYER_ID
 from memorias_licantropicas.modules.agents.guard import DialogueGuard, SAFE_DIALOGUE_REPLY
 from memorias_licantropicas.modules.agents.output import parse_dialogue_output
+from memorias_licantropicas.modules.characters.catalog import supports_content_version
 from memorias_licantropicas.modules.conversations.schema import (
     ConversationHistory, ConversationPublic, MessagePublic, MessageReply,
 )
@@ -46,7 +47,7 @@ class ConversationService:
         game = await self._games.get(game_id)
         if game is None:
             raise NotFoundError("Partida não encontrada.")
-        if game.content_version != self._characters.content_version:
+        if not supports_content_version(game.content_version, self._characters.content_version):
             raise ConflictError("A partida usa uma versão anterior de personagens; crie uma nova partida.")
         target = next((npc for npc in game.characters if npc.character_id == npc_id), None)
         if target is None or await self._characters.get(npc_id) is None:

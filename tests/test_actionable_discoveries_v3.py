@@ -30,7 +30,7 @@ async def test_supports_select_relevant_authorized_facts_without_private_leak(ca
  supports=dialogue_supports(profile,social_observations(),'Você e Bentinho estudaram juntos?')
  assert len(supports)==1 and supports[0]['id']=='seminary'
  answer=supported_reply(profile,social_observations(),'Como foi o seminário?')
- assert 'seminário' in answer and 'Pergunte' in answer and 'sinto' not in answer
+ assert 'seminário' in answer and 'Pergunte' not in answer and 'sinto' not in answer
  assert not has_useful_anchor('Bentinho é um enigma de sombras que dançam no destino.',supports)
  assert has_useful_anchor(answer,supports)
 

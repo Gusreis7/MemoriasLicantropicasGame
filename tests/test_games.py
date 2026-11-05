@@ -7,6 +7,7 @@ from pydantic import ValidationError
 from memorias_licantropicas.contracts.errors import ConflictError, NotFoundError
 from memorias_licantropicas.contracts.model import GameCharacter, GameState
 from memorias_licantropicas.modules.games.service import GameService
+from memorias_licantropicas.modules.characters.catalog import supports_content_version
 
 pytestmark = pytest.mark.anyio
 
@@ -38,6 +39,18 @@ async def test_empty_cast_and_id_conflict_are_rejected(catalog):
 async def test_missing_game_raises_domain_error(catalog, storage):
     with pytest.raises(NotFoundError):
         await GameService(catalog, storage.games).get(uuid4())
+
+
+async def test_catalog_v3_reads_existing_v2_game_without_rewriting_it(catalog, storage, game):
+    legacy = game.model_copy(update={"id": uuid4(), "content_version": "2"})
+    assert await storage.games.create(legacy)
+    public = await GameService(catalog, storage.games).get(legacy.id)
+    assert public.content_version == "2"
+    assert await storage.games.get(legacy.id) == legacy
+    assert supports_content_version("2", catalog.content_version)
+    assert supports_content_version("3", catalog.content_version)
+    assert not supports_content_version("1", catalog.content_version)
+    assert not supports_content_version("2", "4")
 
 
 @pytest.mark.parametrize("roles", [(), ("civil",), ("werewolf", "werewolf")])

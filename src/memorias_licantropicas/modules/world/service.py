@@ -11,6 +11,7 @@ from memorias_licantropicas.contracts.model import GameState
 from memorias_licantropicas.contracts.repository import CharacterRepository, GameRepository, DayPolicy
 from memorias_licantropicas.contracts.investigation import InvestigationState
 from memorias_licantropicas.modules.world.catalog import LOCATIONS, LOCATIONS_BY_ID
+from memorias_licantropicas.modules.characters.catalog import supports_content_version
 from memorias_licantropicas.modules.world.gate import RedisPlayerGate
 from memorias_licantropicas.modules.world.model import WorldState
 from memorias_licantropicas.modules.world.repository import RedisWorldRepository
@@ -43,7 +44,7 @@ class WorldService:
         game = await self._games.get(game_id)
         if game is None:
             raise NotFoundError("Partida não encontrada.")
-        if game.content_version != self._characters.content_version:
+        if not supports_content_version(game.content_version, self._characters.content_version):
             raise ConflictError("A partida usa uma versão anterior de personagens.")
         world = await self._repository.get(game_id)
         if world is None:

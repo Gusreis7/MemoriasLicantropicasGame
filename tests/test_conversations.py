@@ -43,6 +43,28 @@ async def test_player_can_talk_to_each_persona(api_client, storage, llm, npc_id)
     assert len((await api_client.get(f"{url}/messages")).json()["messages"]) == 4
 
 
+async def test_existing_v2_game_keeps_dialogue_after_catalog_v3_upgrade(api_client, storage, llm):
+    game = (await api_client.post("/api/v1/games")).json()
+    game_id = UUID(game["id"])
+    state_key = f"{storage.prefix}:game:{{{game_id}}}:state"
+    state = await storage.games.get(game_id)
+    await storage.client.set(state_key, state.model_copy(update={"content_version": "2"}).model_dump_json())
+    world_key = f"{storage.prefix}:game:{{{game_id}}}:world"
+    from memorias_licantropicas.modules.world.model import WorldState
+    world = WorldState.model_validate_json(await storage.client.get(world_key))
+    capitu = next(npc for npc in world.npcs if npc.npc_id == "capitu")
+    await storage.client.set(world_key, world.model_copy(update={"player": world.player.model_copy(
+        update={"location_id": capitu.location_id, "x": capitu.x})}).model_dump_json())
+    assert (await api_client.get(f"/api/v1/games/{game_id}")).status_code == 200
+    conversation = (await api_client.post(f"/api/v1/games/{game_id}/conversations",
+                                          json={"npc_id": "capitu"})).json()
+    response = await api_client.post(f"/api/v1/games/{game_id}/conversations/{conversation['id']}/messages",
+                                     json={"content": "O que você ouviu?"})
+    assert response.status_code == 200
+    assert len(llm.calls) == 1
+    assert (await storage.games.get(game_id)).content_version == "2"
+
+
 @pytest.mark.parametrize("body", [
     {"content": ""}, {"content": "   "}, {"content": "x" * 8001},
     {"content": "Bom dia", "speaker_id": "escobar"},

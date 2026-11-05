@@ -46,3 +46,50 @@ async def test_missing_profile_is_sanitized(monkeypatch, failure):
     assert "private-profile" not in str(error.value)
     formatted = "".join(traceback.format_exception(error.value))
     assert all(secret not in formatted for secret in ("private-profile", "private-cache", "terraform"))
+
+
+async def test_expired_container_cache_refreshes_from_mounted_profile(monkeypatch, tmp_path):
+    source = tmp_path / "source"
+    target = tmp_path / "target"
+    source_cache = source / "login" / "cache" / "session.json"
+    source_cache.parent.mkdir(parents=True)
+    source_cache.write_text('{"session":"renewed"}')
+    attempts = 0
+
+    def generate(**kwargs):
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            raise RuntimeError("expired container cache")
+        return "renewed-token"
+
+    monkeypatch.setattr(module, "provide_token", generate)
+    provider = module.ProfileTokenProvider(
+        "terraform", "us-east-1",
+        refresh_source_dir=source,
+        config_dir=target,
+    )
+
+    assert await provider.get_token() == "renewed-token"
+    assert attempts == 2
+    assert (target / "login" / "cache" / "session.json").read_text() == '{"session":"renewed"}'
+
+
+async def test_profile_refresh_never_follows_symlinks(monkeypatch, tmp_path):
+    source = tmp_path / "source"
+    target = tmp_path / "target"
+    source.mkdir()
+    private = tmp_path / "outside.json"
+    private.write_text("outside")
+    (source / "linked.json").symlink_to(private)
+
+    monkeypatch.setattr(module, "provide_token", lambda **kwargs: (_ for _ in ()).throw(RuntimeError()))
+    provider = module.ProfileTokenProvider(
+        "terraform", "us-east-1",
+        refresh_source_dir=source,
+        config_dir=target,
+    )
+
+    with pytest.raises(LLMUnavailableError):
+        await provider.get_token()
+    assert not (target / "linked.json").exists()

@@ -5,7 +5,7 @@ from uuid import UUID, uuid4
 from memorias_licantropicas.contracts.errors import ConflictError, NotFoundError
 from memorias_licantropicas.contracts.model import GameCharacter, GameState
 from memorias_licantropicas.contracts.repository import CharacterRepository, GameRepository, DayPolicy
-from memorias_licantropicas.modules.characters.catalog import CONTENT_VERSION
+from memorias_licantropicas.modules.characters.catalog import CONTENT_VERSION, supports_content_version
 from memorias_licantropicas.modules.characters.service import public_character
 from memorias_licantropicas.modules.games.schema import GameCharacterPublic, GamePublic
 
@@ -47,7 +47,7 @@ class GameService:
         return await self._public(game)
 
     async def _public(self, game: GameState) -> GamePublic:
-        if game.content_version != self._characters.content_version:
+        if not supports_content_version(game.content_version, self._characters.content_version):
             raise ConflictError("A partida usa uma versão anterior de personagens; crie uma nova partida.")
         public_cast: list[GameCharacterPublic] = []
         for character in game.characters:

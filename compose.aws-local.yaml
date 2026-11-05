@@ -3,6 +3,7 @@ services:
   api:
     environment:
       AWS_PROFILE: ${AWS_PROFILE:-terraform}
+      AWS_PROFILE_SOURCE_DIR: /aws-source
     volumes:
       - ${AWS_CONFIG_DIR:-${HOME}/.aws}:/aws-source:ro
       - ./deploy/aws-local-start.sh:/usr/local/bin/aws-local-start.sh:ro

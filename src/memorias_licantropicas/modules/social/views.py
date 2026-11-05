@@ -8,6 +8,7 @@ from memorias_licantropicas.contracts.errors import ConflictError, NotFoundError
 from memorias_licantropicas.contracts.model import Contract
 from memorias_licantropicas.modules.agents.service import HarnessService
 from memorias_licantropicas.modules.conversations.service import public_message
+from memorias_licantropicas.modules.characters.catalog import supports_content_version
 
 
 class HeardReport(Contract):
@@ -34,7 +35,7 @@ class SocialReadService:
         game = await self._games.get(game_id)
         if game is None:
             raise NotFoundError("Partida não encontrada.")
-        if game.content_version != self._characters.content_version:
+        if not supports_content_version(game.content_version, self._characters.content_version):
             raise ConflictError("A partida usa uma versão anterior de personagens.")
         cast = {member.character_id: member for member in game.characters}
         reports = []

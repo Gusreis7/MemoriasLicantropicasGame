@@ -96,7 +96,10 @@ def build_services(settings: Settings) -> Services:
         model=settings.bedrock_model,
         timeout_seconds=settings.llm_timeout_seconds,
         max_tokens=settings.llm_max_tokens,
-        token_provider=(ProfileTokenProvider(settings.aws_profile, settings.aws_region)
+        token_provider=(ProfileTokenProvider(
+                            settings.aws_profile, settings.aws_region,
+                            refresh_source_dir=settings.aws_profile_source_dir,
+                        )
                         if settings.aws_profile else None),
     )
     llm = MeteredLLMClient(raw_llm, usage, configured_model=settings.bedrock_model)
@@ -106,7 +109,10 @@ def build_services(settings: Settings) -> Services:
             base_url=settings.mantle_base_url,
             api_key=settings.bedrock_api_key.get_secret_value() if settings.bedrock_api_key else None,
             model=settings.bedrock_model, timeout_seconds=timeout_seconds, max_tokens=max_tokens,
-            token_provider=(ProfileTokenProvider(settings.aws_profile, settings.aws_region)
+            token_provider=(ProfileTokenProvider(
+                                settings.aws_profile, settings.aws_region,
+                                refresh_source_dir=settings.aws_profile_source_dir,
+                            )
                             if settings.aws_profile else None),
         )
         return MeteredLLMClient(raw, usage, configured_model=settings.bedrock_model)

@@ -2,6 +2,22 @@
 
 Um jogo web de investigação e dedução social: entre relatos, suspeitas e interesses ocultos, descubra quem é o lobisomem. Inspirado no party game Lobisomem, com estética literária inspirada em Machado de Assis: ironia, narradores pouco confiáveis e observação das relações sociais.
 
+## Começar a jogar
+
+Pré-requisitos: Make, Docker com Compose ativo e uma credencial Bedrock configurada no perfil AWS local ou em `AWS_BEARER_TOKEN_BEDROCK` no `.env`.
+
+```sh
+make setup
+```
+
+Abra o [jogo](http://localhost:7077), o [painel admin](http://localhost:7078) ou a [API](http://localhost:7079/docs). O comando prepara a configuração local, constrói as imagens, sobe os serviços e verifica se Redis e API estão prontos. Ele preserva partidas existentes no volume Redis.
+
+Depois da primeira subida, use `make up` para iniciar, `make down` para encerrar preservando as partidas e `make destroy` para encerrar e apagar todos os dados do Redis. Execute `make help` para ver os comandos disponíveis.
+
+A [correção de relevância dos diálogos](docs/correcao_relevancia_dialogos.md) descreve o reparo das falas mecânicas e das pistas fora de assunto.
+
+Para instalação, escolha de credencial, comandos de parada e solução de problemas, veja o [guia de execução com Docker](docs/execucao_docker.md). Se o Redis não iniciar, siga a seção de recuperação do guia antes de tentar outra subida.
+
 ## Motivação
 
 Este projeto nasce como um laboratório de aprendizado. O jogo oferece um cenário para explorar decisões sob informação incompleta e construir sistemas de agentes cujo comportamento possa ser observado e avaliado.
@@ -44,37 +60,9 @@ O [plano de convivência e fofocas](docs/plano_convivencia_fofocas.md), os [cont
 
 Os [contratos entre as frentes](docs/contratos_agentes.md) fixam as interfaces e responsabilidades. A [integração da base](docs/base_agentes.md) descreve configuração, uso e limites atuais.
 
-## Executar com Docker
-
-Pré-requisitos: Docker com o plugin Compose e o serviço Docker em execução.
-
-```sh
-uv run python scripts/configure_local.py
-docker compose -f compose.yaml -f compose.aws-local.yaml up -d --build
-```
-
-O comando de configuração preserva o `.env` existente e gera uma senha admin forte se ausente. O overlay AWS usa o perfil `terraform` autenticado no host, com cache temporário em memória no container; não copia credenciais para a imagem. Sem esse overlay, é possível usar `docker compose up -d --build` com API key Bedrock por ambiente.
-
-- **Jogo:** http://localhost:7077
-- **Admin:** http://localhost:7078 — usuário e senha em `ADMIN_USERNAME` / `ADMIN_PASSWORD` no `.env` local.
-- **API/documentação:** http://localhost:7079/docs
-
-Para encerrar: `docker compose -f compose.yaml -f compose.aws-local.yaml down`. O volume Redis é preservado; não use `down -v` para reiniciar. Redis fica interno, com porta de depuração7080 disponível somente pelo override `compose.debug.yaml`.
-
 ## Desenvolvimento local
 
-Instale o [uv](https://docs.astral.sh/uv/getting-started/installation/) e execute:
-
-```sh
-uv sync --locked
-uv run python scripts/configure_local.py
-docker compose -f compose.yaml -f compose.debug.yaml up -d redis
-REDIS_URL=redis://localhost:7080/0 AWS_PROFILE=terraform uv run uvicorn memorias_licantropicas.main:app --port 7079 --reload
-```
-
-Em outro terminal: `cd frontend`, `npm ci` e `npm run dev` (porta7081). Para o admin pelo Vite, inclua essa origem em `ADMIN_ALLOWED_ORIGINS` durante desenvolvimento. O modo Docker já usa as origens7078.
-
-O uv usa a versão de Python indicada em `.python-version`. Para adicionar dependências, use `uv add pacote` ou `uv add --dev pacote` e versione também o `uv.lock` atualizado.
+O [guia de execução](docs/execucao_docker.md#desenvolvimento-fora-do-docker) contém o caminho para rodar API e Vite no host com Redis no Docker. O projeto usa a versão de Python indicada em `.python-version`; ao alterar dependências com `uv add` ou `uv add --dev`, versione também `uv.lock`.
 
 ## API inicial
 
@@ -125,9 +113,9 @@ NPCs podem procurar outros personagens, conversar e comentar o que Floriano lhes
 
 O admin usa senha com hash scrypt, sessão Redis, cookie HTTPOnly/SameSite Strict, expiração, logout e limite de tentativas. Não há credencial padrão embutida; sem senha configurada, o login fica desabilitado. Detalhes em [autenticação/admin](docs/admin.md).
 
-O antigo smoke test foi substituído pelo fluxo do jogo. A API usa bearer explícito ou gera token temporário pelo perfil AWS. Cada mensagem real ao modelo consome a cota/créditos ou gera cobrança conforme a conta. Consulte [entrega visual](docs/entrega_visual.md) para renovar a sessão e executar o teste do build servido.
+O antigo smoke test foi substituído pelo fluxo do jogo. A API usa bearer explícito ou gera token temporário pelo perfil AWS. Cada mensagem real ao modelo consome a cota/créditos ou gera cobrança conforme a conta. Consulte o [guia de execução](docs/execucao_docker.md) para renovar a sessão e retomar o serviço.
 
-Se o diálogo retornar503 com o restante do jogo funcionando, consulte o [diagnóstico e bugfix de indisponibilidade de diálogo](docs/bugfix_indisponibilidade_dialogo.md). A autenticação por perfil no Docker depende do overlay `compose.aws-local.yaml`; a saúde da API não valida a credencial Bedrock.
+Se o diálogo retornar503 com o restante do jogo funcionando, consulte o [diagnóstico de indisponibilidade de diálogo](docs/bugfix_indisponibilidade_dialogo.md). O [guia de execução](docs/execucao_docker.md#diagnostico) diferencia falha de Redis, API e credencial Bedrock.
 
 ## Convenção de branches
 
@@ -166,6 +154,7 @@ scripts/                   # Configuração local sem imprimir segredos
 pyproject.toml             # Projeto e dependências
 uv.lock                    # Versões resolvidas
 Dockerfile                 # Imagem da aplicação
+Makefile                   # Comandos de configuração e ciclo de vida local
 compose.yaml               # API e Redis com volume persistente
 ```
 

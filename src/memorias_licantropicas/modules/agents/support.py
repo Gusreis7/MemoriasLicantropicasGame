@@ -5,9 +5,6 @@ import unicodedata
 NAMES = {'player':'Floriano','bentinho':'Bentinho','capitu':'Capitu','escobar':'Escobar',
          'rubiao':'Rubião','virgilia':'Virgília','florenca':'Florença','bacamarte':'Bacamarte'}
 STOP = {'para','pelo','pela','como','isso','essa','esse','esta','este','voce','floriano','detetive','sobre','tenho','posso','dizer','pessoa','pessoas','coisa','coisas','mais','muito','ainda','apenas','nada','tudo','aqui','nao','com','que','uma','por','dos','das','seu','sua'}
-OPENERS = {'bentinho':'Uma coisa eu lhe digo:', 'capitu':'Posso lhe ajudar com isso:',
- 'escobar':'Posso lhe contar uma coisa:', 'rubiao':'Isso eu posso lhe contar:',
- 'virgilia':'Pois escute:', 'florenca':'Vamos ao que importa:', 'bacamarte':'Comecemos pelo que sabemos:'}
 
 
 def normalized(text):
@@ -16,6 +13,48 @@ def normalized(text):
 
 def words(text):
     return {w for w in re.findall(r'[a-z]+',normalized(text)) if len(w)>2 and w not in STOP}
+
+
+def is_greeting(question):
+    return bool(re.fullmatch(r'\s*(?:ola|oi|bom dia|boa tarde|boa noite|salve)\b[^?!]*[.!?]*\s*', normalized(question)))
+
+
+def is_courtesy_reply(question, reply):
+    """Vocabulário fechado para cortesia sem fatos, segredos ou confissões."""
+    if not (is_greeting(question) or re.search(r'\bfale comigo\b',normalized(question))):
+        return False
+    tokens=re.findall(r'[a-z]+',normalized(reply))
+    allowed=set(('ola oi bom boa dia tarde noite saudacoes salve floriano detetive senhor senhora sr meu minha caro cara homem '
+        'que prazer muito ve lo la lhe te voce ver por aqui estar estou sou sim nao apenas e o a os as '
+        'em com como vai seu sua hoje pode me chamar de capitu rubiao diga logo direto franca francamente '
+        'fale falar aberto aberta voce deseja desejo quer quero saber pergunta perguntar saber conversar conversa '
+        'o traz estas bandas lados util posso ajudar posso ajudo pois bem seja bem vindo obrigada obrigado '
+        'tudo bem o que isso por favor falar comigo disposicao qual duvida tem deseja esclarecer').split())
+    return bool(tokens) and len(tokens)<=35 and set(tokens)<=allowed
+
+
+def dialogue_focus(question, observations):
+    text=normalized(question)
+    if is_greeting(question):
+        return 'A mensagem atual é apenas uma saudação. Cumprimente Floriano brevemente na sua voz, sem introduzir pistas, suspeitos ou acontecimentos.'
+    if re.search(r'\bacredita\b.*\blobisome',text):
+        return 'A pergunta atual é sobre sua crença em lobisomens. Diga se acredita, duvida ou não sabe, em primeira pessoa. Não invente conversas ou fontes para justificar sua opinião.'
+    if re.search(r'\bfale comigo\b',text):
+        return 'Floriano está pedindo uma conversa direta. Responda à impaciência dele e peça que esclareça o que deseja saber. Não repita seu objetivo pessoal ou pistas anteriores.'
+    if not (observations or {}).get('apoios_de_conversa') and re.search(r'\bbras cubas\b',text):
+        return 'A pergunta atual é sobre Brás Cubas. Você não tem fatos autorizados sobre inimigos ou motivos contra ele. Diga francamente que não sabe apontar alguém; não invente dívidas, brigas ou suspeitos.'
+    return 'Responda à última mensagem de Floriano. Seus objetivos influenciam seu tom, mas não substituem o assunto da pergunta. Não apresente as palavras dele como uma descoberta sua.'
+
+
+def historical_dialogue_content(content):
+    """Retira apenas a moldura legada no prompt; o histórico salvo é preservado."""
+    prefixes=('Uma coisa eu lhe digo:', 'Posso lhe ajudar com isso:',
+              'Posso lhe contar uma coisa:', 'Isso eu posso lhe contar:',
+              'Pois escute:', 'Vamos ao que importa:', 'Comecemos pelo que sabemos:')
+    if not content.startswith(prefixes):
+        return content
+    statement=content.split(':',1)[1].strip()
+    return re.split(r'(?<=\.)\s+(?:Compare |Converse com |Ouça |Pergunte também )',statement,maxsplit=1)[0]
 
 
 def _authored_voice(statement, npc_id):
@@ -99,7 +138,11 @@ def dialogue_supports(profile, observations, question):
     """Lista somente o que a persona pode compartilhar agora, com origem estável."""
     if observations is None:
         return ()
-    query=words(question)
+    if is_greeting(question):
+        return ()
+    # O nome usado como vocativo não torna todos os fatos do próprio NPC
+    # relevantes: "acredita em lobisomens, Rubião?" não pede seu namoro.
+    query=words(question)-words(profile.name)
     candidates=[]
     for index, record in enumerate(observations.get('seus_depoimentos_registrados',())):
         statement=record.get('fala','')
@@ -129,6 +172,9 @@ def dialogue_supports(profile, observations, question):
         statement=entry.get('conteudo','')
         if not statement or entry.get('tipo')=='literal':
             continue
+        if entry.get('origem') != 'authored' and 'mostro-lhe' in normalized(statement):
+            # A apresentação de um objeto pelo jogador não é descoberta nova.
+            continue
         speaker=entry.get('quem_falou')
         if entry.get('origem')!='authored' and speaker and speaker!=profile.id:
             statement=f"Ouvi de {NAMES.get(speaker,speaker)}: {statement}"
@@ -138,6 +184,13 @@ def dialogue_supports(profile, observations, question):
     # Do not fall back to an unrelated inventory or private biography.
     for candidate in candidates:
         candidate['relevance']=len(query & words(candidate['statement']))
+    # Uma pergunta específica não autoriza trocar de assunto só porque há
+    # testemunhos ou rumores disponíveis. Saudações não pedem pistas.
+    subjects = [normalized(name) for identifier,name in {**NAMES, 'bras_cubas':'Brás Cubas'}.items()
+                if identifier not in ('player', profile.id) and normalized(name) in normalized(question)]
+    candidates = [candidate for candidate in candidates
+                  if (candidate['relevance'] > 0 or asks_for_guidance(question))
+                  and (not subjects or any(subject in normalized(candidate['statement']) for subject in subjects))]
     candidates.sort(key=lambda c:(c['relevance'],c['priority']),reverse=True)
     selected=[];seen=set()
     for candidate in candidates:
@@ -154,7 +207,7 @@ def supported_reply(profile, observations, question, support_id=None):
     chosen=next((s for s in supports if s['id']==support_id),supports[0])
     statement=chosen['statement'].strip()
     if chosen.get('authored',False): statement=_authored_voice(statement,profile.id)
-    return f"{OPENERS.get(profile.id,'Posso lhe contar o seguinte:')} {statement} {chosen['lead']}"
+    return f"{statement} {chosen['lead']}" if asks_for_guidance(question) else statement
 
 
 def has_useful_anchor(content, supports):
@@ -174,11 +227,15 @@ def compact_observations(profile, observations, question):
     if observations is None:return None
     supports=dialogue_supports(profile,observations,question)
     result={key:observations[key] for key in ('dia','fase','seu_conflito_privado','ultimo_objeto_apresentado','suas_atividades','seus_depoimentos_registrados','suas_versoes_de_interrogatorio','seus_confrontos') if key in observations}
-    # Facts not chosen as supports remain unavailable for embellishment.
+    # A memória também explica emoções e reações, mesmo sem ser uma pista
+    # lexicalmente ligada à pergunta. A projeção já pertence apenas a este NPC.
     social=observations.get('memoria_social',{})
     result['memoria_social']={key:social.get(key,[]) for key in ('confidencias_autorizadas','descobertas_autorizadas','relacao_com_interlocutor','sentimentos_proprios')}
     result['apoios_de_conversa']=supports
-    result['memoria_social']['memorias_relevantes']=[entry for entry in social.get('memorias_relevantes',()) if str(entry.get('claim_id')) in {s['id'] for s in supports}]
+    result['memoria_social']['memorias_relevantes']=[entry for entry in social.get('memorias_relevantes',())
+        if entry.get('compartilhavel',True)
+        and (entry.get('visibilidade')!='private' or entry.get('compartilhavel') is True)][:12]
+    result['memoria_social']['encontros_anteriores']=social.get('encontros_anteriores',())[-3:]
     result['memoria_social']['fontes_conhecidas']=sorted({entry.get('quem_falou') for entry in social.get('memorias_relevantes',()) if entry.get('quem_falou')} | {entry.get('interlocutor_id') for entry in social.get('encontros_anteriores',()) if entry.get('interlocutor_id') and entry.get('falas')})
     return result
 
@@ -201,4 +258,9 @@ def unauthorized_personal_disclosure(npc_id,content,observations):
 
 def asks_for_guidance(question):
     text=normalized(question)
-    return not re.search(r'\b(aborrecid[ao]|zangad[ao]|brav[ao]|irritad[ao])\b.{0,20}\bcomigo\b|\bcomo (?:voce |o senhor |a senhora )?se sente\b',text)
+    return bool(re.search(
+        r'\b(?:por onde|como|onde) (?:eu )?(?:comeco|comecar|investigar|procuro|procurar)\b|'
+        r'\b(?:alguma|uma|tem|teria) (?:pista|sugestao|informacao)\b|'
+        r'\b(?:pode |poderia )?(?:me )?(?:ajudar|orientar)\b|'
+        r'\b(?:o que|que) (?:voce |o senhor |a senhora )?(?:sabe|conhece|pode me contar)\b|'
+        r'\b(?:conte|contar|fale)\b.{0,25}\b(?:sabe|amizade|investigacao|pistas)\b',text))

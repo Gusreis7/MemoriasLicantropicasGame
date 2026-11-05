@@ -16,39 +16,7 @@ O jogo permanece um protótipo de exploração e conversa. Não há ainda motor 
 
 ## Executar
 
-```sh
-uv sync --locked
-uv run python scripts/configure_local.py
-docker compose -f compose.yaml -f compose.aws-local.yaml up -d --build
-```
-
-O segundo comando preserva valores existentes, preenche senha admin forte se ausente e mantém `.env` com permissões0600. Credenciais de acesso: campos `ADMIN_USERNAME` e `ADMIN_PASSWORD` desse arquivo local, nunca incluído em Git. É possível alterá-los e recriar a API. Para apenas gerar outra senha, usar `--reset-admin-password` explicitamente.
-
-| Endereço | Uso |
-| --- | --- |
-| http://localhost:7077 | Jogo |
-| http://localhost:7078 | Admin autenticado |
-| http://localhost:7079/docs | API local |
-
-Redis fica interno ao Compose. `compose.debug.yaml` publica somente emlocalhost7080 quando incluído explicitamente. O Redis dos testes usa16379, sem compartilhar o volume do jogo. `docker compose down` preserva os dados; não usar `down -v` para reinício comum.
-
-O overlay `compose.aws-local.yaml` seleciona o perfil AWS (`terraform` por padrão). A pasta `${HOME}/.aws` é montada somente para leitura em `/aws-source`; o startup copia para um tmpfs privado em `/home/app/.aws` para permitir a renovação de `aws login`. Credenciais não entram na imagem, Git ou volume persistente e desaparecem com o container. Após renovar o login no host, recriar a API se necessário para recarregar a fonte.
-
-Sem esse overlay, `docker compose up -d --build` usa a API key Bedrock fornecida por ambiente. A aplicação não recebe automaticamente a sessão CLI do host. O browser nunca recebe credenciais AWS.
-
-Para desenvolvimento fora do container:
-
-O frontend fora do Docker requer Node.js24 e npm; o build Docker já inclui essas ferramentas. Para a suíte de navegador, Brave deve estar instalado no host.
-
-```sh
-docker compose -f compose.yaml -f compose.debug.yaml up -d redis
-REDIS_URL=redis://localhost:7080/0 AWS_PROFILE=terraform uv run uvicorn memorias_licantropicas.main:app --port 7079 --reload
-cd frontend
-npm ci
-npm run dev
-```
-
-O Vite usa7081 e proxy da API7079. Abrir `/admin.html` no Vite exige incluir sua origem em `ADMIN_ALLOWED_ORIGINS` apenas durante desenvolvimento. O modo Docker usa as origens7078 configuradas por padrão.
+Esta é a entrega visual histórica. O procedimento atual de instalação, subida, parada e recuperação de Redis está no [guia de execução com Docker](execucao_docker.md). Use o launcher documentado ali para preservar a configuração AWS e o volume das partidas.
 
 ## Contratos e conteúdo
 

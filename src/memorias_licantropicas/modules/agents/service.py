@@ -31,7 +31,8 @@ from memorias_licantropicas.modules.agents.guard import DialogueGuard, SAFE_DIAL
 from memorias_licantropicas.modules.agents.output import parse_dialogue_output
 from memorias_licantropicas.infrastructure.usage import usage_scope
 from memorias_licantropicas.modules.agents.grounding import ground_dialogue_output
-from memorias_licantropicas.modules.agents.support import compact_observations, supported_reply, has_useful_anchor, unauthorized_personal_disclosure, asks_for_guidance
+from memorias_licantropicas.modules.agents.support import compact_observations, supported_reply, has_useful_anchor, unauthorized_personal_disclosure, asks_for_guidance, historical_dialogue_content, dialogue_focus
+from memorias_licantropicas.modules.characters.catalog import supports_content_version
 
 PLAYER_ID = "player"
 MAX_HISTORY_CHARACTERS = 24_000
@@ -79,7 +80,7 @@ class HarnessService:
         game = await self._games.get(game_id)
         if game is None:
             raise NotFoundError("Partida não encontrada.")
-        if game.content_version != self._characters.content_version:
+        if not supports_content_version(game.content_version, self._characters.content_version):
             raise ConflictError("A partida usa uma versão anterior de personagens; crie uma nova partida.")
         cast = {character.character_id: character for character in game.characters}
         npc = cast.get(npc_id)
@@ -156,9 +157,29 @@ class HarnessService:
                     observations=observations, profile=profile)
                 if assessment.issues:
                     if not assessment.corrected_reply:
-                        raise LLMUnavailableError('A resposta precisa de uma nova revisão antes de ser registrada.', code='llm_invalid_response')
-                    content = ground_dialogue_output(assessment.corrected_reply, observations, {
-                        item.id: item.name for item in await self._characters.list()})
+                        repair = ChatMessage(role='system', content=(
+                            'Refaça sua resposta à última mensagem na sua própria voz. '
+                            'A tentativa anterior foi rejeitada por: ' + ', '.join(assessment.issues) + '. '
+                            'Responda ao que foi perguntado, sem narrar gestos, revelar segredos ou criar fatos. '
+                            'Uma saudação pede saudação; desconhecer algo não exige oferecer outra pista. '
+                            'Não imite frases mecânicas do histórico. Retorne somente a fala.'
+                        ))
+                        with usage_scope(game_id, 'player_dialogue', npc_id):
+                            response = await self._llm.complete((
+                                *prompt, ChatMessage(role='assistant',content=draft.content), repair, prompt[-1],
+                            ))
+                        content = ground_dialogue_output(parse_dialogue_output(response.content, npc_id), observations, {
+                            item.id: item.name for item in await self._characters.list()})
+                        draft = draft.model_copy(update={'content': content})
+                        assessment = await self._session_master.assess(
+                            game_id, npc_id, conversation_id, incoming, draft,
+                            observations=observations, profile=profile)
+                    if not assessment.corrected_reply:
+                        if assessment.issues:
+                            raise LLMUnavailableError('A resposta precisa de uma nova revisão antes de ser registrada.', code='llm_invalid_response')
+                    else:
+                        content = ground_dialogue_output(assessment.corrected_reply, observations, {
+                            item.id: item.name for item in await self._characters.list()})
                     draft = draft.model_copy(update={'content': content})
                     if assessment.quote and assessment.quote not in content:
                         from memorias_licantropicas.modules.session_master.service import local_assessment
@@ -298,9 +319,12 @@ class HarnessService:
         instructions = (
             "Você é esta pessoa no Rio de Janeiro de 1890, conversando com Floriano, o detetive. "
             "Fale diretamente em português, com sua personalidade; de preferência duas ou três frases curtas. "
-            "Responda primeiro à pergunta. Quando souber algo, conte uma informação concreta dos apoios_de_conversa "
-            "e ofereça uma pergunta, pessoa ou comparação que ajude a investigação. Se não souber essa resposta, "
-            "diga isso simplesmente e conte um outro detalhe útil que conhece. Ajuda cotidiana não exige confiança íntima. "
+            "Responda à mensagem atual: cumprimente uma saudação, responda a uma crença ou opinião como tal. "
+            "Os apoios_de_conversa são fatos disponíveis, não falas obrigatórias. Use-os só quando pertinentes. "
+            "Se não souber a resposta, admita sem mudar de assunto. Sugira outra pessoa apenas quando houver motivo. "
+            "Não repita pistas já dadas nem devolva ao detetive as palavras dele como novidade. "
+            "Mantenha sua voz mesmo após falas antigas mecânicas; não copie suas aberturas e encerramentos. "
+            "Ajuda cotidiana não exige confiança íntima. "
             "Seus sentimentos próprios orientam o tom e as escolhas sem recitar números. Amor e ódio podem coexistir. "
             "Ser civil não garante inocência de um homicídio humano: respeite seu conflito privado, caso exista. "
             "A graça e a ironia podem aparecer no jeito de falar, sem metáforas que escondam a resposta. "
@@ -327,7 +351,7 @@ class HarnessService:
         for message in reversed(selected):
             if message.sender_id == profile.id:
                 try:
-                    content = parse_dialogue_output(message.content, profile.id)
+                    content = historical_dialogue_content(parse_dialogue_output(message.content, profile.id))
                 except LLMUnavailableError:
                     content = SAFE_DIALOGUE_REPLY
                 decision = self._guard.inspect_output(content, self._private_markers(profile, state,
@@ -346,6 +370,7 @@ class HarnessService:
                 role="assistant" if message.sender_id == profile.id else "user",
                 content=content,
             ))
+        messages.append(ChatMessage(role='system', content=dialogue_focus(text,observations)))
         messages.append(ChatMessage(
             role="user",
             content=json.dumps({"remetente": speaker_id, "fala": text}, ensure_ascii=False),

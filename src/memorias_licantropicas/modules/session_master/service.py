@@ -24,7 +24,7 @@ class DialogueAssessment(BaseModel):
     surrender: bool = False
     period: Literal['day', 'night'] | None = None
     day: int | None = Field(default=None, ge=0)
-    issues: tuple[Literal['invented_event', 'unauthorized_confidence', 'narrator_style', 'wrong_address'], ...] = Field(default=(), max_length=4)
+    issues: tuple[Literal['invented_event', 'unauthorized_confidence', 'narrator_style', 'wrong_address', 'off_topic'], ...] = Field(default=(), max_length=5)
     corrected_reply: str | None = Field(default=None, max_length=900)
     repair_support_id: str | None = Field(default=None, max_length=120)
     discovery_ids: tuple[str, ...] = Field(default=(), max_length=7)
@@ -105,6 +105,9 @@ class SessionMasterService:
     async def assess(self, game_id, npc_id, conversation_id, incoming, outgoing, *, observations=None, profile=None):
         state = await self._turns.require_day_locked(game_id)
         base = local_assessment(incoming.content, outgoing.content, state.day)
+        from memorias_licantropicas.modules.agents.support import is_courtesy_reply
+        if is_courtesy_reply(incoming.content,outgoing.content):
+            return base
         if self._llm is None:
             return base
         authorized = (observations or {}).get('memoria_social', {}).get('confidencias_autorizadas', ())
@@ -124,13 +127,19 @@ class SessionMasterService:
                 'Útil esclarece pessoa, objeto, lugar, relação, motivo ou próximo contato; mera saudação ou enigma não basta. '
                 'Uma suspeita útil continua sendo opinião, nunca prova. Confissão de um crime humano não prova ser lobisomem. '
                 'Avalie também a qualidade da fala contra os dados autorizados: '
-                'issues é uma lista com invented_event, unauthorized_confidence, narrator_style, wrong_address, ou vazia. '
+                'issues é uma lista de strings: invented_event, unauthorized_confidence, narrator_style, wrong_address, off_topic, ou vazia. '
                 'invented_event: inventa encontro, local, fonte ou acontecimento específico sem apoio nas observações; '
                 'suspeitas e acusações enviesadas são permitidas como opiniões, não como fatos presenciados. '
                 'unauthorized_confidence: revela ou PARAFRASEIA segredo pessoal não listado nos segredos_autorizados; '
                 'amizade conhecida pode ser comentada, mas amor secreto não autorizado não pode ser admitido nem insinuado como confissão. '
-                'narrator_style: narrador descreve cena/gestos, resposta empolada ou longa em vez de fala direta humana. '
-                'wrong_address: trata Floriano como delegado ou outra autoridade/pessoa. '
+                'narrator_style: apenas narrador externo descrevendo cena/gestos em terceira pessoa. '
+                'wrong_address: apenas chama Floriano de delegado ou de outra pessoa. Detetive, senhor e meu caro são tratamentos corretos. '
+                'off_topic: responde sobre outra pessoa ou assunto sem responder à pergunta atual. '
+                'Exemplo: perguntar por Brás Cubas e receber fatos sobre o tratamento de Bentinho é off_topic. '
+                'Crença sobre lobisomens deve responder à crença, não encaminhar para um objeto ou namoro. '
+                'Saudações, opiniões, crenças, dúvidas e respostas sem pistas são válidas. '
+                'Não marque issue só por falta de informação útil à investigação. '
+                'Uma metáfora breve na voz da pessoa não é narrator_style; narração externa de gestos é. '
                 'Se houver issue, retorne repair_support_id com um ID dos apoios_de_conversa que permita responder com utilidade. '
                 'Não escreva uma história substituta: corrected_reply deve ser null; o servidor compõe o reparo do apoio autorizado. '
                 'Não introduza fontes, objetos ou cenas, nem promova opinião a fato. Sem issue, repair_support_id pode ser null. '
@@ -143,12 +152,37 @@ class SessionMasterService:
             raw = response.content.strip()
             if raw.startswith('```'):
                 raw = re.sub(r'^```(?:json)?\s*|\s*```$', '', raw)
-            proposal = DialogueAssessment.model_validate_json(raw).model_copy(update={"discovery_ids":(), "eligible_discovery_ids":()})
+            data = json.loads(raw)
+            # O modelo pode acrescentar flags redundantes; elas não anulam
+            # problemas válidos presentes na lista tipada.
+            data = {key:value for key,value in data.items() if key in DialogueAssessment.model_fields}
+            if isinstance(data.get('issues'), list):
+                data['issues'] = [item.get('type') if isinstance(item,dict) else item for item in data['issues']]
+            proposal = DialogueAssessment.model_validate(data).model_copy(update={"discovery_ids":(), "eligible_discovery_ids":()})
+            issues = list(proposal.issues)
+            # Estes dois problemas possuem marcadores textuais verificáveis.
+            # Uma opinião ou um vocativo cortês não pode disparar uma troca de fala.
+            if 'wrong_address' in issues and not re.search(r'\b(?:senhor[a]? delegado|delegado[,!]|delegada[,!])', normalize(outgoing.content)):
+                issues.remove('wrong_address')
+            if 'narrator_style' in issues and not re.search(
+                    r'\b(?:ele|ela|capitu|bentinho|escobar|rubiao|virgilia|florenca|bacamarte)\s+(?:baixou|olhou|suspirou|ergueu|virou|sorriu|caminhou|disse|pensou)\b|^\s*[*\[]', normalize(outgoing.content)):
+                issues.remove('narrator_style')
+            from memorias_licantropicas.modules.agents.support import is_greeting
+            if ('off_topic' in issues and is_greeting(incoming.content)
+                    and len(outgoing.content.split()) <= 30
+                    and re.search(r'\b(?:ola|oi|bom dia|boa tarde|boa noite|saudacoes)\b',normalize(outgoing.content))
+                    and not re.search(r'\b(?:bentinho|escobar|florenca|bacamarte|virgilia|lobisomem|lobo|remedio|medicacao)\b',normalize(outgoing.content))):
+                issues.remove('off_topic')
+            proposal = proposal.model_copy(update={'issues':tuple(issues)})
             from memorias_licantropicas.modules.agents.support import is_alibi_question
             if proposal.kind == 'alibi' and not is_alibi_question(incoming.content):
                 proposal = proposal.model_copy(update={'kind':'conversation','period':None,'day':None})
             effective = outgoing.content
             if proposal.issues:
+                if set(proposal.issues) <= {'narrator_style', 'wrong_address', 'off_topic'}:
+                    # O próprio NPC refaz a fala no contexto da pergunta;
+                    # corrigir estilo não deve inserir uma pista de outro assunto.
+                    return proposal.model_copy(update={'corrected_reply': None})
                 from memorias_licantropicas.modules.agents.guard import DialogueGuard
                 from memorias_licantropicas.modules.agents.support import supported_reply
                 repaired = supported_reply(profile, observations, incoming.content, proposal.repair_support_id) if profile else None

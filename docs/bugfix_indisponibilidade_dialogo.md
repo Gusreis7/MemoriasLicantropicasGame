@@ -33,9 +33,11 @@ A recuperação pelo histórico não equivale a idempotência da requisição in
 
 ## Como evitar recorrência
 
-Para autenticação por perfil no Docker, usar o overlay AWS, inclusive ao recriar apenas a API. `docker compose up` sem esse overlay só atende inferência se houver bearer explícito configurado. API e Redis saudáveis não comprovam disponibilidade do modelo.
+Para autenticação por perfil no Docker, use `make setup` na primeira subida e `make up` nas seguintes. Esses comandos selecionam o overlay AWS quando o perfil local está disponível. Ao recriar apenas a API manualmente, inclua esse overlay. `docker compose up` sem ele só atende inferência se houver bearer explícito configurado. API e Redis saudáveis não comprovam disponibilidade do modelo.
 
-Se o perfil expirar, renovar a autenticação AWS no host e recriar a API com o overlay para atualizar a cópia temporária das credenciais. Não apagar volumes nem recomeçar uma partida para tratar autenticação.
+O overlay mantém a fonte do perfil montada somente para leitura. Se a sessão do container expirar e o login do host já tiver sido renovado, o provider copia apenas arquivos regulares mais novos para o cache temporário privado e repete a geração do token uma vez. Links simbólicos são ignorados. Isso permite que a próxima tentativa de diálogo se recupere sem reiniciar o Redis nem alterar a partida.
+
+Se o perfil expirar, renovar a autenticação AWS no host e executar o launcher novamente para atualizar a cópia temporária das credenciais. Não apagar volumes nem recomeçar uma partida para tratar autenticação. Para falhas de inicialização do Redis, siga o [guia de execução](execucao_docker.md#diagnostico).
 
 ## Validação
 

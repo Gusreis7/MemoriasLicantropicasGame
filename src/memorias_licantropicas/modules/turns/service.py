@@ -10,6 +10,7 @@ from memorias_licantropicas.contracts.investigation import (
 )
 from memorias_licantropicas.contracts.model import GameState
 from memorias_licantropicas.modules.characters.language import participle
+from memorias_licantropicas.modules.characters.catalog import supports_content_version
 from memorias_licantropicas.modules.turns.repository import RedisTurnRepository
 from memorias_licantropicas.modules.world.model import WorldState
 
@@ -38,7 +39,7 @@ class TurnService:
     def _validate_snapshot(self, game, world, state) -> None:
         if game is None:
             raise NotFoundError("Partida não encontrada.")
-        if game.content_version != self._characters.content_version:
+        if not supports_content_version(game.content_version, self._characters.content_version):
             raise ConflictError("A partida usa uma versão anterior de personagens.")
         if world is None:
             raise ConflictError("Esta partida não possui mundo visual.")

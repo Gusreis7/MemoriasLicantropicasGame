@@ -35,11 +35,13 @@ services:
     command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec", "--maxmemory-policy", "noeviction"]
     volumes:
       - redis_data:/data
+    stop_grace_period: 60s
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
-      retries: 10
+      start_period: 20s
+      retries: 12
     init: true
   game:
     build:
