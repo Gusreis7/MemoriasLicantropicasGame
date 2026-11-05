@@ -150,9 +150,9 @@ async def test_local_guard_rejects_paraphrased_early_confidence():
 
 
 async def test_compact_context_keeps_source_access_without_loading_every_transcript(catalog):
- from memorias_licantropicas.modules.agents.grounding import ground_dialogue_output
+ from memorias_licantropicas.modules.agents.grounding import grounding_issues
  profile=await catalog.get('virgilia');obs=social_observations()
  obs['memoria_social']['encontros_anteriores']=[{'interlocutor_id':'capitu','falas':[{'fala':'Uma acusação do detetive.'}]}]
  compact=compact_observations(profile,obs,'Por que está aborrecida comigo?')
  reply='Capitu me contou sua acusação, Floriano. Quero que esclareça o que disse a ela.'
- assert ground_dialogue_output(reply,compact,{'capitu':'Capitu'})==reply
+ assert grounding_issues(reply,compact,{'capitu':'Capitu'})==()

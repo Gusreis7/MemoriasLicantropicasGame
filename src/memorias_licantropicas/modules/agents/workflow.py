@@ -34,7 +34,7 @@ from memorias_licantropicas.contracts.model import (
 )
 from memorias_licantropicas.infrastructure.llm.structured import generate_structured
 from memorias_licantropicas.infrastructure.usage import usage_scope
-from memorias_licantropicas.modules.agents.grounding import ground_dialogue_output
+from memorias_licantropicas.modules.agents.grounding import grounding_issues
 from memorias_licantropicas.modules.agents.guard import SAFE_DIALOGUE_REPLY
 from memorias_licantropicas.modules.agents.schema import NpcSpeech
 from memorias_licantropicas.modules.agents.support import (
@@ -456,7 +456,7 @@ class DialogueWorkflow:
         issues = list(
             state["assessment"].issues if state["assessment"] is not None else ()
         )
-        if ground_dialogue_output(content, observations, state["names"]) != content:
+        if grounding_issues(content, observations, state["names"]):
             issues.append("unsupported_fact")
         if unauthorized_personal_disclosure(
             state["request"].npc_id, content, observations

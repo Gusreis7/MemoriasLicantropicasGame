@@ -13,6 +13,7 @@ import memorias_licantropicas.main as main_module
 from memorias_licantropicas.composition import build_services
 from memorias_licantropicas.contracts.model import LLMResponse
 from memorias_licantropicas.settings import Settings
+from memorias_licantropicas.simulation.model import OfflineSessionModel
 from pydantic import BaseModel, ConfigDict, Field
 
 clock_offset = [0.0]
@@ -38,14 +39,20 @@ def test_services(_settings):
     services.turns._clock = clock
     services.world._clock = clock
 
-    async def complete(messages):
-        # Reproduz o envelope que antes aparecia literalmente na interface.
-        profile = json.loads(messages[0].content.split("Ficha privada:\n", 1)[1])
-        return LLMResponse(content=json.dumps({"remetente": profile["id"],
-                           "fala": "Ouvi os rumores sobre Brás Cubas, mas não vi o que aconteceu."}),
-                           model="deterministic-browser-test", input_tokens=1, output_tokens=1)
+    provider = OfflineSessionModel()
 
-    services.llm.complete = complete
+    async def complete(messages):
+        task = provider.task_for(messages)
+        if task == "npc_dialogue":
+            return LLMResponse(content=json.dumps({
+                "fala": "Ouvi os rumores sobre Brás Cubas, mas não vi o que aconteceu.",
+            }), model="deterministic-browser-test", input_tokens=1, output_tokens=1)
+        return await provider.complete(messages)
+
+    # Replace every transport, preserving the production meters and graph. The
+    # dialogue/master clients are distinct from the base services.llm client.
+    for metered in (services.llm, *services.social_clients):
+        metered._client.complete = complete
     return services
 
 

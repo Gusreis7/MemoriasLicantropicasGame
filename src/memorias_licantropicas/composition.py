@@ -13,6 +13,7 @@ from memorias_licantropicas.infrastructure.redis_repository import (
     RedisMemoryRepository,
 )
 from memorias_licantropicas.modules.agents.service import HarnessService
+from memorias_licantropicas.modules.agents.trace import RedisDialogueTraceRecorder
 from memorias_licantropicas.modules.session_master.service import SessionMasterService
 from memorias_licantropicas.modules.characters.repository import CatalogCharacterRepository
 from memorias_licantropicas.modules.characters.service import CharacterService
@@ -135,7 +136,9 @@ def build_services(settings: Settings) -> Services:
     turns._victory_editor = master.publish_victory
     harness = HarnessService(characters, games, memory, dialogue_llm, history_limit=settings.llm_history_limit,
                              day_policy=turns, context_provider=investigation.npc_context_locked,
-                             knowledge_provider=knowledge.context if knowledge else None, session_master=master)
+                             knowledge_provider=knowledge.context if knowledge else None, session_master=master,
+                             trace_sink=RedisDialogueTraceRecorder(redis, settings.redis_prefix).record,
+                             turn_timeout_seconds=settings.llm_turn_timeout_seconds)
     return Services(
         characters=CharacterService(characters),
         games=GameService(characters, games, day_policy=turns),

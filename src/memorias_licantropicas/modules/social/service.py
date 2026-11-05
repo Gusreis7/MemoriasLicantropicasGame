@@ -21,7 +21,7 @@ from memorias_licantropicas.prompts.social import social_instructions
 from memorias_licantropicas.modules.investigation.interrogation import (
     npc_interrogation_context,
 )
-from memorias_licantropicas.modules.agents.grounding import ground_dialogue_output
+from memorias_licantropicas.modules.agents.grounding import grounding_issues
 from memorias_licantropicas.modules.investigation.catalog import (
     INVENTORIES,
     ITEMS_BY_ID,
@@ -755,17 +755,14 @@ class SocialService:
             if not self._guard.inspect_output(proposal.fala, markers).allowed:
                 raise InvalidSocialProposal("Fala rejeitada pela guarda.")
             # IDs e cadeia de fontes ficam nos dados; a fala pode parafrasear com voz própria.
-            speech = ground_dialogue_output(
+            if grounding_issues(
                 proposal.fala,
-                {**npc_interrogation_context(case, actor), "memoria_social": context},
+                {
+                    **npc_interrogation_context(case, actor),
+                    "memoria_social": context,
+                },
                 names,
-            )
-            if (
-                len(speech) > 2400
-                or not self._guard.inspect_output(speech, markers).allowed
             ):
-                raise InvalidSocialProposal("Fala composta inválida.")
-            if speech != proposal.fala:
                 raise InvalidSocialProposal("ungrounded_social_speech")
         except (TimeoutError, InvalidSocialProposal):
             latest = await self._repository.get(game.id)
