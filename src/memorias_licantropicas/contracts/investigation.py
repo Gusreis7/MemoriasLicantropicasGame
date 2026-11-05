@@ -57,6 +57,7 @@ class Testimony(Contract):
 
 
 class Accusation(Contract):
+    dossier_fingerprint: str | None = None
     id: UUID
     day: int
     suspect_id: str

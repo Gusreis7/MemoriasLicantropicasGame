@@ -21,6 +21,8 @@ class DossierAssessment:
     independent_witnesses: frozenset[str]
     alibi_conflict: bool
     accepted: bool
+    corroborated_personal_ids: frozenset[str] = frozenset()
+    custody_route: str | None = None
 
 
 def public_alibi_conflict(state, suspect_id):
@@ -62,9 +64,18 @@ def assess_dossier(state, suspect_id, evidence_ids, testimony_ids):
     contradiction_bonus = .75 if conflict and witnesses else 0.
     total = material + source_bonus + contradiction_bonus
     corroborated = len(witnesses) >= 2 or (bool(witnesses) and conflict)
-    accepted = bool(len(item_ids) >= 2 and examined and corroborated and total >= CUSTODY_THRESHOLD)
+    # O reconhecimento de duas marcas distintas por duas fontes por peça já
+    # permite custódia: não exigir um clique de exame redundante neste caminho.
+    personal_sources = {item: frozenset(record.witness_id for record in linked
+        if items_by_statement[record.id] == item and record.witness_id != suspect_id)
+        for item in item_ids if ITEMS_BY_ID[item].kind == 'unique'}
+    personal = frozenset(item for item, sources in personal_sources.items() if len(sources) >= 2)
+    examined_route = bool(len(item_ids) >= 2 and examined and corroborated and total >= CUSTODY_THRESHOLD)
+    witness_route = len(personal) >= 2 and total >= CUSTODY_THRESHOLD
+    accepted = examined_route or witness_route
+    route = 'examined_trace' if examined_route else 'corroborated_personal_marks' if witness_route else None
     return DossierAssessment(material, source_bonus, contradiction_bonus, total, item_ids,
-                             examined, witnesses, conflict, accepted)
+                             examined, witnesses, conflict, accepted, personal, route)
 
 
 def dossier_strength(assessment):

@@ -52,11 +52,11 @@ app.innerHTML = `
       </aside>
       <div class="delegate-case">
         <header class="modal-heading"><div><p class="eyebrow">UM PEDIDO DE PRISÃO</p><h2 id="delegate-title">Apresente seu caso</h2></div><button id="close-delegate" class="icon-button" type="button" aria-label="Dispensar delegado">×</button></header>
-        <p class="case-note delegate-introduction">Examine marcas pessoais e ouça fontes diferentes; objetos comuns, sozinhos, não bastam. Escolha quem deseja acusar e apresente os vestígios e depoimentos que sustentam sua suspeita.</p>
+        <p class="case-note delegate-introduction">Examine uma marca pessoal e reúna corroboração, ou apresente dois exclusivos distintos reconhecidos por duas testemunhas cada. Objetos comuns, sozinhos, não bastam. Escolha quem deseja acusar e apresente os vestígios e depoimentos que sustentam sua suspeita.</p>
         <form id="accusation-form">
           <fieldset class="suspect-fieldset"><legend><span class="case-step">01</span> Quem você acusa?</legend><p class="delegate-field-hint">Escolha um morador para examinar o pedido de prisão.</p><div id="accused-npc" class="suspect-gallery"></div><p id="accused-selection" class="accused-selection" role="status" aria-live="polite">Nenhum suspeito selecionado.</p></fieldset>
           <div class="accusation-records"><fieldset><legend><span class="case-step">02</span> Vestígios recolhidos</legend><div id="accusation-evidence"></div></fieldset><fieldset><legend><span class="case-step">03</span> Depoimentos registrados</legend><div id="accusation-testimonies"></div></fieldset></div>
-          <div class="accusation-submit"><p id="accusation-status" class="status" role="status" aria-live="polite"></p><button id="submit-accusation" class="button primary" type="submit" disabled>Apresentar acusação <span aria-hidden="true">→</span></button></div>
+          <p id="accusation-review" class="status" role="status" aria-live="polite">Confira o dossiê para saber o que ainda falta. Uma recusa permite completar as provas e tentar novamente hoje.</p><div class="accusation-submit"><button id="review-accusation" class="button secondary" type="button" disabled>Conferir dossiê</button><p id="accusation-status" class="status" role="status" aria-live="polite"></p><button id="submit-accusation" class="button primary" type="submit" disabled>Apresentar acusação <span aria-hidden="true">→</span></button></div>
         </form><div id="accusation-history"></div>
       </div>
     </section>
@@ -928,6 +928,8 @@ function renderPresentation() {
 }
 
 function renderAccusation() {
+  const previousEvidence = new Set([...document.querySelectorAll<HTMLInputElement>('#accusation-evidence input:checked')].map(input=>input.value));
+  const previousTestimony = new Set([...document.querySelectorAll<HTMLInputElement>('#accusation-testimonies input:checked')].map(input=>input.value));
   if (!caseState) return;
   const gallery = $('#accused-npc');
   const selected = gallery.querySelector<HTMLInputElement>('input:checked')?.value;
@@ -948,7 +950,7 @@ function renderAccusation() {
   }
   const renderChoice = (container: HTMLElement, name: string, id: string, text: string, item?: CaseEvidence, witnessID?: string) => {
     const label = document.createElement('label'); label.className = 'proof-choice';
-    const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.name = name; checkbox.value = id;
+    const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.name = name; checkbox.value = id; checkbox.checked = previousTestimony.has(id);
     const title = document.createElement('span'); title.textContent = text; label.append(checkbox);
     if (witnessID) {
       const portrait = document.createElement('img'); portrait.className = 'witness-portrait';
@@ -961,7 +963,7 @@ function renderAccusation() {
   const evidence = $('#accusation-evidence'); evidence.replaceChildren();
   for (const {item, copies} of stackEvidence(caseState.inventory)) {
     const label = document.createElement('label'); label.className = 'proof-choice';
-    const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.name = 'evidence'; checkbox.value = item.id;
+    const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.name = 'evidence'; checkbox.value = item.id; checkbox.checked = previousEvidence.has(item.id);
     const caption = document.createElement('span'); caption.textContent = `${item.name} · ${itemKind(item)}${copies.length > 1 ? ` ×${copies.length}` : ''}`;
     label.append(checkbox, itemArt(item.item_id, item.kind), caption); evidence.append(label);
   }
@@ -970,9 +972,9 @@ function renderAccusation() {
   const inventorySnapshot = caseState.inventory;
   stackTestimonies(caseState.testimonies, inventorySnapshot).forEach(item => renderChoice(testimonies, 'testimony', item.id, `${item.witness_name}: ${item.text}`, inventorySnapshot.find(evidence => evidence.id === item.evidence_id), item.witness_id));
   if (!caseState.testimonies.length) addText(testimonies, 'p', 'Nenhum depoimento sobre objetos registrado.', 'empty-case');
-  const attempted = caseState.accusations.some(accusation => accusation.day === caseState?.day);
+  const attempted = caseState.accusations.some(accusation => accusation.day === caseState?.day && accusation.accepted);
   updateAccusationSelection();
-  if (attempted) status('#accusation-status', 'O delegado já examinou uma acusação neste dia. Aguarde a próxima manhã.');
+  if (attempted) status('#accusation-status', 'Já há uma prisão autorizada para esta noite.');
   const history = $('#accusation-history'); history.replaceChildren();
   for (const accusation of caseState.accusations) {
     const card = document.createElement('article'); card.className = 'accusation-result';
@@ -987,8 +989,9 @@ function updateAccusationSelection() {
     input.closest('label')!.querySelector('small')!.textContent = input.checked ? 'Selecionado' : 'Selecionar';
   }
   $('#accused-selection').textContent = selected ? `Pedido de prisão contra ${npcName(selected.value)}.` : 'Nenhum suspeito selecionado.';
-  const attempted = caseState?.accusations.some(accusation => accusation.day === caseState?.day);
+  const attempted = caseState?.accusations.some(accusation => accusation.day === caseState?.day && accusation.accepted);
   $('#submit-accusation').toggleAttribute('disabled', !selected || busy || caseClock.blocked() || Boolean(attempted));
+  $('#review-accusation').toggleAttribute('disabled', !selected || busy || caseClock.blocked());
 }
 
 async function openCasePanel(panel: 'journal' | 'notebook' | 'delegate') {
@@ -1044,6 +1047,21 @@ async function presentEvidence() {
   finally {busy = false; setSending(false);}
 }
 
+async function reviewSelectedAccusation() {
+  if (!world || busy || caseClock.blocked() || modal !== 'delegate') return;
+  const suspect = $('#accused-npc').querySelector<HTMLInputElement>('input:checked:not(:disabled)')?.value;
+  if (!suspect) return;
+  const evidence = [...document.querySelectorAll<HTMLInputElement>('#accusation-evidence input:checked')].map(input=>input.value);
+  const testimony = [...document.querySelectorAll<HTMLInputElement>('#accusation-testimonies input:checked')].map(input=>input.value);
+  busy=true; updateAccusationSelection(); status('#accusation-review','O delegado confere seu dossiê…');
+  try {
+    const review=await api.reviewAccusation(world.game_id,suspect,evidence,testimony);
+    $('#accusation-review').dataset.ready=String(review.ready);
+    status('#accusation-review',review.reason);
+  } catch(error) {status('#accusation-review',explain(error),true);}
+  finally {busy=false;updateAccusationSelection();}
+}
+
 async function submitAccusation(event: Event) {
   event.preventDefault(); if (!world || busy || modal !== 'delegate' || caseClock.blocked()) return;
   const suspectID = $('#accused-npc').querySelector<HTMLInputElement>('input:checked:not(:disabled)')?.value;
@@ -1079,7 +1097,11 @@ $('#inspect-crime').addEventListener('click', () => {void searchCrime();});
 $('#present-button').addEventListener('click', () => {void presentEvidence();});
 $('#present-evidence').addEventListener('change', () => renderPresentation());
 $('#accusation-form').addEventListener('submit', event => {void submitAccusation(event);});
-$('#accused-npc').addEventListener('change', updateAccusationSelection);
+$('#review-accusation').addEventListener('click',()=>{void reviewSelectedAccusation();});
+for (const id of ['accused-npc','accusation-evidence','accusation-testimonies']) $( `#${id}`).addEventListener('change',()=>{
+  updateAccusationSelection(); $('#accusation-review').removeAttribute('data-ready');
+  status('#accusation-review','Seleção alterada. Confira o dossiê antes de pedir a prisão.');
+});
 $('#open-assembly').addEventListener('click', () => {void openAssemblyPanel();});
 $('#close-assembly').addEventListener('click', () => {if (!busy) setModal(null);});
 $('#assembly-opening-form').addEventListener('submit', event => {event.preventDefault(); void startAssembly();});

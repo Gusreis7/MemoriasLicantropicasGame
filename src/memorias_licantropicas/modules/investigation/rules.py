@@ -141,24 +141,50 @@ def inspect_evidence(state, evidence_id, now):
                                        "crime_id": str(evidence.crime_id), "day": state.day}),))
 
 
-def evaluate_accusation(state, suspect_id, evidence_ids, testimony_ids, now) -> Accusation:
-    """Custódia usa espécie, exame e fontes já registradas; não recebe o papel secreto."""
+def review_accusation(state, suspect_id, evidence_ids, testimony_ids):
+    """Diagnóstico público sem consumir ação ou ler a identidade do culpado."""
     from memorias_licantropicas.modules.investigation.scoring import assess_dossier
     assessment = assess_dossier(state, suspect_id, evidence_ids, testimony_ids)
     missing = []
     if len(assessment.linked_item_ids) < 2:
-        missing.append("relacionar pelo menos dois tipos distintos de vestígio à pessoa acusada")
-    if not assessment.examined_exclusive_ids:
-        missing.append("examinar uma peça pessoal e relacionar sua marca ao suspeito por depoimento")
+        missing.append("Relacionar pelo menos dois tipos distintos de vestígio à pessoa acusada.")
+    if not assessment.examined_exclusive_ids and len(assessment.corroborated_personal_ids) < 2:
+        missing.append("É preciso examinar uma peça pessoal e relacionar sua marca ao suspeito por depoimento, "
+                       "ou reunir dois objetos exclusivos diferentes, cada um reconhecido por duas testemunhas externas.")
     if len(assessment.independent_witnesses) < 2 and not (assessment.independent_witnesses and assessment.alibi_conflict):
-        missing.append("ouvir duas fontes independentes, ou confrontar uma fonte com uma contradição de álibis já registrada")
+        missing.append("Ouvir duas fontes independentes, ou uma fonte e uma contradição de álibis já registrada.")
     if assessment.total < 5:
-        missing.append("reunir indícios mais específicos; objetos comuns têm peso muito baixo")
+        missing.append("Reunir indícios mais específicos; objetos comuns têm peso muito baixo.")
     if assessment.accepted:
-        reason = ("A marca individualizada, o exame da ligação com a cena e a corroboração registrada justificam a custódia. "
-                  "Isso ainda não confirma que a pessoa seja o lobisomem; a noite esclarecerá a hipótese.")
+        if assessment.custody_route == 'corroborated_personal_marks':
+            reason = ("Duas peças pessoais diferentes tiveram suas marcas reconhecidas por duas testemunhas externas cada. "
+                      "O conjunto justifica a custódia, mesmo sem exame adicional. A noite esclarecerá a hipótese de licantropia.")
+        else:
+            reason = ("A marca individualizada, o exame da ligação com a cena e a corroboração registrada justificam a custódia. "
+                      "Isso ainda não confirma que a pessoa seja o lobisomem; a noite esclarecerá a hipótese.")
+        missing = []
     else:
-        reason = "Ainda falta " + "; ".join(missing) + ". Repetir objetos ou a mesma fonte não reforça o conjunto."
+        reason = "Ainda falta: " + " ".join(missing) + " Você pode completar o dossiê e reapresentá-lo hoje."
+    return assessment, tuple(missing), reason
+
+
+def dossier_fingerprint(state, suspect_id, evidence_ids, testimony_ids):
+    """Duplicatas de exemplar/relato não fabricam um dossiê novo; um exame novo sim."""
+    import json
+    from hashlib import sha256
+    from memorias_licantropicas.modules.investigation.scoring import public_alibi_conflict
+    selected={find_evidence(state,identifier).item_id for identifier in evidence_ids}
+    exam={e.item_id for c in state.crimes for e in c.evidence if e.collected and e.examined and e.item_id in selected}
+    records={t.id:t for t in state.testimonies}
+    claims=sorted({(records[identifier].witness_id,find_evidence(state,records[identifier].evidence_id).item_id,
+                   records[identifier].recognition,records[identifier].claimed_owner_id or '') for identifier in testimony_ids})
+    payload=('custody-v5',suspect_id,sorted(selected),sorted(exam),claims,public_alibi_conflict(state,suspect_id))
+    return sha256(json.dumps(payload).encode()).hexdigest()
+
+
+def evaluate_accusation(state, suspect_id, evidence_ids, testimony_ids, now) -> Accusation:
+    assessment, _, reason = review_accusation(state,suspect_id,evidence_ids,testimony_ids)
     return Accusation(id=uuid4(), day=state.day, suspect_id=suspect_id,
-                      evidence_ids=tuple(dict.fromkeys(evidence_ids)), testimony_ids=tuple(dict.fromkeys(testimony_ids)),
-                      accepted=assessment.accepted, reason=reason, created_at=now)
+        evidence_ids=tuple(dict.fromkeys(evidence_ids)), testimony_ids=tuple(dict.fromkeys(testimony_ids)),
+        accepted=assessment.accepted, reason=reason, created_at=now,
+        dossier_fingerprint=dossier_fingerprint(state,suspect_id,evidence_ids,testimony_ids))

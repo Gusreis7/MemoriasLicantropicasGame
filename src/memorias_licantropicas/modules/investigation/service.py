@@ -223,10 +223,23 @@ class InvestigationService(AssemblyServiceMixin):
                 await self._memory.append_messages(game_id, conversation.id, (action, response))
         return await self.public(state)
 
+    async def review_accusation(self, game_id: UUID, suspect_id: str, evidence_ids, testimony_ids):
+        from memorias_licantropicas.modules.investigation.rules import review_accusation
+        from memorias_licantropicas.modules.investigation.schema import AccusationReviewPublic
+        state = await self._turns.sync(game_id)
+        if state.status != 'active' or state.phase != 'day':
+            raise ConflictError('O delegado só revisa o dossiê durante a investigação diurna.')
+        game = await self._turns._games.get(game_id)
+        member = next((m for m in game.characters if m.character_id == suspect_id), None)
+        if member is None:
+            raise NotFoundError('Acusado não encontrado nesta partida.')
+        if not member.alive or suspect_id in state.expelled_npc_ids:
+            raise AccessDeniedError('Escolha um morador vivo e presente na cidade.')
+        assessment, missing, reason = review_accusation(state,suspect_id,evidence_ids,testimony_ids)
+        return AccusationReviewPublic(ready=assessment.accepted,route=assessment.custody_route,missing=missing,reason=reason)
+
     async def accuse(self, game_id: UUID, suspect_id: str, evidence_ids, testimony_ids) -> CasePublic:
         def transition(state, game, world):
-            if any(record.day == state.day for record in state.accusations):
-                raise ConflictError("O delegado recebe uma tentativa de acusação por dia.")
             if state.detained_npc_id is not None:
                 raise ConflictError("Já existe uma pessoa sob custódia para esta noite.")
             member = next((npc for npc in game.characters if npc.character_id == suspect_id), None)
@@ -236,6 +249,10 @@ class InvestigationService(AssemblyServiceMixin):
                 raise AccessDeniedError("Não é possível deter uma pessoa morta.")
             record = evaluate_accusation(state, suspect_id, tuple(dict.fromkeys(evidence_ids)),
                                          tuple(dict.fromkeys(testimony_ids)), self._turns.now())
+            previous = state.accusations[-1] if state.accusations else None
+            if (not record.accepted and previous and previous.day == state.day and not previous.accepted
+                    and previous.dossier_fingerprint == record.dossier_fingerprint):
+                return CaseTransition(state=state)
             updated = state.model_copy(update={"accusations": (*state.accusations, record),
                                                "detained_npc_id": suspect_id if record.accepted else None})
             events = [CaseEvent(type="accusation.reviewed", data={"accusation_id": str(record.id),

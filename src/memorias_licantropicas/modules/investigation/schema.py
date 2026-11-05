@@ -82,6 +82,13 @@ class TestimonyPublic(Contract):
     text: str
 
 
+class AccusationReviewPublic(Contract):
+    ready: bool
+    route: Literal["examined_trace", "corroborated_personal_marks"] | None = None
+    missing: tuple[str, ...] = ()
+    reason: str
+
+
 class AccusationPublic(Contract):
     id: UUID
     day: int

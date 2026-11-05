@@ -31,6 +31,7 @@ export interface CaseCrime {id: string; day: number; victim_id: string; victim_n
 export interface CaseEvidence {id: string; crime_id: string; item_id: string; name: string; kind: 'unique' | 'singular' | 'common'; description: string; examined?: boolean; inspection_text?: string | null}
 export interface CaseAchievement {id: string; title: string; description: string; unlocked_at: string; source_message_id?: string | null; source_npc_id?: string | null}
 export interface CaseTestimony {id: string; day: number; evidence_id: string; witness_id: string; witness_name: string; recognition: 'recognizes' | 'denies' | 'unknown'; claimed_owner_id: string | null; text: string}
+export interface AccusationReview {ready: boolean; route: 'examined_trace' | 'corroborated_personal_marks' | null; missing: string[]; reason: string}
 export interface CaseAccusation {id: string; day: number; suspect_id: string; suspect_name: string; evidence_ids: string[]; testimony_ids: string[]; accepted: boolean; reason: string}
 export interface CaseInterrogation {
   id: string; npc_id: string; npc_name: string; day: number; period: 'night' | 'day';
@@ -91,6 +92,9 @@ export const api = {
   search: (id: string, crimeID: string) => request<CasePublic>(`${base(id)}/crime-scenes/${encodeURIComponent(crimeID)}/search`, {}),
   present: (id: string, evidenceID: string, npcID: string) => request<CasePublic>(`${base(id)}/evidence/${encodeURIComponent(evidenceID)}/present`, {npc_id: npcID}),
   inspectEvidence: (id: string, evidenceID: string) => request<CasePublic>(`${base(id)}/evidence/${encodeURIComponent(evidenceID)}/inspect`, {}),
+  reviewAccusation: (id: string, suspectID: string, evidenceIDs: string[], testimonyIDs: string[]) => request<AccusationReview>(`${base(id)}/accusations/review`, {
+    suspect_id: suspectID, evidence_ids: evidenceIDs, testimony_ids: testimonyIDs,
+  }),
   accuse: (id: string, suspectID: string, evidenceIDs: string[], testimonyIDs: string[]) => request<CasePublic>(`${base(id)}/accusations`, {
     suspect_id: suspectID, evidence_ids: evidenceIDs, testimony_ids: testimonyIDs,
   }),
