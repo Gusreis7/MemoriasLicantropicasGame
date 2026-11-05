@@ -47,7 +47,14 @@ class RedisDialogueTraceRecorder:
 
     async def record(self, trace: DialogueTrace) -> None:
         # Admin já lê o stream de eventos canônico; não há memória paralela do grafo.
-        await self._client.rpush(
-            f"{self._prefix}:game:{{{trace.game_id}}}:events",
-            event_json("llm.dialogue.graph", trace.model_dump(mode="json"), "harness"),
-        )
+        base = f"{self._prefix}:game:{{{trace.game_id}}}"
+        async with self._client.pipeline() as pipe:
+            await pipe.watch(f"{base}:state")
+            if not await pipe.exists(f"{base}:state"):
+                return  # Requisição inválida não cria uma partida/stream órfão.
+            pipe.multi()
+            pipe.rpush(
+                f"{base}:events",
+                event_json("llm.dialogue.graph", trace.model_dump(mode="json"), "harness"),
+            )
+            await pipe.execute()

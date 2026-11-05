@@ -373,3 +373,12 @@ async def test_arbitrary_exception_code_cannot_enter_trace(harness, storage, gam
         await harness.respond(game.id, "bentinho", uuid4(), "player", "Bom dia")
     assert traces[0].error_code == "internal_error"
     assert "PRIVATE_" not in traces[0].model_dump_json()
+
+
+async def test_failed_lookup_cannot_create_orphan_redis_trace(harness, storage):
+    from memorias_licantropicas.contracts.errors import NotFoundError
+    missing = uuid4()
+    harness._trace_sink = RedisDialogueTraceRecorder(storage.client, storage.prefix).record
+    with pytest.raises(NotFoundError):
+        await harness.respond(missing, "bentinho", uuid4(), "player", "Bom dia")
+    assert not await storage.client.exists(f"{storage.prefix}:game:{{{missing}}}:events")
