@@ -151,6 +151,9 @@ class InvestigationService(AssemblyServiceMixin):
     async def get(self, game_id: UUID) -> CasePublic:
         return await self.public(await self._turns.sync(game_id))
 
+    async def skip_day(self, game_id: UUID, day: int) -> CasePublic:
+        return await self.public(await self._turns.skip_day(game_id, day))
+
     async def search(self, game_id: UUID, crime_id: UUID) -> CasePublic:
         def transition(state, game, world):
             crime = next((crime for crime in state.crimes if crime.id == crime_id), None)

@@ -88,6 +88,7 @@ export const api = {
   createGame: () => request<{id: string}>('/api/v1/games', {}),
   game: (id: string) => request<GamePublic>(base(id)),
   investigation: (id: string) => request<CasePublic>(`${base(id)}/investigation`),
+  skipDay: (id: string, day: number) => request<CasePublic>(`${base(id)}/investigation/skip-day`, {day}),
   reports: (id: string) => request<{reports: HeardReport[]}>(`${base(id)}/social/reports`),
   search: (id: string, crimeID: string) => request<CasePublic>(`${base(id)}/crime-scenes/${encodeURIComponent(crimeID)}/search`, {}),
   present: (id: string, evidenceID: string, npcID: string) => request<CasePublic>(`${base(id)}/evidence/${encodeURIComponent(evidenceID)}/present`, {npc_id: npcID}),
