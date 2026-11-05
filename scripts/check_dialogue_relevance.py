@@ -2,7 +2,6 @@
 import argparse
 import asyncio
 import json
-import re
 import unicodedata
 from datetime import UTC, datetime
 from uuid import uuid4
@@ -63,9 +62,9 @@ async def run(rounds):
                         warnings=[]
                         if text.startswith(('posso lhe ajudar com isso:', 'isso eu posso lhe contar:')):
                             warnings.append('legacy_template')
-                        if 'lobisomens' in question and (not re.search(r'acredit|creio|cre[rm]|lenda|lobisom|duvid|nao sei',text) or re.search(r'lenco|medicacao|consultas',text)):
+                        if 'lobisomens' in question and (not any(term in text for term in ('acredit','creio','crer','crem','lenda','lobisom','duvid','nao sei')) or any(term in text for term in ('lenco','medicacao','consultas'))):
                             warnings.append('belief_not_answered')
-                        if 'bras cubas' in question and re.search(r'medicacao|consultas|lenco',text):
+                        if 'bras cubas' in question and any(term in text for term in ('medicacao','consultas','lenco')):
                             warnings.append('unrelated_clue')
                         record['warnings']=warnings
                     except Exception as exc:
