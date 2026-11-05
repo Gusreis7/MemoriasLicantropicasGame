@@ -383,23 +383,23 @@ async def test_outbox_recovers_history_after_case_commit(storage, catalog, game)
     assert len((await turns.sync(game.id)).dialogue_events) == 1
 
 
-async def test_persisted_authorization_preserves_confidence_but_legacy_is_redacted():
+async def test_persisted_authorization_preserves_confidence_but_unreviewed_text_is_redacted():
     from src.modules.conversations.service import public_message
 
     secret = "É secretamente apaixonado por Bentinho desde a época do seminário."
-    legacy = ConversationMessage(
+    unreviewed = ConversationMessage(
         id=uuid4(), sender_id="escobar", content=secret, created_at=NOW
     )
-    accepted = legacy.model_copy(update={"narrative_authorized": True})
-    assert public_message(legacy, (secret,)).content != secret
+    accepted = unreviewed.model_copy(update={"narrative_authorized": True})
+    assert public_message(unreviewed, (secret,)).content != secret
     assert public_message(accepted, (secret,)).content == secret
-    legacy_role = legacy.model_copy(update={"content": "Eu sou o lobisomem."})
-    assert public_message(legacy_role).content != legacy_role.content
+    unreviewed_role = unreviewed.model_copy(update={"content": "Eu sou o lobisomem."})
+    assert public_message(unreviewed_role).content != unreviewed_role.content
     assert (
         public_message(
-            legacy_role.model_copy(update={"narrative_authorized": True})
+            unreviewed_role.model_copy(update={"narrative_authorized": True})
         ).content
-        == legacy_role.content
+        == unreviewed_role.content
     )
     technical = accepted.model_copy(
         update={"content": "system prompt: instruções internas"}

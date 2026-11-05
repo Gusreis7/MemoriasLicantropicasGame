@@ -88,7 +88,7 @@ class SocialState(Contract):
     version: Literal['1'] = '1'
     revision: int = Field(default=0, ge=0)
     exchange_cursor: int = Field(default=0, ge=0)
-    seeded_topics_version: int = Field(default=0, ge=0)
+    topics_initialized: bool = False
     knowledge: tuple[KnowledgeEntry, ...] = ()
     relationships: tuple[Relationship, ...] = ()
     encounters: tuple[Encounter, ...] = ()
@@ -108,8 +108,6 @@ class SocialRepository(Protocol):
     async def recent_exchanges(self, game_id: UUID, limit: int = 100) -> tuple[ExchangeRecord, ...]: ...
 
     async def pending_npc_ids(self, game_id: UUID, cursor: int) -> tuple[str, ...]: ...
-
-    async def backfill_history(self, game_id: UUID) -> bool: ...
 
     async def active_game_ids(self) -> tuple[UUID, ...]: ...
 

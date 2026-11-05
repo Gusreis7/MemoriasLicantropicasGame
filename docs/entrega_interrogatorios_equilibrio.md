@@ -22,7 +22,7 @@ O admin autenticado acompanha chamadas, tokens conhecidos de entrada/saída, tem
 
 ## Avaliação e próximos experimentos
 
-O [relatório das simulações](relatorio_simulacoes.md) documenta dez partidas com políticas que só consultam dados públicos, além de rodadas narrativas reais antes/depois das correções. Os sete personagens aparecem como culpados nas partidas de cobertura; foram exercitadas confissão, prisão correta, prisão inocente seguida de soltura, acusação insuficiente e passividade.
+O relatório retirado deste checkout, disponível no histórico Git anterior à limpeza, documenta dez partidas com políticas que só consultam dados públicos, além de rodadas narrativas reais antes/depois das correções. Os sete personagens aparecem como culpados nas partidas de cobertura; foram exercitadas confissão, prisão correta, prisão inocente seguida de soltura, acusação insuficiente e passividade.
 
 O resultado mecânico final foi sete vitórias do detetive e três do lobisomem. É uma amostra dirigida de cobertura. Custos de leitura são sintéticos e otimistas, enquanto a latência do modelo é medida separadamente; portanto não é uma estimativa de equilíbrio para jogadores humanos. Bacamarte resistiu à política de confissão até a derrota, embora a rota de prisão permaneça disponível.
 

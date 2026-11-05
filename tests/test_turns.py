@@ -181,16 +181,12 @@ async def test_bad_events_key_blocks_all_night_state_changes(cycle, storage):
     assert {suffix: await storage.client.get(f"{cycle.key}:{suffix}") for suffix in before} == before
 
 
-async def test_legacy_cycle_starts_now_without_reroll_and_bootstraps_once(cycle, storage):
+async def test_missing_cycle_is_rejected_instead_of_bootstrapping_history(cycle, storage):
     await storage.client.delete(f"{cycle.key}:investigation")
-    cycle.clock[0] += timedelta(days=100)
-    case = await cycle.turns.sync(cycle.game.id)
-    assert case.day == 1 and case.phase == "day"
-    assert case.phase_ends_at == cycle.clock[0] + timedelta(seconds=300)
+    with pytest.raises(StorageUnavailableError):
+        await cycle.turns.sync(cycle.game.id)
+    assert not await storage.client.exists(f"{cycle.key}:investigation")
     assert await storage.games.get(cycle.game.id) == cycle.game
-    assert len(await events(storage, cycle, "investigation.initialized")) == 1
-    assert await cycle.turns.sync(cycle.game.id) == case
-    assert len(await events(storage, cycle, "investigation.initialized")) == 1
 
 
 async def test_dialogue_deadline_rejects_without_mutating_or_acquiring_nested_gate(cycle, storage):

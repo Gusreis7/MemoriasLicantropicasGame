@@ -1,6 +1,6 @@
 # Conversa natural, relações, mestre da sessão e assembleia
 
-Status: base implementada em develop. Contratos finais em contrato_refatoracao_narrativa_execucao.md; resultados e limitações em exploracao_narrativa/relatorio.md. O plano abaixo registra a direção original; a assembleia executada foi reduzida a 60 segundos, uma rodada e uma réplica, com possibilidade de expulsar Floriano.
+Status: base implementada em develop. Contratos finais em contrato_refatoracao_narrativa_execucao.md; experimentos anteriores disponíveis no histórico Git; runner mantido em simulacao_partidas_refatoracao.md. O plano abaixo registra a direção original; a assembleia executada foi reduzida a 60 segundos, uma rodada e uma réplica, com possibilidade de expulsar Floriano.
 
 ## Objetivo
 

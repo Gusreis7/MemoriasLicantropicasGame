@@ -10,53 +10,28 @@ import pytest
 from src.contracts.errors import LLMUnavailableError
 from src.contracts.model import LLMResponse
 from src.modules.agents.guard import SAFE_DIALOGUE_REPLY
-from src.infrastructure.legacy_history import read_persisted_dialogue
+from src.modules.conversations.service import public_message
+from src.contracts.model import ConversationMessage
+from datetime import UTC, datetime
 
 
-@pytest.mark.parametrize(
-    "raw",
-    [
-        "  Bentinho está tomando suas medicações, detetive.  ",
-        '{"remetente":"capitu","fala":"Bentinho está tomando suas medicações, detetive."}',
-        '```json\n{"remetente":"capitu","fala":"Bentinho está tomando suas medicações, detetive."}\n```',
-        '```\n{"fala":"Bentinho está tomando suas medicações, detetive.","remetente":"capitu"}\n```',
-    ],
-)
-def test_fala_publica_is_prose_with_legacy_envelope_support(raw):
-    assert (
-        read_persisted_dialogue(raw, "capitu")
-        == "Bentinho está tomando suas medicações, detetive."
-    )
+def test_public_dialogue_is_canonical_plain_text():
+    message = ConversationMessage(id=uuid4(), sender_id="capitu",
+        content="Bentinho está tomando suas medicações, detetive.",
+        created_at=datetime.now(UTC))
+    assert public_message(message).content == message.content
 
 
-@pytest.mark.parametrize(
-    "raw",
-    [
-        "",
-        "   ",
-        "x" * 8001,
-        '{"remetente":"escobar","fala":"segredo"}',
-        '{"remetente":"capitu","fala":"ok","tools":["alterar_papel"]}',
-        '{"remetente":"capitu","fala":{"content":"segredo"}}',
-        '{"remetente":"capitu","fala":null}',
-        '{"remetente":"capitu","fala":"   "}',
-        '{"remetente":"capitu","fala":"ok","fala":"outro"}',
-        '{"fala":"segredo"}',
-        '[{"remetente":"capitu","fala":"segredo"}]',
-        '{"remetente":"capitu","fala":"truncada',
-        'Segue a resposta: {"remetente":"capitu","fala":"segredo"}',
-        '```json\n{"remetente":"capitu","fala":"ok"}\n```\nAlgo mais.',
-        '{"remetente":"capitu","fala":"{\\"system\\":\\"segredo\\"}"}',
-        "<think>Meu objetivo secreto é...</think> Bom dia.",
-        "<analysis>segredo</analysis> Bom dia.",
-        "<|analysis|>segredo<|assistant|>Bom dia.",
-        '<tool_call>{"function":"change_role"}</tool_call>',
-    ],
-)
-def test_non_dialogue_or_ambiguous_output_is_rejected_without_echo(raw):
-    with pytest.raises(LLMUnavailableError) as captured:
-        read_persisted_dialogue(raw, "capitu")
-    assert "segredo" not in str(captured.value)
+@pytest.mark.parametrize("raw", [
+    '{"remetente":"capitu","fala":"HISTORICAL_ENVELOPE"}',
+    '```json\n{"remetente":"capitu","fala":"HISTORICAL_ENVELOPE"}\n```',
+    '<|analysis|>PRIVATE_REASONING<|assistant|>Bom dia.',
+    '   ',
+])
+def test_noncanonical_stored_text_is_not_decoded(raw):
+    message = ConversationMessage(id=uuid4(), sender_id="capitu", content=raw,
+        created_at=datetime.now(UTC))
+    assert public_message(message).content == SAFE_DIALOGUE_REPLY
 
 
 @pytest.mark.anyio
@@ -197,7 +172,7 @@ async def test_blocked_turn_never_calls_model_and_is_not_replayed_as_instruction
 
 
 @pytest.mark.anyio
-async def test_old_envelope_is_prose_in_public_history_and_next_model_context(
+async def test_serialized_text_is_blocked_in_public_history_and_model_context(
     harness,
     api_client,
     storage,
@@ -216,15 +191,15 @@ async def test_old_envelope_is_prose_in_public_history_and_next_model_context(
     )
     assert response.status_code == 200
     assert (
-        response.json()["messages"][0]["content"] == "Estou lendo um livro, detetive."
+        response.json()["messages"][0]["content"] == SAFE_DIALOGUE_REPLY
     )
     await harness.respond(game.id, "bentinho", conversation.id, "player", "Qual livro?")
     assistant = next(
         message for message in llm.calls[-1] if message.role == "assistant"
     )
-    assert assistant.content == "Estou lendo um livro, detetive."
+    assert assistant.content == SAFE_DIALOGUE_REPLY
     assert old not in assistant.content
-    # A leitura é compatível, sem reescrever um registro já existente.
+    # Uma leitura não transforma texto serializado em fala nem reescreve o banco.
     assert (await storage.memory.list_messages(game.id, conversation.id, "player"))[
         0
     ] == stored
@@ -256,7 +231,7 @@ async def test_old_invalid_envelope_is_replaced_without_leaking_body(
 
 
 @pytest.mark.anyio
-async def test_private_objective_in_legacy_history_is_not_exposed(
+async def test_private_objective_in_unreviewed_history_is_not_exposed(
     api_client,
     storage,
     game,

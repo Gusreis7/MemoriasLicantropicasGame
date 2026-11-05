@@ -5,7 +5,7 @@ Implementação do [plano](plano_convivencia_fofocas.md) nas frentes dos [contra
 ## Comportamento entregue
 
 - Cada par de mensagens confirmado entre Floriano e um NPC publica um registro em uma fila durável na mesma transação Redis do histórico. Repetir IDs não duplica a fila.
-- O worker importa uma vez as transcrições anteriores à fila, preservando originais e timestamps, sem importar encontros privados NPC–NPC. Quando o dia antigo não foi registrado, ele permanece desconhecido. A importação e seu marcador são confirmados juntos; novas mensagens concorrentes não duplicam registros.
+- O worker consome somente os pares confirmados na fila atual. Não importa transcrições antigas nem encontros privados NPC–NPC.
 - O extrator processa até quatro pares consecutivos do mesmo NPC por chamada, preserva trecho literal, emissor, fonte alegada, dia e versões anteriores. Textos ambíguos ficam literais, fora da propagação automática. Tentativas bloqueadas não viram fofoca.
 - O contexto de cada NPC recupera memórias próprias, relações e até três encontros anteriores, incluindo conversas sem uma alegação estruturada. O contexto não inclui transcrições privadas alheias.
 - Afinidade, confiança e ressentimento são direcionais, com tendências derivadas das fichas. Acusações recebidas e versões contestadas podem gerar efeitos pequenos, limitados e rastreáveis. Nenhum efeito consulta a verdade secreta para decidir quem estava mentindo.
@@ -36,7 +36,7 @@ O jogo atualiza presenças pelo polling de mundo, preservando a caminhada previs
 
 ## Validação e limites
 
-Atualização na evolução de interrogatórios: as primeiras chamadas reais demonstraram falhas de envelope JSON e de repetição literal. A extração aceita agora um único bloco JSON, valida cada alegação separadamente e preserva a validação de origem. Nos encontros, o motor acrescenta a citação e a fonte dos IDs selecionados à reação quando necessário; a transmissão só ocorre com essa fala final confirmada. O harness aplica verificações conservadoras de presença e fonte em português; essas regras não constituem verificação semântica completa. Resultados e falhas remanescentes estão no [relatório de simulações](relatorio_simulacoes.md).
+Atualização na evolução de interrogatórios: as primeiras chamadas reais demonstraram falhas de envelope JSON e de repetição literal. A extração aceita agora um único bloco JSON, valida cada alegação separadamente e preserva a validação de origem. Nos encontros, o motor acrescenta a citação e a fonte dos IDs selecionados à reação quando necessário; a transmissão só ocorre com essa fala final confirmada. O harness aplica verificações conservadoras de presença e fonte em português; essas regras não constituem verificação semântica completa. Resultados e falhas remanescentes estão no histórico Git anterior à limpeza; a integração atual está em [partidas completas](simulacao_partidas_refatoracao.md).
 
 Há testes com Redis em memória e inferência simulada para extração, isolamento de atores, raízes e versões, circularidade, relações, cotas, caminhadas, viagens, fase, abordagem, worker, recuperação e transações. O fluxo integrado cobre Floriano → Capitu → Virgília → retorno ao detetive, incluindo cobrança, negação e ausência de alterações nos fatos do caso. A projeção pública e a exigência de sessão no endpoint administrativo são verificadas separadamente.
 

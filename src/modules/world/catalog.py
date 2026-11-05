@@ -31,20 +31,6 @@ LOCATIONS: tuple[LocationPublic, ...] = (
 LOCATIONS_BY_ID = {location.id: location for location in LOCATIONS}
 
 
-def fit_world_to_locations(world: WorldState) -> WorldState:
-    """Projeta coordenadas de partidas antigas no cenário compacto, sem novo sorteio.
-
-    O GET não grava: a próxima ação CAS persiste a projeção na mesma revisão.
-    Os limites amplos no modelo de persistência permitem ler mundos de 1920px.
-    """
-    def bounded(x, location_id):
-        return min(LOCATIONS_BY_ID[location_id].width - 32, max(32, x))
-
-    return world.model_copy(update={
-        "player": world.player.model_copy(update={"x": bounded(world.player.x, world.player.location_id)}),
-        "npcs": tuple(npc.model_copy(update={"x": bounded(npc.x, npc.location_id)}) for npc in world.npcs),
-    })
-
 INITIAL_NPCS: tuple[WorldNPC, ...] = (
     WorldNPC(npc_id="rubiao", location_id="praca_verde", x=440),
     WorldNPC(npc_id="capitu", location_id="cabana_capitu", x=440),

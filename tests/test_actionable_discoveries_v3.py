@@ -161,32 +161,13 @@ async def test_personal_confidence_needs_repeated_meaningful_relationship_gain()
     )
 
 
-async def test_treatment_is_available_neutrally_and_old_topics_migrate(catalog):
+async def test_treatment_is_public_in_fresh_topics_and_initialized_once(catalog):
     profiles = await catalog.list()
-    state = seed_social_state(
-        SocialState(game_id=uuid4()), tuple(p.id for p in profiles), NOW
-    )
-    old = state.model_copy(
-        update={
-            "seeded_topics_version": 1,
-            "knowledge": tuple(
-                e.model_copy(
-                    update={"visibility": "trusted", "disclosure_threshold": 35}
-                )
-                if "acompanhamento" in e.proposition
-                else e
-                for e in state.knowledge
-            ),
-        }
-    )
-    updated = seed_social_state(old, tuple(p.id for p in profiles), NOW)
-    assert len(updated.knowledge) == len(old.knowledge)
-    assert all(
-        e.visibility == "public"
-        for e in updated.knowledge
-        if "acompanhamento" in e.proposition
-    )
-    assert seed_social_state(updated, tuple(p.id for p in profiles), NOW) == updated
+    state = seed_social_state(SocialState(game_id=uuid4()), tuple(p.id for p in profiles), NOW)
+    treatment = [entry for entry in state.knowledge if "acompanhamento" in entry.proposition]
+    assert treatment and all(entry.visibility == "public" for entry in treatment)
+    assert state.topics_initialized
+    assert seed_social_state(state, tuple(p.id for p in profiles), NOW) == state
 
 
 @pytest.mark.parametrize(

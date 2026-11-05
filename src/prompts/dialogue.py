@@ -1,13 +1,12 @@
-"""Prompts de persona v2: instruções e projeção privada por personagem.
+"""Prompts de persona: instruções e projeção privada por personagem.
 
 Este módulo não chama modelos nem acessa persistência. A ficha vem exclusivamente
-projetada pelo servidor; o formato de saída é acrescentado pelo gerador tipado.
+projetada pelo servidor; o schema de saída segue nas ferramentas nativas.
 """
 
 import json
 from langchain_core.prompts import ChatPromptTemplate
 
-from src.contracts.errors import LLMUnavailableError
 from src.contracts.model import (
     CharacterProfile,
     GameCharacter,
@@ -18,9 +17,7 @@ from src.modules.agents.guard import (
     DialogueGuard,
     SAFE_DIALOGUE_REPLY,
 )
-from src.infrastructure.legacy_history import read_persisted_dialogue
 from src.modules.agents.support import (
-    historical_dialogue_content,
     dialogue_focus,
 )
 
@@ -177,12 +174,7 @@ def build_dialogue_prompt(
     messages = [ChatMessage(role="system", content=instructions)]
     for message in reversed(selected):
         if message.sender_id == profile.id:
-            try:
-                content = historical_dialogue_content(
-                    read_persisted_dialogue(message.content, profile.id)
-                )
-            except LLMUnavailableError:
-                content = SAFE_DIALOGUE_REPLY
+            content = message.content
             decision = guard.inspect_output(
                 content,
                 private_markers(
