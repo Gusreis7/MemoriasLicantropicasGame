@@ -274,3 +274,35 @@ async def test_private_objective_in_legacy_history_is_not_exposed(
     assert response.status_code == 200
     assert response.json()["messages"][0]["content"] == SAFE_DIALOGUE_REPLY
     assert private_objective not in response.text
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "text",
+    [
+        "<|analysis|>PRIVATE_MODEL_REASONING<|assistant|>Bom dia.",
+        "<think>PRIVATE_MODEL_REASONING</think>Bom dia.",
+        "<analysis>PRIVATE_MODEL_REASONING</analysis>Bom dia.",
+    ],
+)
+async def test_native_speech_cannot_publish_internal_reasoning_tokens(
+    harness,
+    storage,
+    game,
+    llm,
+    monkeypatch,
+    text,
+):
+    await storage.games.create(game)
+
+    async def response(messages, *, tools=(), tool_choice=None):
+        return respond_to_tools({"fala": text}, tools, tool_choice)
+
+    monkeypatch.setattr(llm, "complete", response)
+    conversation_id = uuid4()
+    reply = await harness.respond(
+        game.id, "bentinho", conversation_id, "player", "Bom dia"
+    )
+    assert "PRIVATE_MODEL_REASONING" not in reply.message.content
+    history = await storage.memory.list_messages(game.id, conversation_id, "player")
+    assert all("PRIVATE_MODEL_REASONING" not in message.content for message in history)
