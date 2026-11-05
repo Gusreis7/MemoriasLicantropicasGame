@@ -6,7 +6,7 @@ import pytest
 from test_turns import cycle, detain, events
 from test_case_integration import seed_case
 from test_interrogations import inquiry
-from memorias_licantropicas.contracts.errors import ConflictError, StorageUnavailableError
+from src.contracts.errors import ConflictError, StorageUnavailableError
 
 pytestmark = pytest.mark.anyio
 

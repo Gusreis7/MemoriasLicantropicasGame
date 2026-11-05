@@ -3,17 +3,17 @@ from uuid import UUID, uuid4
 
 import pytest
 
-from memorias_licantropicas.contracts.errors import ConflictError
-from memorias_licantropicas.contracts.model import GameState, GameCharacter
-from memorias_licantropicas.contracts.investigation import Crime, Evidence, Testimony as Statement, Interrogation, ActivityClaim
-from memorias_licantropicas.modules.investigation.catalog import (
+from src.contracts.errors import ConflictError
+from src.contracts.model import GameState, GameCharacter
+from src.contracts.investigation import Crime, Evidence, Testimony as Statement, Interrogation, ActivityClaim
+from src.modules.investigation.catalog import (
     INVENTORIES, ITEMS_BY_ID, ITEMS, PERSONAL_EXTRAS, items_of_kind,
 )
-from memorias_licantropicas.modules.investigation.rules import (
+from src.modules.investigation.rules import (
     make_initial_investigation, make_crime, make_testimony, evaluate_accusation, inspect_evidence, choose_victim,
 )
-from memorias_licantropicas.modules.investigation.scoring import assess_dossier, dossier_strength
-from memorias_licantropicas.modules.investigation.assembly import proof_strength
+from src.modules.investigation.scoring import assess_dossier, dossier_strength
+from src.modules.investigation.assembly import proof_strength
 
 NOW = datetime(2026, 11, 3, 12, tzinfo=UTC)
 

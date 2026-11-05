@@ -1,7 +1,7 @@
 """Continua os mesmos encontros de live.jsonl sem abrir novos cenários.
 
-PYTHONPATH=src:scripts .venv/bin/python scripts/explore_narrative_followup.py --stage 2
-PYTHONPATH=src:scripts .venv/bin/python scripts/explore_narrative_followup.py --stage 3
+PYTHONPATH=.:scripts .venv/bin/python scripts/explore_narrative_followup.py --stage 2
+PYTHONPATH=.:scripts .venv/bin/python scripts/explore_narrative_followup.py --stage 3
 As fases preservam IDs/histórico e registram seus próprios tokens incrementais.
 """
 import argparse,asyncio,json,sys
@@ -10,14 +10,14 @@ from uuid import UUID,NAMESPACE_URL,uuid5
 sys.path.insert(0,str(Path(__file__).resolve().parent))
 from explore_narrative_balance import NarrativeSimulation,OUT,IDS
 import fakeredis
-from memorias_licantropicas.settings import Settings
-from memorias_licantropicas.contracts.model import GameState,GameCharacter,Conversation,ConversationMessage
-from memorias_licantropicas.infrastructure.llm.bedrock_mantle import BedrockMantleClient
-from memorias_licantropicas.infrastructure.llm.aws_credentials import ProfileTokenProvider
-from memorias_licantropicas.infrastructure.usage import RedisUsageRepository,UsagePricing,MeteredLLMClient
-from memorias_licantropicas.modules.knowledge.service import KnowledgeService
-from memorias_licantropicas.modules.session_master.service import SessionMasterService
-from memorias_licantropicas.modules.agents.service import HarnessService
+from src.settings import Settings
+from src.contracts.model import GameState,GameCharacter,Conversation,ConversationMessage
+from src.infrastructure.llm.bedrock_mantle import BedrockMantleClient
+from src.infrastructure.llm.aws_credentials import ProfileTokenProvider
+from src.infrastructure.usage import RedisUsageRepository,UsagePricing,MeteredLLMClient
+from src.modules.knowledge.service import KnowledgeService
+from src.modules.session_master.service import SessionMasterService
+from src.modules.agents.service import HarnessService
 
 async def main(stage=2):
  settings=Settings();first=[json.loads(s) for s in (OUT/'live.jsonl').read_text().splitlines()]

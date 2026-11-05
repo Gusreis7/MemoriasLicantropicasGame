@@ -8,12 +8,12 @@ import fakeredis
 parser=argparse.ArgumentParser();parser.add_argument('--phase',choices=['before','after'],required=True)
 parser.add_argument('--source-root',type=Path,required=True);parser.add_argument('--output',type=Path,required=True)
 args=parser.parse_args();root=args.source_root.resolve()
-sys.path[:0]=[str(root/'src'),str(root/'scripts')]
+sys.path[:0]=[str(root),str(root/'scripts')]
 from simulate_gameplay import Simulation
-from memorias_licantropicas.contracts.model import GameState,GameCharacter
-from memorias_licantropicas.contracts.investigation import NightStory,MurderPlot
-from memorias_licantropicas.contracts.errors import ConflictError,AccessDeniedError
-from memorias_licantropicas.modules.investigation.catalog import INVENTORIES
+from src.contracts.model import GameState,GameCharacter
+from src.contracts.investigation import NightStory,MurderPlot
+from src.contracts.errors import ConflictError,AccessDeniedError
+from src.modules.investigation.catalog import INVENTORIES
 
 POLICIES=('examining','witness_first','common_only','one_source','rework')
 class Run(Simulation):

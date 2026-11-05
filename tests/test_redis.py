@@ -5,10 +5,10 @@ import pytest
 from redis.asyncio import Redis
 from redis.exceptions import ConnectionError
 
-from memorias_licantropicas.contracts.errors import (
+from src.contracts.errors import (
     AccessDeniedError, ConflictError, NotFoundError, StorageUnavailableError,
 )
-from memorias_licantropicas.infrastructure.redis_repository import RedisGameRepository
+from src.infrastructure.redis_repository import RedisGameRepository
 
 pytestmark = pytest.mark.anyio
 

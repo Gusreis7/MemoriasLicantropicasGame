@@ -5,10 +5,10 @@ from dataclasses import replace
 
 import pytest
 
-from memorias_licantropicas.contracts.errors import StorageUnavailableError
-from memorias_licantropicas.contracts.social import ExchangeRecord
-from memorias_licantropicas.infrastructure.social_repository import RedisSocialRepository
-from memorias_licantropicas.modules.social.views import SocialReadService
+from src.contracts.errors import StorageUnavailableError
+from src.contracts.social import ExchangeRecord
+from src.infrastructure.social_repository import RedisSocialRepository
+from src.modules.social.views import SocialReadService
 
 pytestmark = pytest.mark.anyio
 
@@ -42,7 +42,7 @@ async def test_wrong_outbox_type_does_not_commit_half_a_conversation(
 async def test_public_notebook_contains_only_utterances_actually_heard_by_player(
     storage, game, conversation, catalog, message_factory,
 ):
-    from memorias_licantropicas.contracts.model import Conversation
+    from src.contracts.model import Conversation
     await storage.memory.append_messages(game.id, conversation.id, (
         message_factory("O que Capitu lhe disse?"),
         message_factory("Capitu me contou uma história, detetive.", "bentinho"),
@@ -77,9 +77,9 @@ async def test_social_read_sanitizes_personal_secret_in_legacy_dialogue(
 async def test_social_routes_keep_private_knowledge_behind_admin_auth(
     api_client, storage, game, conversation, catalog, message_factory,
 ):
-    from memorias_licantropicas.contracts.social import KnowledgeEntry
-    from memorias_licantropicas.modules.admin.service import AdminService
-    from memorias_licantropicas.modules.world.repository import RedisWorldRepository
+    from src.contracts.social import KnowledgeEntry
+    from src.modules.admin.service import AdminService
+    from src.modules.world.repository import RedisWorldRepository
     await storage.memory.append_messages(game.id, conversation.id, (
         message_factory("O que sabe?"), message_factory("Só rumores, detetive.", "bentinho"),
     ))

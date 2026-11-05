@@ -6,17 +6,17 @@ from uuid import uuid4
 
 import pytest
 
-from memorias_licantropicas.contracts.errors import AccessDeniedError, ConflictError, NotFoundError
-from memorias_licantropicas.contracts.investigation import CaseEvent, CaseTransition
-from memorias_licantropicas.contracts.model import GameCharacter, GameState
-from memorias_licantropicas.modules.investigation.interrogation import (
+from src.contracts.errors import AccessDeniedError, ConflictError, NotFoundError
+from src.contracts.investigation import CaseEvent, CaseTransition
+from src.contracts.model import GameCharacter, GameState
+from src.modules.investigation.interrogation import (
     CONFESSION_DIFFICULTY, make_confrontation, make_interrogation, npc_interrogation_context,
 )
-from memorias_licantropicas.modules.investigation.rules import make_crime, make_testimony, inspect_evidence
-from memorias_licantropicas.modules.investigation.service import InvestigationService
-from memorias_licantropicas.modules.turns.service import TurnService
-from memorias_licantropicas.modules.world.gate import RedisPlayerGate
-from memorias_licantropicas.modules.world.repository import RedisWorldRepository
+from src.modules.investigation.rules import make_crime, make_testimony, inspect_evidence
+from src.modules.investigation.service import InvestigationService
+from src.modules.turns.service import TurnService
+from src.modules.world.gate import RedisPlayerGate
+from src.modules.world.repository import RedisWorldRepository
 
 pytestmark = pytest.mark.anyio
 
@@ -195,7 +195,7 @@ async def test_night_records_are_persisted_and_night_actions_blocked(inquiry):
 
 
 async def test_snapshots_exclude_detained_and_travelling_characters(inquiry):
-    from memorias_licantropicas.modules.investigation.interrogation import record_activities
+    from src.modules.investigation.interrogation import record_activities
     world = await inquiry.world.get(inquiry.game.id)
     world = world.model_copy(update={"npcs": tuple(npc.model_copy(update={"activity": "travelling"})
         if npc.npc_id == "virgilia" else npc for npc in world.npcs)})
@@ -235,7 +235,7 @@ async def test_interrogate_and_confront_require_social_approach_first(inquiry):
 async def test_interrogation_rest_contract_disallows_client_truth(inquiry):
     import httpx
     from fastapi import FastAPI
-    from memorias_licantropicas.modules.investigation.router import router, get_investigation_service
+    from src.modules.investigation.router import router, get_investigation_service
     app = FastAPI()
     app.include_router(router)
     app.dependency_overrides[get_investigation_service] = lambda: inquiry.service

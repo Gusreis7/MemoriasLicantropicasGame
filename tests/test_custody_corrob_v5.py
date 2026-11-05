@@ -3,9 +3,9 @@ from datetime import timedelta
 import pytest
 from test_evidence_specificity_v3 import dossier,NOW,game_for,collected
 from test_interrogations import inquiry,near
-from memorias_licantropicas.modules.investigation.catalog import items_of_kind,INVENTORIES
-from memorias_licantropicas.modules.investigation.rules import make_crime,make_testimony,evaluate_accusation
-from memorias_licantropicas.modules.investigation.scoring import assess_dossier
+from src.modules.investigation.catalog import items_of_kind,INVENTORIES
+from src.modules.investigation.rules import make_crime,make_testimony,evaluate_accusation
+from src.modules.investigation.scoring import assess_dossier
 
 
 def personal_dossier(person='bentinho'):
@@ -77,7 +77,7 @@ async def test_read_only_review_has_no_accusation_or_clock_cost(inquiry):
 
 @pytest.mark.anyio
 async def test_review_rest_contract_is_read_only_and_rejects_client_truth(inquiry,api_client):
- from memorias_licantropicas.modules.investigation.router import get_investigation_service
+ from src.modules.investigation.router import get_investigation_service
  from test_interrogations import dossier as ready_dossier
  state,game,ev,ts=await ready_dossier(inquiry)
  await inquiry.storage.client.set(inquiry.key+':investigation',state.model_dump_json())

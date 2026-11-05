@@ -1,5 +1,7 @@
 """Execução real do StateGraph com modelos simulados e persistência Redis isolada."""
 
+from native_fixtures import tool_response, respond_to_tools, invalid_tool_response
+
 import asyncio
 import json
 from types import SimpleNamespace
@@ -8,11 +10,11 @@ from uuid import uuid4
 
 import pytest
 
-from memorias_licantropicas.contracts.errors import ConflictError, LLMUnavailableError
-from memorias_licantropicas.contracts.model import LLMResponse
-from memorias_licantropicas.modules.agents.trace import RedisDialogueTraceRecorder
-from memorias_licantropicas.modules.agents.workflow import TECHNICAL_FALLBACK
-from memorias_licantropicas.modules.session_master.service import DialogueAssessment
+from src.contracts.errors import ConflictError, LLMUnavailableError
+from src.contracts.model import LLMResponse
+from src.modules.agents.trace import RedisDialogueTraceRecorder
+from src.modules.agents.workflow import TECHNICAL_FALLBACK
+from src.modules.session_master.service import DialogueAssessment
 
 pytestmark = pytest.mark.anyio
 
@@ -28,7 +30,7 @@ async def capture_traces(harness):
 
 
 def speech(text="Bom dia, Floriano."):
-    return LLMResponse(content=json.dumps({"fala": text}), model="simulated")
+    return tool_response({"fala": text}, "NpcSpeech", model="simulated")
 
 
 async def test_graph_has_separate_conditional_stages_and_success_trace(
@@ -68,7 +70,7 @@ async def test_parse_failure_has_two_attempts_and_noninvestigative_fallback(
     await storage.games.create(game)
     traces = await capture_traces(harness)
     llm.complete = AsyncMock(
-        return_value=LLMResponse(content='{"fala":7}', model="simulated")
+        return_value=tool_response({"fala": 7}, "NpcSpeech", model="simulated")
     )
     conversation_id = uuid4()
     reply = await harness.respond(
@@ -204,7 +206,7 @@ async def test_total_turn_timeout_cancels_inference_without_partial_messages(
     traces = await capture_traces(harness)
     cancelled = asyncio.Event()
 
-    async def slow_model(messages):
+    async def slow_model(messages, *, tools=(), tool_choice=None):
         try:
             await asyncio.sleep(5)
         finally:
@@ -225,7 +227,7 @@ async def test_external_cancellation_is_preserved(harness, storage, game, llm):
     traces = await capture_traces(harness)
     started = asyncio.Event()
 
-    async def blocked(messages):
+    async def blocked(messages, *, tools=(), tool_choice=None):
         started.set()
         await asyncio.Event().wait()
 
@@ -251,7 +253,7 @@ async def test_shared_compiled_graph_isolates_concurrent_games_and_prompts(
     traces = await capture_traces(harness)
     arrived, prompts = asyncio.Event(), []
 
-    async def concurrent_model(messages):
+    async def concurrent_model(messages, *, tools=(), tool_choice=None):
         prompts.append(messages)
         if len(prompts) == 2:
             arrived.set()
@@ -323,7 +325,7 @@ async def test_trace_sink_failure_does_not_mask_authentication_error(
 async def test_trace_sink_has_a_separate_bounded_deadline(
     harness, storage, game, monkeypatch
 ):
-    import memorias_licantropicas.modules.agents.workflow as workflow
+    import src.modules.agents.workflow as workflow
 
     await storage.games.create(game)
     monkeypatch.setattr(workflow, "TRACE_TIMEOUT_SECONDS", 0.02)
@@ -376,9 +378,14 @@ async def test_arbitrary_exception_code_cannot_enter_trace(harness, storage, gam
 
 
 async def test_failed_lookup_cannot_create_orphan_redis_trace(harness, storage):
-    from memorias_licantropicas.contracts.errors import NotFoundError
+    from src.contracts.errors import NotFoundError
+
     missing = uuid4()
-    harness._trace_sink = RedisDialogueTraceRecorder(storage.client, storage.prefix).record
+    harness._trace_sink = RedisDialogueTraceRecorder(
+        storage.client, storage.prefix
+    ).record
     with pytest.raises(NotFoundError):
         await harness.respond(missing, "bentinho", uuid4(), "player", "Bom dia")
-    assert not await storage.client.exists(f"{storage.prefix}:game:{{{missing}}}:events")
+    assert not await storage.client.exists(
+        f"{storage.prefix}:game:{{{missing}}}:events"
+    )

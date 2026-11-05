@@ -7,17 +7,17 @@ import httpx
 import pytest
 from fastapi import FastAPI
 
-from memorias_licantropicas.contracts.errors import AccessDeniedError, ConflictError, NotFoundError
-from memorias_licantropicas.contracts.investigation import CaseEvent
-from memorias_licantropicas.contracts.model import GameCharacter, GameState
-from memorias_licantropicas.modules.characters.repository import CatalogCharacterRepository
-from memorias_licantropicas.modules.investigation.catalog import INVENTORIES, ITEMS_BY_ID, OBSERVED_PEOPLE
-from memorias_licantropicas.modules.investigation.router import get_investigation_service, router
-from memorias_licantropicas.modules.investigation.rules import (
+from src.contracts.errors import AccessDeniedError, ConflictError, NotFoundError
+from src.contracts.investigation import CaseEvent
+from src.contracts.model import GameCharacter, GameState
+from src.modules.characters.repository import CatalogCharacterRepository
+from src.modules.investigation.catalog import INVENTORIES, ITEMS_BY_ID, OBSERVED_PEOPLE
+from src.modules.investigation.router import get_investigation_service, router
+from src.modules.investigation.rules import (
     choose_victim, evaluate_accusation, make_crime, make_initial_investigation, make_testimony, inspect_evidence,
 )
-from memorias_licantropicas.modules.investigation.service import InvestigationService
-from memorias_licantropicas.modules.world.catalog import make_initial_world
+from src.modules.investigation.service import InvestigationService
+from src.modules.world.catalog import make_initial_world
 
 pytestmark = pytest.mark.anyio
 NOW = datetime(2026, 11, 2, 12, tzinfo=UTC)
@@ -320,9 +320,9 @@ async def test_npc_context_uses_existing_lock_and_limits_observed_inventory(case
 
 
 async def test_investigation_actions_integrate_with_atomic_turn_engine(case, storage, single_wolf_attack):
-    from memorias_licantropicas.modules.turns.service import TurnService
-    from memorias_licantropicas.modules.world.gate import RedisPlayerGate
-    from memorias_licantropicas.modules.world.repository import RedisWorldRepository
+    from src.modules.turns.service import TurnService
+    from src.modules.world.gate import RedisPlayerGate
+    from src.modules.world.repository import RedisWorldRepository
 
     assert await storage.games.create(case.game)
     catalog = CatalogCharacterRepository()

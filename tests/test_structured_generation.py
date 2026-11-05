@@ -1,100 +1,45 @@
-"""Contratos novos não reparam JSON inválido nem escondem falhas de transporte."""
+"""Contratos nativos não fazem downgrade para parsing de conteúdo textual."""
 
 import asyncio
-import json
-import traceback
-from uuid import UUID
+from unittest.mock import patch
+from uuid import uuid4
 
+import fakeredis
 import pytest
+from langchain_core.tracers.langchain import LangChainTracer
 from pydantic import BaseModel, ConfigDict, Field
 
-from memorias_licantropicas.contracts.errors import LLMUnavailableError
-from memorias_licantropicas.contracts.model import ChatMessage, LLMResponse
-from memorias_licantropicas.infrastructure.llm.structured import (
-    StructuredOutputError,
-    format_instructions,
-    generate_structured,
-    parse_model_output,
-)
+from src.contracts.errors import LLMUnavailableError
+from src.contracts.model import ChatMessage, LLMResponse
+from src.infrastructure.llm.structured import generate_structured
 
 
-class Entry(BaseModel):
-    model_config = ConfigDict(extra="forbid", strict=True)
-    quote: str
-    score: int
+@pytest.fixture
+def anyio_backend():
+    return "asyncio"
 
 
 class Evaluation(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
     useful: bool
     day: int = Field(ge=0)
-    entries: tuple[Entry, ...]
-    message_id: UUID | None = None
 
 
-GOOD = '{"useful":true,"day":1,"entries":[{"quote":"Vi Capitu no cais.","score":2}]}'
+GOOD = {"useful": True, "day": 1}
 MESSAGES = (
-    ChatMessage(role="system", content='Ficha privada:\n{"id":"capitu"}'),
-    ChatMessage(role="user", content='{"fala":"Quem estava no cais?"}'),
+    ChatMessage(role="system", content="PRIVATE_CONTEXT"),
+    ChatMessage(role="user", content="Pergunta"),
 )
 
 
-def test_langchain_parser_handles_json_native_tuple_and_uuid_without_coercion():
-    identifier = "12345678-1234-1234-1234-123456789012"
-    data = json.loads(GOOD) | {"message_id": identifier}
-    result = parse_model_output(json.dumps(data), Evaluation)
-    assert isinstance(result.entries, tuple)
-    assert result.entries[0].score == 2
-    assert result.message_id == UUID(identifier)
-
-    assert "entries" in format_instructions(Evaluation)
-
-
-@pytest.mark.parametrize(
-    "raw",
-    [
-        "",
-        " ",
-        "Segue: " + GOOD,
-        "```json\n" + GOOD + "\n```",
-        GOOD + " lixo",
-        GOOD[:-1],
-        "[]",
-        "null",
-        "true",
-        GOOD + GOOD,
-        '{"useful":true,"useful":false,"day":1,"entries":[]}',
-        '{"useful":true,"day":NaN,"entries":[]}',
-        '{"useful":true,"day":Infinity,"entries":[]}',
-        '{"useful":true,"day":1,"entries":[{"quote":"a","quote":"b","score":2}]}',
-    ],
-)
-def test_rejects_entire_malformed_or_ambiguous_document(raw):
-    with pytest.raises(StructuredOutputError) as error:
-        parse_model_output(raw, Evaluation)
-    assert error.value.code == "invalid_json"
-
-
-@pytest.mark.parametrize(
-    "change",
-    [
-        {"useful": "true"},
-        {"useful": 1},
-        {"day": "1"},
-        {"day": True},
-        {"day": -1},
-        {"entries": [{"quote": "PRIVATE_RAW_SECRET", "score": "2"}]},
-        {"entries": [{"quote": "PRIVATE_RAW_SECRET", "score": 2, "admin": True}]},
-        {"entries": [{"score": 2}]},
-        {"admin": True},
-    ],
-)
-def test_rejects_wrong_types_unknown_fields_and_nested_contract_errors(change):
-    raw = json.dumps(json.loads(GOOD) | change)
-    with pytest.raises(StructuredOutputError) as error:
-        parse_model_output(raw, Evaluation)
-    assert error.value.code == "invalid_schema"
-    assert "PRIVATE_RAW_SECRET" not in "".join(traceback.format_exception(error.value))
+def native(args=GOOD, name="Evaluation", **kwargs):
+    return LLMResponse(
+        model="offline-fixture",
+        tool_calls=({"name": name, "args": args, "id": "call-1"},),
+        input_tokens=20,
+        output_tokens=5,
+        **kwargs,
+    )
 
 
 class ScriptedClient:
@@ -102,38 +47,65 @@ class ScriptedClient:
         self.responses = iter(responses)
         self.calls = []
 
-    async def complete(self, messages):
-        self.calls.append(messages)
-        result = next(self.responses)
-        if isinstance(result, BaseException):
-            raise result
-        return LLMResponse(
-            content=result, model="offline-fixture", input_tokens=20, output_tokens=5
-        )
+    async def complete(self, messages, *, tools=(), tool_choice=None):
+        self.calls.append((messages, tools, tool_choice))
+        response = next(self.responses)
+        if isinstance(response, BaseException):
+            raise response
+        return response
 
 
 @pytest.mark.anyio
-async def test_invalid_response_gets_one_bounded_retry_without_echoing_raw_output():
-    client = ScriptedClient(["PRIVATE_RAW_SECRET", GOOD])
-    result = await generate_structured(client, MESSAGES, Evaluation)
-    assert result.ok and result.attempts == 2 and result.error_code is None
-    assert result.value.day == 1 and result.response.output_tokens == 5
-    assert len(client.calls) == 2
-    for prompt in client.calls:
-        assert prompt[0] == MESSAGES[0] and prompt[-1] == MESSAGES[-1]
-        assert prompt[-2].role == "system" and "entries" in prompt[-2].content
-        assert "PRIVATE_RAW_SECRET" not in str(prompt)
-    assert "tentativa anterior" in client.calls[1][-2].content
-    assert "PRIVATE_RAW_SECRET" not in repr(result)
+@pytest.mark.parametrize(
+    "args",
+    [
+        {"useful": "true", "day": 1},
+        {"useful": 1, "day": 1},
+        {"useful": True, "day": "1"},
+        {"useful": True, "day": True},
+        {"useful": True, "day": -1},
+        {"useful": True, "day": 1, "admin": True},
+        {},
+    ],
+)
+async def test_native_wrong_types_and_unknown_fields_are_rejected(args):
+    result = await generate_structured(
+        ScriptedClient([native(args)]), MESSAGES, Evaluation, max_attempts=1
+    )
+    assert not result.ok and result.error_code == "invalid_schema"
 
 
 @pytest.mark.anyio
-async def test_exhausted_parser_returns_failure_and_never_fabricates_value():
-    client = ScriptedClient(["PRIVATE_RAW_SECRET", '{"useful":true}'])
+async def test_bounded_retry_preserves_prompt_and_uses_native_schema_each_time():
+    client = ScriptedClient([native({"useful": True, "day": "1"}), native()])
     result = await generate_structured(client, MESSAGES, Evaluation)
-    assert not result.ok and result.value is None and result.attempts == 2
-    assert result.error_code == "invalid_schema" and len(client.calls) == 2
-    assert "PRIVATE_RAW_SECRET" not in repr(result)
+    assert result.ok and result.attempts == 2 and result.value.day == 1
+    for prompt, tools, choice in client.calls:
+        assert prompt == MESSAGES and choice == "auto"
+        assert tools[0]["function"]["name"] == "Evaluation"
+    assert "PRIVATE_CONTEXT" not in repr(result)
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "response",
+    [
+        LLMResponse(model="fake", content='{"useful":true,"day":1}'),
+        native(name="Unexpected"),
+        LLMResponse(
+            model="fake",
+            tool_calls=(
+                {"name": "Evaluation", "args": GOOD, "id": "a"},
+                {"name": "Evaluation", "args": GOOD, "id": "b"},
+            ),
+        ),
+    ],
+)
+async def test_absent_unknown_or_multiple_calls_fail_without_content_recovery(response):
+    result = await generate_structured(
+        ScriptedClient([response]), MESSAGES, Evaluation, max_attempts=1
+    )
+    assert not result.ok and result.error_code == "invalid_tool_response"
 
 
 @pytest.mark.anyio
@@ -149,7 +121,7 @@ async def test_exhausted_parser_returns_failure_and_never_fabricates_value():
         "llm_model_unavailable",
     ],
 )
-async def test_auth_quota_timeout_and_network_failures_do_not_retry_or_leak(code):
+async def test_auth_quota_timeout_and_network_errors_do_not_retry(code):
     client = ScriptedClient([LLMUnavailableError("PRIVATE_PROVIDER_SECRET", code=code)])
     result = await generate_structured(client, MESSAGES, Evaluation)
     assert not result.ok and result.attempts == 1 and result.error_code == code
@@ -157,15 +129,7 @@ async def test_auth_quota_timeout_and_network_failures_do_not_retry_or_leak(code
 
 
 @pytest.mark.anyio
-@pytest.mark.parametrize("code", ["llm_invalid_response", "llm_response_truncated"])
-async def test_invalid_transport_document_can_be_retried_without_repair(code):
-    client = ScriptedClient([LLMUnavailableError("PRIVATE", code=code), GOOD])
-    result = await generate_structured(client, MESSAGES, Evaluation)
-    assert result.ok and result.attempts == 2
-
-
-@pytest.mark.anyio
-async def test_cancellation_propagates_instead_of_returning_fallback():
+async def test_cancellation_propagates():
     client = ScriptedClient([asyncio.CancelledError()])
     with pytest.raises(asyncio.CancelledError):
         await generate_structured(client, MESSAGES, Evaluation)
@@ -174,7 +138,7 @@ async def test_cancellation_propagates_instead_of_returning_fallback():
 
 @pytest.mark.anyio
 @pytest.mark.parametrize("attempts", [0, 4, True, "2"])
-async def test_invalid_retry_budget_fails_before_calling_provider(attempts):
+async def test_invalid_budget_never_calls_provider(attempts):
     client = ScriptedClient([])
     with pytest.raises(ValueError):
         await generate_structured(client, MESSAGES, Evaluation, max_attempts=attempts)
@@ -182,24 +146,66 @@ async def test_invalid_retry_budget_fails_before_calling_provider(attempts):
 
 
 @pytest.mark.anyio
-async def test_both_paid_attempts_remain_visible_to_usage_meter(storage):
-    from uuid import uuid4
-    from memorias_licantropicas.infrastructure.usage import (
+async def test_native_attempts_keep_usage_records_and_forward_tool_kwargs():
+    from src.infrastructure.usage import (
         MeteredLLMClient,
         RedisUsageRepository,
         usage_scope,
     )
 
-    game_id = uuid4()
-    repository = RedisUsageRepository(storage.client, storage.prefix)
-    client = MeteredLLMClient(
-        ScriptedClient(["invalid document", GOOD]),
-        repository,
-        configured_model="offline-fixture",
-    )
-    with usage_scope(game_id, "structured-contract-test", "capitu"):
-        result = await generate_structured(client, MESSAGES, Evaluation)
-    summary = await repository.summary(game_id)
-    assert result.ok and summary.totals.calls == 2
-    assert summary.totals.known_input_tokens == 40
-    assert summary.totals.known_output_tokens == 10
+    redis = fakeredis.FakeAsyncRedis(decode_responses=True)
+    try:
+        repository = RedisUsageRepository(redis, "native-contract-test")
+        raw = ScriptedClient([native({"useful": True, "day": "1"}), native()])
+        client = MeteredLLMClient(raw, repository, configured_model="offline-fixture")
+        game_id = uuid4()
+        with usage_scope(game_id, "native-contract-test", "capitu"):
+            result = await generate_structured(client, MESSAGES, Evaluation)
+        summary = await repository.summary(game_id)
+        assert result.ok and summary.totals.calls == 2
+        assert (
+            summary.totals.known_input_tokens == 40
+            and summary.totals.known_output_tokens == 10
+        )
+        assert all(call[1] and call[2] == "auto" for call in raw.calls)
+    finally:
+        await redis.aclose()
+
+
+@pytest.mark.anyio
+async def test_incidental_langsmith_environment_cannot_export_private_inputs(
+    monkeypatch,
+):
+    monkeypatch.setenv("LANGSMITH_TRACING", "true")
+    monkeypatch.setenv("LANGCHAIN_TRACING_V2", "true")
+    monkeypatch.setenv("LANGSMITH_API_KEY", "fake-test-only")
+    with patch.object(
+        LangChainTracer,
+        "__init__",
+        side_effect=AssertionError("external tracer created"),
+    ) as constructor:
+        result = await generate_structured(
+            ScriptedClient([native()]), MESSAGES, Evaluation
+        )
+    assert result.ok and constructor.call_count == 0
+
+
+@pytest.mark.anyio
+async def test_actual_task_cancellation_reaches_transport_and_never_returns_fallback():
+    started = asyncio.Event()
+    cancelled = asyncio.Event()
+
+    class SlowClient:
+        async def complete(self, messages, *, tools=(), tool_choice=None):
+            started.set()
+            try:
+                await asyncio.sleep(60)
+            finally:
+                cancelled.set()
+
+    task = asyncio.create_task(generate_structured(SlowClient(), MESSAGES, Evaluation))
+    await asyncio.wait_for(started.wait(), 1)
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    await asyncio.wait_for(cancelled.wait(), 1)

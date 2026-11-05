@@ -7,7 +7,7 @@ trocar instruções, expor contexto privado e inserir saídas técnicas no diál
 
 ## Contrato entre guarda e harness
 
-Fonte: `src/memorias_licantropicas/modules/agents/guard.py`.
+Fonte: `src/modules/agents/guard.py`.
 
 ```python
 @dataclass(frozen=True)

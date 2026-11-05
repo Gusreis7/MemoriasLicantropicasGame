@@ -20,7 +20,11 @@ Para instalação, escolha de credencial, comandos de parada e solução de prob
 
 ## Agentes, grafos e simulações
 
-A [arquitetura LLM atual](docs/refatoracao_llm.md) separa transporte Mantle, prompts de persona, contratos Pydantic, output parser do langchain-core e grafos LangGraph de diálogo/convivência. A [simulação de partidas completas](docs/simulacao_partidas_refatoracao.md) executa os serviços e termina partidas pelo motor; o modo padrão é offline e não faz chamadas AWS.
+A [arquitetura LLM atual](docs/refatoracao_llm.md) separa transporte Mantle, prompts de persona, contratos Pydantic e grafos LangGraph de diálogo/convivência. A geração usa **tool calling nativo**, `ChatModel.with_structured_output(method="function_calling")` e `PydanticToolsParser`: o schema vai em `tools`, separado das instruções narrativas. Não há pedido de JSON no prompt, extração de texto ou regex para recuperar uma resposta estruturada.
+
+O bridge utiliza `tool_choice="auto"` e trata ausência de chamada como falha explícita; não promete forcing ou constrained decoding. **Esse novo fluxo ainda não foi validado ao vivo no Qwen/Mantle.** Consulte os [contratos](docs/contratos_llm_estruturados.md) e [suporte nativo e limites](docs/saida_nativa_llm.md).
+
+A [simulação de partidas completas](docs/simulacao_partidas_refatoracao.md) executa os serviços e termina partidas pelo motor; o provedor padrão é um dublê declarado, sem chamadas AWS. Seus resultados não medem fluência ou custos reais do Qwen.
 
 ```sh
 uv run python scripts/run_session_simulations.py --games 100 --seed 20261105
@@ -52,7 +56,7 @@ Essas são direções de estudo; as mecânicas e integrações ainda serão defi
 
 A primeira versão visual permite andar lateralmente, viajar entre cinco locais pelo mapa, abordar os sete NPCs e conversar com suas personas, retomando o histórico. Inclui sprites animados, retratos e cenários pixel art. O painel admin autenticado mostra a verdade da partida, transcrições, grafo e eventos.
 
-A suíte comum usa Redis em memória/real e inferência simulada; houve também validação manual separada com Qwen real no ambiente Docker. O ciclo já inclui crimes, dias/noites, acusação e desfechos. A convivência acrescenta encontros autônomos entre NPCs, relações direcionais e fofocas com origem rastreável.
+A suíte comum usa Redis em memória/real e inferência simulada. Experimentos históricos com Qwen real não validam o novo protocolo nativo de ferramentas. O ciclo já inclui crimes, dias/noites, acusação e desfechos. A convivência acrescenta encontros autônomos entre NPCs, relações direcionais e fofocas com origem rastreável.
 
 ## Planejamento
 
@@ -73,6 +77,13 @@ O [plano de convivência e fofocas](docs/plano_convivencia_fofocas.md), os [cont
 Os [contratos entre as frentes](docs/contratos_agentes.md) fixam as interfaces e responsabilidades. A [integração da base](docs/base_agentes.md) descreve configuração, uso e limites atuais.
 
 ## Desenvolvimento local
+
+O código Python fica diretamente em `src/`, com imports `src.*`. O entrypoint ASGI é `src.main:app`:
+
+```sh
+uv sync --locked
+uv run uvicorn src.main:app --host 127.0.0.1 --port 7079
+```
 
 O [guia de execução](docs/execucao_docker.md#desenvolvimento-fora-do-docker) contém o caminho para rodar API e Vite no host com Redis no Docker. O projeto usa a versão de Python indicada em `.python-version`; ao alterar dependências com `uv add` ou `uv add --dev`, versione também `uv.lock`.
 
@@ -152,13 +163,16 @@ Explorações em `AED/` só seguem para `develop` quando suas alterações forem
 ## Estrutura
 
 ```text
-src/memorias_licantropicas/
+src/
+  __init__.py              # Pacote Python src; imports src.*
   contracts/               # Modelos internos e portas compartilhadas
   modules/                 # Characters, games, agents, conversations, world e admin
-  infrastructure/          # Redis e cliente Mantle
+  infrastructure/          # Redis, cliente Mantle e ChatModel/output parser nativo
+  prompts/                 # Tarefas e projeção das personas
+  simulation/              # Políticas públicas, provedor offline e partidas completas
   composition.py           # Construção e injeção dos serviços
   settings.py              # Configuração por ambiente
-  main.py                  # Aplicação FastAPI
+  main.py                  # Aplicação FastAPI: src.main:app
 tests/                     # Testes da API
 frontend/                  # Jogo, painel, assets reais e testes Brave
 deploy/                    # Gateways e startup local AWS

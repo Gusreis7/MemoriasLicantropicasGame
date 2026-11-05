@@ -3,8 +3,8 @@ from uuid import UUID
 import pytest
 from test_conversations import open_conversation
 from test_social_service import social_case, seed_claim
-from memorias_licantropicas.modules.world.service import WorldService
-from memorias_licantropicas.modules.world.model import WorldState
+from src.modules.world.service import WorldService
+from src.modules.world.model import WorldState
 
 pytestmark = pytest.mark.anyio
 
