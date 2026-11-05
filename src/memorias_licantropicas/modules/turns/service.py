@@ -18,9 +18,10 @@ from memorias_licantropicas.modules.world.model import WorldState
 class TurnService:
     def __init__(self, redis, prefix, games, characters, world_repository, player_gate,
                  clock: Callable[[], datetime] | None = None,
-                 day_seconds: float = 300, night_seconds: float = 8):
+                 day_seconds: float = 300, night_seconds: float = 8, victory_editor=None):
         if day_seconds <= 0 or night_seconds <= 0:
             raise ValueError("As durações das fases devem ser positivas.")
+        self._victory_editor = victory_editor
         self._repository = RedisTurnRepository(redis, prefix)
         self._games = games
         self._characters = characters
@@ -29,6 +30,11 @@ class TurnService:
         self._clock = clock or (lambda: datetime.now(UTC))
         self._day_seconds = day_seconds
         self._night_seconds = night_seconds
+
+    async def _edit_victory(self, previous, state, game):
+        if previous.status != 'won' and state.status == 'won' and self._victory_editor:
+            return await self._victory_editor(state, game)
+        return state
 
     def now(self) -> datetime:
         now = self._clock()
@@ -86,6 +92,7 @@ class TurnService:
             result = resolve_transition(state, game, now)
             updated = result.state.model_copy(update={"revision": state.revision + 1})
             updated, next_game, next_world = apply_assembly_effects(updated, game, world, now)
+            updated = await self._edit_victory(state, updated, next_game)
             await self._repository.commit(previous=state,state=updated,previous_game=game,game=next_game,
                 previous_world=world,world=next_world,events=result.events,occurred_at=now)
             state,game,world=updated,next_game,next_world
@@ -111,6 +118,7 @@ class TurnService:
                 events = (CaseEvent(type="night.started", data={"day": state.day}),)
             else:
                 updated, next_game, updated_world, events = await self._resolve_night(state, game, world, boundary)
+            updated = await self._edit_victory(state, updated, next_game)
             await self._repository.commit(
                 previous=state, state=updated, previous_game=game, game=next_game,
                 previous_world=world, world=updated_world, events=events, occurred_at=boundary,
@@ -119,7 +127,9 @@ class TurnService:
         raise StorageUnavailableError("O ciclo ultrapassou o limite de recuperação.")
 
     async def _resolve_night(self, state, game, world, boundary):
-        from memorias_licantropicas.modules.investigation.rules import choose_victim, make_crime
+        from memorias_licantropicas.modules.investigation.rules import (
+            choose_victim, make_crime, werewolf_cast_victims, WEREWOLF_DEFEAT_THRESHOLD,
+        )
         from memorias_licantropicas.modules.investigation.night_story import resolve_story
         from memorias_licantropicas.modules.investigation.interrogation import record_activities
         from memorias_licantropicas.modules.session_master.editorial import morning_edition, final_edition
@@ -156,7 +166,10 @@ class TurnService:
                     'target_id':story.plot.target_id,'stress':story.plot.stress,'day':state.day}))
             if detention=='released':
                 events.append(CaseEvent(type='suspect.released',data={'character_id':state.detained_npc_id,'day':day}))
-            status='active' if any(m.role=='civil' and m.alive and m.character_id not in state.expelled_npc_ids for m in game.characters) else 'lost'
+            victims = werewolf_cast_victims((*state.crimes, *fresh),
+                {m.character_id for m in game.characters}, wolf)
+            defeated = len(victims) >= WEREWOLF_DEFEAT_THRESHOLD
+            status='lost' if defeated or not any(m.role=='civil' and m.alive and m.character_id not in state.expelled_npc_ids for m in game.characters) else 'active'
         crimes=(*state.crimes,*fresh)
         method='detention' if status=='won' else 'survival' if status=='lost' else None
         updated=state.model_copy(update={'revision':state.revision+1,'day':day,
@@ -283,6 +296,7 @@ class TurnService:
         if assembly:
             from memorias_licantropicas.modules.investigation.assembly import apply_assembly_effects
             updated, updated_game, updated_world = apply_assembly_effects(updated, game, updated_world, occurred_at)
+        updated = await self._edit_victory(state, updated, updated_game)
         await self._repository.commit(
             previous=state, state=updated, previous_game=game, game=updated_game,
             previous_world=world, world=updated_world, events=events, occurred_at=occurred_at,

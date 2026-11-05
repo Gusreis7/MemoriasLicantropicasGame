@@ -131,6 +131,7 @@ def build_services(settings: Settings) -> Services:
     master_llm = social_client(640, settings.llm_timeout_seconds)
     social_clients = (*social_clients, master_llm)
     master = SessionMasterService(turns, games, memory, master_llm, redis, settings.redis_prefix)
+    turns._victory_editor = master.publish_victory
     harness = HarnessService(characters, games, memory, dialogue_llm, history_limit=settings.llm_history_limit,
                              day_policy=turns, context_provider=investigation.npc_context_locked,
                              knowledge_provider=knowledge.context if knowledge else None, session_master=master)

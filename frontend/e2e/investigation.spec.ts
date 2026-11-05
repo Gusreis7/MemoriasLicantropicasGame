@@ -142,6 +142,19 @@ test('busca, apresenta vestígios e pede detenção antes de aguardar a noite', 
   await expect(page.locator('#phase-description')).toContainText('expulsou'); await expect(page.locator('#ending-new-case')).toBeVisible();
 });
 
+test('quarta vítima encerra o caso com a edição de derrota do Clarim', async ({page}) => {
+  const city = await cityFixture(page); await begin(page);
+  city.state.day = 5; city.state.phase = 'finished'; city.state.status = 'lost'; city.state.revision++;
+  city.state.ending = {result: 'lost', method: 'survival', werewolf_id: 'bentinho', message: 'Floriano não conseguiu deter o lobisomem a tempo. A besta-fera venceu.'};
+  city.state.journal.push({day: 5, title: 'O Clarim do Rio', headline: 'Floriano não chegou a tempo: a besta-fera venceu', body: 'Quatro dos sete moradores foram mortos pelo lobisomem. Floriano não conseguiu deter a fera a tempo.', victim_id: 'rubiao', victim_name: 'Rubião', location_id: 'praca_verde', detention_outcome: 'none', illustration: 'crime_street'});
+  await expect(page.locator('#victory-paper')).toBeVisible({timeout: 10000});
+  await expect(page.locator('#victory-headline')).toHaveText('Floriano não chegou a tempo: a besta-fera venceu');
+  await expect(page.locator('#victory-body')).toContainText('Quatro dos sete moradores');
+  await expect(page.locator('#victory-paper .press-picture')).toBeHidden();
+  await expect(page.locator('#ending-new-case')).toBeVisible();
+  await expect(page.locator('#open-map')).toBeDisabled();
+});
+
 test('amanhecer retorna à banca e publica a morte sem manter o NPC no cenário', async ({page}) => {
   const city = await cityFixture(page); await begin(page);
   city.state.phase = 'night'; city.state.revision++; city.state.phase_ends_at = new Date(Date.now() + 8000).toISOString();

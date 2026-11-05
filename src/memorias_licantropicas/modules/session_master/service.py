@@ -99,6 +99,15 @@ class SessionMasterService:
         self._turns, self._games, self._memory, self._llm = turns, games, memory, llm
         self._redis, self._prefix = redis, prefix
 
+    async def publish_victory(self, state, game):
+        """Redige a edição final antes do commit, sem alterar o resultado do motor."""
+        from memorias_licantropicas.modules.session_master.editorial import victory_article
+        from memorias_licantropicas.modules.characters.catalog import CHARACTERS
+        names = {profile.id: profile.name for profile in CHARACTERS}
+        wolf = next(member.character_id for member in game.characters if member.role == 'werewolf')
+        edition = await victory_article(state, names, wolf, self._llm)
+        return state.model_copy(update={'journal': (*state.journal[:-1], edition)})
+
     def _key(self, game_id, conversation_id):
         return f'{self._prefix}:game:{{{game_id}}}:session-pending:{conversation_id}'
 

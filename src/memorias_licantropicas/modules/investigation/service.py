@@ -39,7 +39,8 @@ class InvestigationService(AssemblyServiceMixin):
                          "Floriano venceu a investigação." if state.ending_method == "confession" else
                          "A transformação na cela confirmou a acusação. A cidade expulsa o lobisomem. "
                          "Floriano venceu a investigação." if state.status == "won" else
-                         "Nenhum civil sobreviveu às noites. A investigação de Floriano terminou em derrota."))
+                         "Floriano não conseguiu deter o lobisomem a tempo. A besta-fera venceu. "
+                         "A investigação terminou em derrota."))
         return CasePublic(
             achievements=tuple(AchievementPublic(**a.model_dump()) for a in state.achievements),
             game_id=state.game_id, revision=state.revision, day=state.day, phase=state.phase, status=state.status,

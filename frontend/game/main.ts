@@ -696,15 +696,15 @@ function showPhase() {
   const ending = caseState.ending;
   const victorious = ending?.result === 'won';
   const expelled = caseState.assembly?.outcome === 'player_expelled';
-  $('#victory-paper').hidden = !victorious && !expelled;
-  $('#phase-overlay .phase-modal').classList.toggle('is-victory',victorious || expelled);
-  $('#victory-paper .press-picture').hidden = expelled;
-  $('#victory-paper .newspaper-edition span').textContent = expelled ? 'FLORIANO EXPULSO DA CIDADE' : 'A VITÓRIA DE FLORIANO';
-  $('#victory-paper .victory-ending').textContent = expelled ? 'A cidade afastou o detetive. A investigação está encerrada.' : 'O caso está encerrado. A cidade volta a respirar.';
-  if(victorious || expelled) {
+  $('#victory-paper').hidden = !ending;
+  $('#phase-overlay .phase-modal').classList.toggle('is-victory',!!ending);
+  $('#victory-paper .press-picture').hidden = !victorious;
+  $('#victory-paper .newspaper-edition span').textContent = expelled ? 'FLORIANO EXPULSO DA CIDADE' : victorious ? 'A VITÓRIA DE FLORIANO' : 'A BESTA-FERA VENCEU';
+  $('#victory-paper .victory-ending').textContent = expelled ? 'A cidade afastou o detetive. A investigação está encerrada.' : victorious ? 'O caso está encerrado. A cidade volta a respirar.' : 'Floriano não chegou a tempo. A cidade está de luto.';
+  if(ending) {
     const edition=caseState.journal.at(-1);
     $('#victory-day').textContent=`DIA ${caseState.day}`;
-    $('#victory-headline').textContent=expelled ? edition?.headline ?? 'A cidade expulsa Floriano' : edition?.illustration === 'victory' ? edition.headline : 'Floriano vence: a cidade está livre do lobisomem';
+    $('#victory-headline').textContent=victorious ? (edition?.illustration === 'victory' ? edition.headline : 'Floriano vence: a cidade está livre do lobisomem') : edition?.headline ?? (expelled ? 'A cidade expulsa Floriano' : 'Floriano não chegou a tempo: a besta-fera venceu');
     $('#victory-body').textContent=edition?.body ?? ending?.message ?? '';
   }
   $('#phase-eyebrow').textContent = ending ? ending.result === 'won' ? 'A CIDADE RESPIRA ALIVIADA' : 'A CIDADE SILENCIOU' : 'A CIDADE RECOLHE-SE';

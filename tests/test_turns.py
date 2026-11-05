@@ -153,11 +153,11 @@ async def test_offline_catchup_uses_original_deadlines_and_terminates(cycle, sto
     cycle.clock[0] += timedelta(days=30)
     case = await cycle.turns.sync(cycle.game.id)
     assert case.status == "lost" and case.phase == "finished"
-    assert case.day == 7  # Seis noites, uma por civil.
+    assert case.day == 5  # Quatro vítimas entre os sete moradores; Brás Cubas não entra.
     killed = await events(storage, cycle, "character.killed")
-    assert len(killed) == len({record["data"]["victim_id"] for record in killed}) == 6
-    assert case.phase_ends_at == cycle.game.created_at + timedelta(seconds=6 * 308)
-    assert len(case.journal) == 7
+    assert len(killed) == len({record["data"]["victim_id"] for record in killed}) == 4
+    assert case.phase_ends_at == cycle.game.created_at + timedelta(seconds=4 * 308)
+    assert len(case.journal) == 5
     assert await cycle.turns.sync(cycle.game.id) == case
 
 
@@ -317,3 +317,25 @@ async def test_terminal_reads_do_not_require_player_gate(cycle):
     terminal = await cycle.turns.sync(cycle.game.id)
     async with cycle.gate.hold(cycle.game.id):
         assert await cycle.turns.sync(cycle.game.id) == terminal
+
+
+async def test_victory_editorial_is_persisted_once(cycle, storage):
+    from memorias_licantropicas.modules.session_master.service import SessionMasterService
+    from memorias_licantropicas.modules.session_master.editorial import SIGNATURE
+    calls = []
+    master = SessionMasterService(cycle.turns, storage.games, None)
+    async def editor(state, game):
+        calls.append(state.ending_method)
+        return await master.publish_victory(state, game)
+    cycle.turns._victory_editor = editor
+    await cycle.turns.sync(cycle.game.id)
+    await detain(cycle, 'bentinho')
+    cycle.clock[0] += timedelta(seconds=308)
+    ended = await cycle.turns.sync(cycle.game.id)
+    assert ended.status == 'won'
+    assert ended.journal[-1].body.endswith(SIGNATURE)
+    assert 'Bentinho era o lobisomem' in ended.journal[-1].body
+    assert (await cycle.turns.sync(cycle.game.id)).journal == ended.journal
+    assert calls == ['detention']
+    persisted = await cycle.turns._repository.get(cycle.game.id)
+    assert persisted.journal == ended.journal

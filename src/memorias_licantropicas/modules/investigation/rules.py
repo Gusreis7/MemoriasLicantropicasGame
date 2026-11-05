@@ -13,6 +13,16 @@ from memorias_licantropicas.modules.investigation.catalog import (
 )
 
 
+WEREWOLF_DEFEAT_THRESHOLD = 4
+
+
+def werewolf_cast_victims(crimes, character_ids, werewolf_id):
+    """Conta moradores do elenco mortos pela fera, sem incluir Brás Cubas ou crimes humanos."""
+    return {crime.victim_id for crime in crimes
+            if crime.victim_id in character_ids and crime.cause == "werewolf"
+            and crime.killer_id == werewolf_id}
+
+
 def choose_victim(game, detained_npc_id=None, excluded_ids=()) -> str | None:
     """Escolha de regras: civis vivos e livres; nunca o detetive ou o próprio lobo."""
     candidates = tuple(npc.character_id for npc in game.characters

@@ -56,8 +56,8 @@ async def test_public_policy_can_win_by_confession_without_private_decision_data
 async def test_unsupported_accusation_never_grants_a_free_victory(storage, single_wolf_attack):
     simulation = Simulation(storage.client, storage.prefix, 12)
     result = await simulation.play("capitu", "unsupported")
-    assert result["result"] == "lost" and result["day"] == 7
-    assert len(result["accusations"]) == 6
+    assert result["result"] == "lost" and result["day"] == 5
+    assert len(result["accusations"]) == 4
     assert not any(item["accepted"] for item in result["accusations"])
 
 

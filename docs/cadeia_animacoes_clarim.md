@@ -27,7 +27,7 @@ Geradas com **image_gen built-in**, usando os sprites e a imprensa existentes co
 - `frontend/public/assets/cinematics/werewolf.png` e `werewolf.json`: quatro poses de lobisomem, fundo transparente.
 - `frontend/public/assets/cinematics/jail.png`: fundo estático da cadeia; grades em primeiro plano são objetos do jogo.
 - `frontend/public/assets/ambient/animals-walk.png` e `animals-walk.json`: doze poses com alpha, inclusive edição de remoção do fundo.
-- `frontend/public/assets/press/editions.png`: atlas2×2 de ilustrações de cais, jardim, captura e celebração.
+- `frontend/public/assets/press/editions.png`: atlas2×2 de ilustrações de cais, jardim, captura e celebração. Na celebração, Floriano ocupa o centro com a mesma identidade visual do sprite do jogador: pele morena, cabelo escuro, bigode curto, casaco castanho, colete escuro e camisa clara. Ele saúda a cidade com a mão vazia; não usa nem ergue cartola.
 
 Prompts completos e fontes: [prompts.json](../frontend/public/assets/cinematics/prompts.json). Os assets gerados foram copiados para o repositório; o runtime não depende do diretório de geração.
 
