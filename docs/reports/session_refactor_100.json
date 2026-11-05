@@ -1,0 +1,2467 @@
+{
+  "protocol": "complete-session-services-langgraph-v3-generation-status",
+  "source_commit": "14bebb7bda504819bff36f430e323c6b2b89d318",
+  "seed": 20261105,
+  "executed_at": "2026-11-05T06:12:24.312451+00:00",
+  "storage": "real Redis isolated on 127.0.0.1:16389, exclusive run prefix cleaned",
+  "command": "uv run python scripts/run_session_simulations.py --games 100 --seed 20261105 --redis-url redis://127.0.0.1:16389/0",
+  "process_exit_code": 0,
+  "summary": {
+    "games": 100,
+    "terminal_games": 100,
+    "outcomes": {
+      "won": 75,
+      "lost": 25
+    },
+    "policies": {
+      "investigator": {
+        "won": 25
+      },
+      "assembly": {
+        "won": 25
+      },
+      "rash": {
+        "won": 25
+      },
+      "passive": {
+        "lost": 25
+      }
+    },
+    "werewolves": {
+      "capitu": 16,
+      "bacamarte": 16,
+      "virgilia": 7,
+      "escobar": 18,
+      "rubiao": 15,
+      "florenca": 15,
+      "bentinho": 13
+    },
+    "calls": 7452,
+    "real_aws_calls": 0,
+    "actual_aws_cost_usd": "0",
+    "known_estimated_cost_usd": "0",
+    "budget_exhausted": false,
+    "token_method": "offline character-count approximation len(text)//4; not Qwen tokenizer usage",
+    "quality_scope": "mechanics, contracts and persistence only; no measurement of real Qwen narrative quality"
+  },
+  "coverage": {
+    "actions": {
+      "create_game": 100,
+      "walk": 2644,
+      "search": 340,
+      "inspect": 340,
+      "dialogue": 2303,
+      "present": 2130,
+      "interrogate": 952,
+      "travel": 1000,
+      "social_tick": 2205,
+      "review": 184,
+      "morning": 292,
+      "accuse": 90,
+      "assembly_open": 25,
+      "assembly_resolve": 25,
+      "dialogue_error": 190
+    },
+    "provider_double_calls_by_task": {
+      "npc_dialogue": 2795,
+      "session_assessment": 2011,
+      "knowledge_extraction": 1286,
+      "social_speech": 1260,
+      "editorial": 75,
+      "assembly_debate": 25
+    },
+    "graph_invocations": 2493,
+    "graph_statuses": {
+      "completed": 2011,
+      "fallback": 292,
+      "error": 190
+    },
+    "generation_attempts_max": 2,
+    "master_attempts_max": 1,
+    "npc_encounters": 315,
+    "committed_npc_social_messages": 1260,
+    "public_history_messages_observed": 8796,
+    "errors": {
+      "llm_authentication_failed": 190
+    },
+    "ending_methods": {
+      "detention": 52,
+      "assembly": 23,
+      "survival": 25
+    },
+    "fault_sessions": {
+      "none": 70,
+      "invalid_json_once": 10,
+      "invalid_json_always": 10,
+      "authentication": 10
+    },
+    "known_approximate_input_tokens": 22910554,
+    "known_approximate_output_tokens": 1201733,
+    "nodes": [
+      "authorize",
+      "context",
+      "error",
+      "fallback",
+      "generate",
+      "input_guard",
+      "master_review",
+      "output_guard",
+      "persist",
+      "semantic_validation"
+    ]
+  },
+  "memory_audit": {
+    "exchange_generation_statuses": {
+      "accepted": 4106,
+      "fallback": 292
+    },
+    "exchanges_audited": 4398,
+    "technical_source_messages": 584,
+    "technical_knowledge_entries": 0,
+    "technical_narrative_entries": 0,
+    "method": "Incoming and outgoing IDs for every fallback/guarded pair are checked against knowledge.source_message_id, plus descendants via root_id/parent_ids; any contamination aborts the runner."
+  },
+  "guarded_probe_real_redis": {
+    "additional_game_excluded_from_main_100_summary": true,
+    "seed": 20261108,
+    "policy": "passive",
+    "fault": "malicious_input_once",
+    "result": "lost",
+    "memory_audit": {
+      "exchange_generation_statuses": {
+        "guarded": 1,
+        "accepted": 7
+      },
+      "technical_source_messages": 2,
+      "technical_knowledge_entries": 0,
+      "technical_narrative_entries": 0
+    },
+    "graph_statuses": {
+      "fallback": 1,
+      "completed": 7
+    }
+  },
+  "checks": {
+    "all_sessions_terminal": true,
+    "all_sessions_execute_dialogue_graph": true,
+    "all_character_roles_sampled": true,
+    "all_generation_retries_bounded": true,
+    "all_auth_faults_preserve_absence_of_generated_reply": true,
+    "all_invalid_json_always_cases_report_fallback": true,
+    "no_fallback_memory_promotions": true,
+    "no_guarded_memory_promotions": true,
+    "no_real_aws_calls": true
+  },
+  "limits": [
+    "Offline provider double: does not measure Qwen fluency, literary quality, semantic security or inference latency.",
+    "Character-count tokens are synthetic approximations; malformed JSON fixtures report zero tokens and authentication fixtures have missing usage.",
+    "Active policies exhaust public evidence and testimony: 100% active-policy success is not a calibrated human win rate.",
+    "NPC item presentations remain authoritative deterministic mechanics; a generation outage does not remove this investigation path.",
+    "Public history count is observed through the history service with per-query limit50. In this batch it equals two messages for each of the4398 durable exchanges.",
+    "Entropy/time fixtures seed mechanics; internal message IDs and usage wall-clock timestamps can vary between executions.",
+    "Guarded coverage is an additional real-Redis probe, reported separately from the100-game battery."
+  ],
+  "full_artifact_sha256": "84f9ef353c1bd6f6e39d5bfa2a579c26447c588549da791f60d43c82bfcbb354",
+  "sessions": [
+    {
+      "seed": 20261105,
+      "policy": "investigator",
+      "fault": "none",
+      "result": "won",
+      "day": 3,
+      "werewolf_audit_after_game": "capitu",
+      "ending_method": "detention",
+      "graph_traces": 26,
+      "graph_statuses": {
+        "completed": 26
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 52
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261106,
+      "policy": "assembly",
+      "fault": "none",
+      "result": "won",
+      "day": 3,
+      "werewolf_audit_after_game": "capitu",
+      "ending_method": "assembly",
+      "graph_traces": 40,
+      "graph_statuses": {
+        "completed": 40
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 66
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261107,
+      "policy": "rash",
+      "fault": "none",
+      "result": "won",
+      "day": 3,
+      "werewolf_audit_after_game": "bacamarte",
+      "ending_method": "detention",
+      "graph_traces": 26,
+      "graph_statuses": {
+        "completed": 26
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 52
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261108,
+      "policy": "passive",
+      "fault": "none",
+      "result": "lost",
+      "day": 9,
+      "werewolf_audit_after_game": "capitu",
+      "ending_method": "survival",
+      "graph_traces": 8,
+      "graph_statuses": {
+        "completed": 8
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 8
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261109,
+      "policy": "investigator",
+      "fault": "none",
+      "result": "won",
+      "day": 4,
+      "werewolf_audit_after_game": "virgilia",
+      "ending_method": "detention",
+      "graph_traces": 36,
+      "graph_statuses": {
+        "completed": 36
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 66
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261110,
+      "policy": "assembly",
+      "fault": "none",
+      "result": "won",
+      "day": 2,
+      "werewolf_audit_after_game": "bacamarte",
+      "ending_method": "assembly",
+      "graph_traces": 26,
+      "graph_statuses": {
+        "completed": 26
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 52
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261111,
+      "policy": "rash",
+      "fault": "none",
+      "result": "won",
+      "day": 3,
+      "werewolf_audit_after_game": "escobar",
+      "ending_method": "detention",
+      "graph_traces": 26,
+      "graph_statuses": {
+        "completed": 26
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 52
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261112,
+      "policy": "passive",
+      "fault": "invalid_json_once",
+      "result": "lost",
+      "day": 8,
+      "werewolf_audit_after_game": "rubiao",
+      "ending_method": "survival",
+      "graph_traces": 7,
+      "graph_statuses": {
+        "completed": 7
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 2,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 7
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261113,
+      "policy": "investigator",
+      "fault": "invalid_json_always",
+      "result": "won",
+      "day": 3,
+      "werewolf_audit_after_game": "escobar",
+      "ending_method": "detention",
+      "graph_traces": 26,
+      "graph_statuses": {
+        "fallback": 26
+      },
+      "graph_fallbacks": 26,
+      "graph_max_attempts": 2,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "fallback": 26,
+          "accepted": 26
+        },
+        "technical_source_messages": 52,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261114,
+      "policy": "assembly",
+      "fault": "authentication",
+      "result": "won",
+      "day": 3,
+      "werewolf_audit_after_game": "rubiao",
+      "ending_method": "assembly",
+      "graph_traces": 40,
+      "graph_statuses": {
+        "error": 40
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 26
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261115,
+      "policy": "rash",
+      "fault": "none",
+      "result": "won",
+      "day": 4,
+      "werewolf_audit_after_game": "bacamarte",
+      "ending_method": "detention",
+      "graph_traces": 40,
+      "graph_statuses": {
+        "completed": 40
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 66
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261116,
+      "policy": "passive",
+      "fault": "none",
+      "result": "lost",
+      "day": 7,
+      "werewolf_audit_after_game": "rubiao",
+      "ending_method": "survival",
+      "graph_traces": 6,
+      "graph_statuses": {
+        "completed": 6
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 6
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261117,
+      "policy": "investigator",
+      "fault": "none",
+      "result": "won",
+      "day": 3,
+      "werewolf_audit_after_game": "capitu",
+      "ending_method": "detention",
+      "graph_traces": 26,
+      "graph_statuses": {
+        "completed": 26
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 52
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261118,
+      "policy": "assembly",
+      "fault": "none",
+      "result": "won",
+      "day": 2,
+      "werewolf_audit_after_game": "escobar",
+      "ending_method": "assembly",
+      "graph_traces": 26,
+      "graph_statuses": {
+        "completed": 26
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 52
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261119,
+      "policy": "rash",
+      "fault": "none",
+      "result": "won",
+      "day": 4,
+      "werewolf_audit_after_game": "florenca",
+      "ending_method": "detention",
+      "graph_traces": 36,
+      "graph_statuses": {
+        "completed": 36
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 72
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261120,
+      "policy": "passive",
+      "fault": "none",
+      "result": "lost",
+      "day": 6,
+      "werewolf_audit_after_game": "escobar",
+      "ending_method": "survival",
+      "graph_traces": 5,
+      "graph_statuses": {
+        "completed": 5
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 5
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261121,
+      "policy": "investigator",
+      "fault": "none",
+      "result": "won",
+      "day": 3,
+      "werewolf_audit_after_game": "escobar",
+      "ending_method": "detention",
+      "graph_traces": 26,
+      "graph_statuses": {
+        "completed": 26
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 52
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261122,
+      "policy": "assembly",
+      "fault": "invalid_json_once",
+      "result": "won",
+      "day": 2,
+      "werewolf_audit_after_game": "florenca",
+      "ending_method": "assembly",
+      "graph_traces": 26,
+      "graph_statuses": {
+        "completed": 26
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 2,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 52
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261123,
+      "policy": "rash",
+      "fault": "invalid_json_always",
+      "result": "won",
+      "day": 3,
+      "werewolf_audit_after_game": "florenca",
+      "ending_method": "detention",
+      "graph_traces": 26,
+      "graph_statuses": {
+        "fallback": 26
+      },
+      "graph_fallbacks": 26,
+      "graph_max_attempts": 2,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "fallback": 26,
+          "accepted": 26
+        },
+        "technical_source_messages": 52,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261124,
+      "policy": "passive",
+      "fault": "authentication",
+      "result": "lost",
+      "day": 6,
+      "werewolf_audit_after_game": "bentinho",
+      "ending_method": "survival",
+      "graph_traces": 5,
+      "graph_statuses": {
+        "error": 5
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {},
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261125,
+      "policy": "investigator",
+      "fault": "none",
+      "result": "won",
+      "day": 4,
+      "werewolf_audit_after_game": "rubiao",
+      "ending_method": "detention",
+      "graph_traces": 40,
+      "graph_statuses": {
+        "completed": 40
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 66
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261126,
+      "policy": "assembly",
+      "fault": "none",
+      "result": "won",
+      "day": 2,
+      "werewolf_audit_after_game": "florenca",
+      "ending_method": "assembly",
+      "graph_traces": 26,
+      "graph_statuses": {
+        "completed": 26
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 52
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261127,
+      "policy": "rash",
+      "fault": "none",
+      "result": "won",
+      "day": 3,
+      "werewolf_audit_after_game": "escobar",
+      "ending_method": "detention",
+      "graph_traces": 26,
+      "graph_statuses": {
+        "completed": 26
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 52
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261128,
+      "policy": "passive",
+      "fault": "none",
+      "result": "lost",
+      "day": 7,
+      "werewolf_audit_after_game": "bacamarte",
+      "ending_method": "survival",
+      "graph_traces": 6,
+      "graph_statuses": {
+        "completed": 6
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 6
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261129,
+      "policy": "investigator",
+      "fault": "none",
+      "result": "won",
+      "day": 3,
+      "werewolf_audit_after_game": "capitu",
+      "ending_method": "detention",
+      "graph_traces": 26,
+      "graph_statuses": {
+        "completed": 26
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 52
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261130,
+      "policy": "assembly",
+      "fault": "none",
+      "result": "won",
+      "day": 3,
+      "werewolf_audit_after_game": "bentinho",
+      "ending_method": "assembly",
+      "graph_traces": 38,
+      "graph_statuses": {
+        "completed": 38
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 72
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261131,
+      "policy": "rash",
+      "fault": "none",
+      "result": "won",
+      "day": 3,
+      "werewolf_audit_after_game": "rubiao",
+      "ending_method": "detention",
+      "graph_traces": 26,
+      "graph_statuses": {
+        "completed": 26
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 52
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261132,
+      "policy": "passive",
+      "fault": "invalid_json_once",
+      "result": "lost",
+      "day": 7,
+      "werewolf_audit_after_game": "capitu",
+      "ending_method": "survival",
+      "graph_traces": 6,
+      "graph_statuses": {
+        "completed": 6
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 2,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 6
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261133,
+      "policy": "investigator",
+      "fault": "invalid_json_always",
+      "result": "won",
+      "day": 4,
+      "werewolf_audit_after_game": "bentinho",
+      "ending_method": "detention",
+      "graph_traces": 36,
+      "graph_statuses": {
+        "fallback": 36
+      },
+      "graph_fallbacks": 36,
+      "graph_max_attempts": 2,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "fallback": 36,
+          "accepted": 36
+        },
+        "technical_source_messages": 72,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261134,
+      "policy": "assembly",
+      "fault": "authentication",
+      "result": "won",
+      "day": 2,
+      "werewolf_audit_after_game": "virgilia",
+      "ending_method": "assembly",
+      "graph_traces": 26,
+      "graph_statuses": {
+        "error": 26
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 26
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261135,
+      "policy": "rash",
+      "fault": "none",
+      "result": "won",
+      "day": 3,
+      "werewolf_audit_after_game": "rubiao",
+      "ending_method": "detention",
+      "graph_traces": 24,
+      "graph_statuses": {
+        "completed": 24
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 58
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261136,
+      "policy": "passive",
+      "fault": "none",
+      "result": "lost",
+      "day": 5,
+      "werewolf_audit_after_game": "virgilia",
+      "ending_method": "survival",
+      "graph_traces": 4,
+      "graph_statuses": {
+        "completed": 4
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 4
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261137,
+      "policy": "investigator",
+      "fault": "none",
+      "result": "won",
+      "day": 4,
+      "werewolf_audit_after_game": "escobar",
+      "ending_method": "detention",
+      "graph_traces": 36,
+      "graph_statuses": {
+        "completed": 36
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 72
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261138,
+      "policy": "assembly",
+      "fault": "none",
+      "result": "won",
+      "day": 2,
+      "werewolf_audit_after_game": "capitu",
+      "ending_method": "assembly",
+      "graph_traces": 26,
+      "graph_statuses": {
+        "completed": 26
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 52
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261139,
+      "policy": "rash",
+      "fault": "none",
+      "result": "won",
+      "day": 3,
+      "werewolf_audit_after_game": "florenca",
+      "ending_method": "detention",
+      "graph_traces": 26,
+      "graph_statuses": {
+        "completed": 26
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 52
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261140,
+      "policy": "passive",
+      "fault": "none",
+      "result": "lost",
+      "day": 6,
+      "werewolf_audit_after_game": "virgilia",
+      "ending_method": "survival",
+      "graph_traces": 5,
+      "graph_statuses": {
+        "completed": 5
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 5
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261141,
+      "policy": "investigator",
+      "fault": "none",
+      "result": "won",
+      "day": 3,
+      "werewolf_audit_after_game": "capitu",
+      "ending_method": "detention",
+      "graph_traces": 26,
+      "graph_statuses": {
+        "completed": 26
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 52
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261142,
+      "policy": "assembly",
+      "fault": "invalid_json_once",
+      "result": "won",
+      "day": 2,
+      "werewolf_audit_after_game": "capitu",
+      "ending_method": "assembly",
+      "graph_traces": 26,
+      "graph_statuses": {
+        "completed": 26
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 2,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 52
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261143,
+      "policy": "rash",
+      "fault": "invalid_json_always",
+      "result": "won",
+      "day": 3,
+      "werewolf_audit_after_game": "escobar",
+      "ending_method": "detention",
+      "graph_traces": 26,
+      "graph_statuses": {
+        "fallback": 26
+      },
+      "graph_fallbacks": 26,
+      "graph_max_attempts": 2,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "fallback": 26,
+          "accepted": 26
+        },
+        "technical_source_messages": 52,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261144,
+      "policy": "passive",
+      "fault": "authentication",
+      "result": "lost",
+      "day": 5,
+      "werewolf_audit_after_game": "florenca",
+      "ending_method": "survival",
+      "graph_traces": 4,
+      "graph_statuses": {
+        "error": 4
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {},
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261145,
+      "policy": "investigator",
+      "fault": "none",
+      "result": "won",
+      "day": 4,
+      "werewolf_audit_after_game": "bacamarte",
+      "ending_method": "detention",
+      "graph_traces": 40,
+      "graph_statuses": {
+        "completed": 40
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 66
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261146,
+      "policy": "assembly",
+      "fault": "none",
+      "result": "won",
+      "day": 3,
+      "werewolf_audit_after_game": "escobar",
+      "ending_method": "assembly",
+      "graph_traces": 40,
+      "graph_statuses": {
+        "completed": 40
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 66
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261147,
+      "policy": "rash",
+      "fault": "none",
+      "result": "won",
+      "day": 4,
+      "werewolf_audit_after_game": "virgilia",
+      "ending_method": "detention",
+      "graph_traces": 40,
+      "graph_statuses": {
+        "completed": 40
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 66
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261148,
+      "policy": "passive",
+      "fault": "none",
+      "result": "lost",
+      "day": 6,
+      "werewolf_audit_after_game": "virgilia",
+      "ending_method": "survival",
+      "graph_traces": 5,
+      "graph_statuses": {
+        "completed": 5
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 5
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261149,
+      "policy": "investigator",
+      "fault": "none",
+      "result": "won",
+      "day": 4,
+      "werewolf_audit_after_game": "rubiao",
+      "ending_method": "detention",
+      "graph_traces": 40,
+      "graph_statuses": {
+        "completed": 40
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 66
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261150,
+      "policy": "assembly",
+      "fault": "none",
+      "result": "won",
+      "day": 2,
+      "werewolf_audit_after_game": "capitu",
+      "ending_method": "assembly",
+      "graph_traces": 24,
+      "graph_statuses": {
+        "completed": 24
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 58
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261151,
+      "policy": "rash",
+      "fault": "none",
+      "result": "won",
+      "day": 4,
+      "werewolf_audit_after_game": "escobar",
+      "ending_method": "detention",
+      "graph_traces": 38,
+      "graph_statuses": {
+        "completed": 38
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 72
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261152,
+      "policy": "passive",
+      "fault": "invalid_json_once",
+      "result": "lost",
+      "day": 7,
+      "werewolf_audit_after_game": "bacamarte",
+      "ending_method": "survival",
+      "graph_traces": 6,
+      "graph_statuses": {
+        "completed": 6
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 2,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 6
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261153,
+      "policy": "investigator",
+      "fault": "invalid_json_always",
+      "result": "won",
+      "day": 4,
+      "werewolf_audit_after_game": "rubiao",
+      "ending_method": "detention",
+      "graph_traces": 36,
+      "graph_statuses": {
+        "fallback": 36
+      },
+      "graph_fallbacks": 36,
+      "graph_max_attempts": 2,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "fallback": 36,
+          "accepted": 30
+        },
+        "technical_source_messages": 72,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261154,
+      "policy": "assembly",
+      "fault": "authentication",
+      "result": "won",
+      "day": 5,
+      "werewolf_audit_after_game": "escobar",
+      "ending_method": "detention",
+      "graph_traces": 44,
+      "graph_statuses": {
+        "error": 44
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 37
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261155,
+      "policy": "rash",
+      "fault": "none",
+      "result": "won",
+      "day": 3,
+      "werewolf_audit_after_game": "florenca",
+      "ending_method": "detention",
+      "graph_traces": 26,
+      "graph_statuses": {
+        "completed": 26
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 52
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261156,
+      "policy": "passive",
+      "fault": "none",
+      "result": "lost",
+      "day": 5,
+      "werewolf_audit_after_game": "rubiao",
+      "ending_method": "survival",
+      "graph_traces": 4,
+      "graph_statuses": {
+        "completed": 4
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 4
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261157,
+      "policy": "investigator",
+      "fault": "none",
+      "result": "won",
+      "day": 3,
+      "werewolf_audit_after_game": "bentinho",
+      "ending_method": "detention",
+      "graph_traces": 26,
+      "graph_statuses": {
+        "completed": 26
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 52
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261158,
+      "policy": "assembly",
+      "fault": "none",
+      "result": "won",
+      "day": 3,
+      "werewolf_audit_after_game": "bentinho",
+      "ending_method": "assembly",
+      "graph_traces": 40,
+      "graph_statuses": {
+        "completed": 40
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 66
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261159,
+      "policy": "rash",
+      "fault": "none",
+      "result": "won",
+      "day": 3,
+      "werewolf_audit_after_game": "florenca",
+      "ending_method": "detention",
+      "graph_traces": 26,
+      "graph_statuses": {
+        "completed": 26
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 52
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261160,
+      "policy": "passive",
+      "fault": "none",
+      "result": "lost",
+      "day": 5,
+      "werewolf_audit_after_game": "florenca",
+      "ending_method": "survival",
+      "graph_traces": 4,
+      "graph_statuses": {
+        "completed": 4
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 4
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261161,
+      "policy": "investigator",
+      "fault": "none",
+      "result": "won",
+      "day": 3,
+      "werewolf_audit_after_game": "bacamarte",
+      "ending_method": "detention",
+      "graph_traces": 26,
+      "graph_statuses": {
+        "completed": 26
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 52
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261162,
+      "policy": "assembly",
+      "fault": "invalid_json_once",
+      "result": "won",
+      "day": 3,
+      "werewolf_audit_after_game": "bacamarte",
+      "ending_method": "assembly",
+      "graph_traces": 36,
+      "graph_statuses": {
+        "completed": 36
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 2,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 72
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261163,
+      "policy": "rash",
+      "fault": "invalid_json_always",
+      "result": "won",
+      "day": 3,
+      "werewolf_audit_after_game": "escobar",
+      "ending_method": "detention",
+      "graph_traces": 26,
+      "graph_statuses": {
+        "fallback": 26
+      },
+      "graph_fallbacks": 26,
+      "graph_max_attempts": 2,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "fallback": 26,
+          "accepted": 26
+        },
+        "technical_source_messages": 52,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261164,
+      "policy": "passive",
+      "fault": "authentication",
+      "result": "lost",
+      "day": 6,
+      "werewolf_audit_after_game": "bentinho",
+      "ending_method": "survival",
+      "graph_traces": 5,
+      "graph_statuses": {
+        "error": 5
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {},
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261165,
+      "policy": "investigator",
+      "fault": "none",
+      "result": "won",
+      "day": 3,
+      "werewolf_audit_after_game": "florenca",
+      "ending_method": "detention",
+      "graph_traces": 26,
+      "graph_statuses": {
+        "completed": 26
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 52
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261166,
+      "policy": "assembly",
+      "fault": "none",
+      "result": "won",
+      "day": 2,
+      "werewolf_audit_after_game": "bacamarte",
+      "ending_method": "assembly",
+      "graph_traces": 26,
+      "graph_statuses": {
+        "completed": 26
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 52
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261167,
+      "policy": "rash",
+      "fault": "none",
+      "result": "won",
+      "day": 4,
+      "werewolf_audit_after_game": "bacamarte",
+      "ending_method": "detention",
+      "graph_traces": 40,
+      "graph_statuses": {
+        "completed": 40
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 66
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261168,
+      "policy": "passive",
+      "fault": "none",
+      "result": "lost",
+      "day": 6,
+      "werewolf_audit_after_game": "rubiao",
+      "ending_method": "survival",
+      "graph_traces": 5,
+      "graph_statuses": {
+        "completed": 5
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 5
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261169,
+      "policy": "investigator",
+      "fault": "none",
+      "result": "won",
+      "day": 3,
+      "werewolf_audit_after_game": "florenca",
+      "ending_method": "detention",
+      "graph_traces": 26,
+      "graph_statuses": {
+        "completed": 26
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 52
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261170,
+      "policy": "assembly",
+      "fault": "none",
+      "result": "won",
+      "day": 3,
+      "werewolf_audit_after_game": "bentinho",
+      "ending_method": "assembly",
+      "graph_traces": 40,
+      "graph_statuses": {
+        "completed": 40
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 66
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261171,
+      "policy": "rash",
+      "fault": "none",
+      "result": "won",
+      "day": 4,
+      "werewolf_audit_after_game": "escobar",
+      "ending_method": "detention",
+      "graph_traces": 38,
+      "graph_statuses": {
+        "completed": 38
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 67
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261172,
+      "policy": "passive",
+      "fault": "invalid_json_once",
+      "result": "lost",
+      "day": 7,
+      "werewolf_audit_after_game": "capitu",
+      "ending_method": "survival",
+      "graph_traces": 6,
+      "graph_statuses": {
+        "completed": 6
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 2,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 6
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261173,
+      "policy": "investigator",
+      "fault": "invalid_json_always",
+      "result": "won",
+      "day": 3,
+      "werewolf_audit_after_game": "escobar",
+      "ending_method": "detention",
+      "graph_traces": 26,
+      "graph_statuses": {
+        "fallback": 26
+      },
+      "graph_fallbacks": 26,
+      "graph_max_attempts": 2,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "fallback": 26,
+          "accepted": 26
+        },
+        "technical_source_messages": 52,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261174,
+      "policy": "assembly",
+      "fault": "authentication",
+      "result": "won",
+      "day": 4,
+      "werewolf_audit_after_game": "capitu",
+      "ending_method": "detention",
+      "graph_traces": 32,
+      "graph_statuses": {
+        "error": 32
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 34
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261175,
+      "policy": "rash",
+      "fault": "none",
+      "result": "won",
+      "day": 4,
+      "werewolf_audit_after_game": "rubiao",
+      "ending_method": "detention",
+      "graph_traces": 40,
+      "graph_statuses": {
+        "completed": 40
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 66
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261176,
+      "policy": "passive",
+      "fault": "none",
+      "result": "lost",
+      "day": 7,
+      "werewolf_audit_after_game": "escobar",
+      "ending_method": "survival",
+      "graph_traces": 6,
+      "graph_statuses": {
+        "completed": 6
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 6
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261177,
+      "policy": "investigator",
+      "fault": "none",
+      "result": "won",
+      "day": 3,
+      "werewolf_audit_after_game": "rubiao",
+      "ending_method": "detention",
+      "graph_traces": 24,
+      "graph_statuses": {
+        "completed": 24
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 58
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261178,
+      "policy": "assembly",
+      "fault": "none",
+      "result": "won",
+      "day": 3,
+      "werewolf_audit_after_game": "rubiao",
+      "ending_method": "assembly",
+      "graph_traces": 40,
+      "graph_statuses": {
+        "completed": 40
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 66
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261179,
+      "policy": "rash",
+      "fault": "none",
+      "result": "won",
+      "day": 4,
+      "werewolf_audit_after_game": "rubiao",
+      "ending_method": "detention",
+      "graph_traces": 40,
+      "graph_statuses": {
+        "completed": 40
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 66
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261180,
+      "policy": "passive",
+      "fault": "none",
+      "result": "lost",
+      "day": 5,
+      "werewolf_audit_after_game": "bacamarte",
+      "ending_method": "survival",
+      "graph_traces": 4,
+      "graph_statuses": {
+        "completed": 4
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 4
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261181,
+      "policy": "investigator",
+      "fault": "none",
+      "result": "won",
+      "day": 3,
+      "werewolf_audit_after_game": "capitu",
+      "ending_method": "detention",
+      "graph_traces": 24,
+      "graph_statuses": {
+        "completed": 24
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 58
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261182,
+      "policy": "assembly",
+      "fault": "invalid_json_once",
+      "result": "won",
+      "day": 3,
+      "werewolf_audit_after_game": "bacamarte",
+      "ending_method": "assembly",
+      "graph_traces": 40,
+      "graph_statuses": {
+        "completed": 40
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 2,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 66
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261183,
+      "policy": "rash",
+      "fault": "invalid_json_always",
+      "result": "won",
+      "day": 3,
+      "werewolf_audit_after_game": "florenca",
+      "ending_method": "detention",
+      "graph_traces": 26,
+      "graph_statuses": {
+        "fallback": 26
+      },
+      "graph_fallbacks": 26,
+      "graph_max_attempts": 2,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "fallback": 26,
+          "accepted": 26
+        },
+        "technical_source_messages": 52,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261184,
+      "policy": "passive",
+      "fault": "authentication",
+      "result": "lost",
+      "day": 5,
+      "werewolf_audit_after_game": "escobar",
+      "ending_method": "survival",
+      "graph_traces": 4,
+      "graph_statuses": {
+        "error": 4
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {},
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261185,
+      "policy": "investigator",
+      "fault": "none",
+      "result": "won",
+      "day": 3,
+      "werewolf_audit_after_game": "capitu",
+      "ending_method": "detention",
+      "graph_traces": 26,
+      "graph_statuses": {
+        "completed": 26
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 52
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261186,
+      "policy": "assembly",
+      "fault": "none",
+      "result": "won",
+      "day": 2,
+      "werewolf_audit_after_game": "bentinho",
+      "ending_method": "assembly",
+      "graph_traces": 26,
+      "graph_statuses": {
+        "completed": 26
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 52
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261187,
+      "policy": "rash",
+      "fault": "none",
+      "result": "won",
+      "day": 3,
+      "werewolf_audit_after_game": "bacamarte",
+      "ending_method": "detention",
+      "graph_traces": 24,
+      "graph_statuses": {
+        "completed": 24
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 58
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261188,
+      "policy": "passive",
+      "fault": "none",
+      "result": "lost",
+      "day": 6,
+      "werewolf_audit_after_game": "bentinho",
+      "ending_method": "survival",
+      "graph_traces": 5,
+      "graph_statuses": {
+        "completed": 5
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 5
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261189,
+      "policy": "investigator",
+      "fault": "none",
+      "result": "won",
+      "day": 3,
+      "werewolf_audit_after_game": "escobar",
+      "ending_method": "detention",
+      "graph_traces": 26,
+      "graph_statuses": {
+        "completed": 26
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 52
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261190,
+      "policy": "assembly",
+      "fault": "none",
+      "result": "won",
+      "day": 2,
+      "werewolf_audit_after_game": "bentinho",
+      "ending_method": "assembly",
+      "graph_traces": 26,
+      "graph_statuses": {
+        "completed": 26
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 52
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261191,
+      "policy": "rash",
+      "fault": "none",
+      "result": "won",
+      "day": 4,
+      "werewolf_audit_after_game": "virgilia",
+      "ending_method": "detention",
+      "graph_traces": 40,
+      "graph_statuses": {
+        "completed": 40
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 66
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261192,
+      "policy": "passive",
+      "fault": "invalid_json_once",
+      "result": "lost",
+      "day": 6,
+      "werewolf_audit_after_game": "bentinho",
+      "ending_method": "survival",
+      "graph_traces": 5,
+      "graph_statuses": {
+        "completed": 5
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 2,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 5
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261193,
+      "policy": "investigator",
+      "fault": "invalid_json_always",
+      "result": "won",
+      "day": 3,
+      "werewolf_audit_after_game": "bacamarte",
+      "ending_method": "detention",
+      "graph_traces": 26,
+      "graph_statuses": {
+        "fallback": 26
+      },
+      "graph_fallbacks": 26,
+      "graph_max_attempts": 2,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "fallback": 26,
+          "accepted": 26
+        },
+        "technical_source_messages": 52,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261194,
+      "policy": "assembly",
+      "fault": "authentication",
+      "result": "won",
+      "day": 2,
+      "werewolf_audit_after_game": "florenca",
+      "ending_method": "assembly",
+      "graph_traces": 24,
+      "graph_statuses": {
+        "error": 24
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 34
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261195,
+      "policy": "rash",
+      "fault": "none",
+      "result": "won",
+      "day": 4,
+      "werewolf_audit_after_game": "rubiao",
+      "ending_method": "detention",
+      "graph_traces": 40,
+      "graph_statuses": {
+        "completed": 40
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 66
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261196,
+      "policy": "passive",
+      "fault": "none",
+      "result": "lost",
+      "day": 5,
+      "werewolf_audit_after_game": "bacamarte",
+      "ending_method": "survival",
+      "graph_traces": 4,
+      "graph_statuses": {
+        "completed": 4
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 4
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261197,
+      "policy": "investigator",
+      "fault": "none",
+      "result": "won",
+      "day": 4,
+      "werewolf_audit_after_game": "florenca",
+      "ending_method": "detention",
+      "graph_traces": 38,
+      "graph_statuses": {
+        "completed": 38
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 67
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261198,
+      "policy": "assembly",
+      "fault": "none",
+      "result": "won",
+      "day": 2,
+      "werewolf_audit_after_game": "escobar",
+      "ending_method": "assembly",
+      "graph_traces": 26,
+      "graph_statuses": {
+        "completed": 26
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 52
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261199,
+      "policy": "rash",
+      "fault": "none",
+      "result": "won",
+      "day": 4,
+      "werewolf_audit_after_game": "bacamarte",
+      "ending_method": "detention",
+      "graph_traces": 40,
+      "graph_statuses": {
+        "completed": 40
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 66
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261200,
+      "policy": "passive",
+      "fault": "none",
+      "result": "lost",
+      "day": 7,
+      "werewolf_audit_after_game": "bentinho",
+      "ending_method": "survival",
+      "graph_traces": 6,
+      "graph_statuses": {
+        "completed": 6
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 6
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261201,
+      "policy": "investigator",
+      "fault": "none",
+      "result": "won",
+      "day": 4,
+      "werewolf_audit_after_game": "capitu",
+      "ending_method": "detention",
+      "graph_traces": 40,
+      "graph_statuses": {
+        "completed": 40
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 66
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261202,
+      "policy": "assembly",
+      "fault": "invalid_json_once",
+      "result": "won",
+      "day": 3,
+      "werewolf_audit_after_game": "florenca",
+      "ending_method": "assembly",
+      "graph_traces": 40,
+      "graph_statuses": {
+        "completed": 40
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 2,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "accepted": 66
+        },
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261203,
+      "policy": "rash",
+      "fault": "invalid_json_always",
+      "result": "won",
+      "day": 4,
+      "werewolf_audit_after_game": "capitu",
+      "ending_method": "detention",
+      "graph_traces": 38,
+      "graph_statuses": {
+        "fallback": 38
+      },
+      "graph_fallbacks": 38,
+      "graph_max_attempts": 2,
+      "memory_audit": {
+        "exchange_generation_statuses": {
+          "fallback": 38,
+          "accepted": 34
+        },
+        "technical_source_messages": 76,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    },
+    {
+      "seed": 20261204,
+      "policy": "passive",
+      "fault": "authentication",
+      "result": "lost",
+      "day": 7,
+      "werewolf_audit_after_game": "bentinho",
+      "ending_method": "survival",
+      "graph_traces": 6,
+      "graph_statuses": {
+        "error": 6
+      },
+      "graph_fallbacks": 0,
+      "graph_max_attempts": 1,
+      "memory_audit": {
+        "exchange_generation_statuses": {},
+        "technical_source_messages": 0,
+        "technical_knowledge_entries": 0,
+        "technical_narrative_entries": 0
+      }
+    }
+  ]
+}

@@ -122,7 +122,7 @@ class StubLLM:
         self.calls.append(messages)
         if self.error:
             raise self.error
-        return LLMResponse(content="Sei apenas o que me contaram.", model="stub", input_tokens=10, output_tokens=8)
+        return LLMResponse(content='{"fala":"Sei apenas o que me contaram."}', model="stub", input_tokens=10, output_tokens=8)
 
     async def aclose(self):
         self.closed = True

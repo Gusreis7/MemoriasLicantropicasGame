@@ -368,3 +368,26 @@ async def test_disabled_social_engine_cleans_up_existing_travel_without_inferenc
     assert all(npc.activity == "idle" for npc in (await case.world.get(case.game.id)).npcs)
     assert not await disabled.tick(case.game.id)
     assert case.speaker.calls == []
+
+
+async def test_programming_error_in_social_transport_is_not_silenced_as_invalid_generation(social_case):
+    case = social_case
+    await start_encounter(case)
+    async def broken(messages):
+        raise TypeError("fixture programming error")
+    case.speaker.complete = broken
+    with pytest.raises(TypeError, match="fixture programming error"):
+        await case.service.tick(case.game.id)
+    state = await case.repository.get(case.game.id)
+    assert state.encounters[-1].messages == ()
+
+
+async def test_social_graph_disables_external_tracing_even_when_environment_enables_it(social_case, monkeypatch):
+    from langchain_core.tracers.langchain import LangChainTracer
+    monkeypatch.setenv("LANGSMITH_TRACING", "true")
+    monkeypatch.setenv("LANGCHAIN_TRACING_V2", "true")
+    monkeypatch.setenv("LANGSMITH_API_KEY", "offline-fixture-no-real-key")
+    def forbidden(*args, **kwargs):
+        raise AssertionError("Private graph must not construct external tracer")
+    monkeypatch.setattr(LangChainTracer, "__init__", forbidden)
+    await start_encounter(social_case)

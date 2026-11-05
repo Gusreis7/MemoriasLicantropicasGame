@@ -57,46 +57,6 @@ def historical_dialogue_content(content):
     return re.split(r'(?<=\.)\s+(?:Compare |Converse com |Ouça |Pergunte também )',statement,maxsplit=1)[0]
 
 
-def _authored_voice(statement, npc_id):
-    """Only authored canonical facts change grammatical voice; quoted testimony never does."""
-    forms = {
-        'casamento': {
-            'capitu':'Eu sou casada com Bentinho; o ciúme dele tem provocado discussões.',
-            'bentinho':'Eu sou casado com Capitu; meu ciúme tem provocado discussões.',
-        },
-        'amizade': {
-            'capitu':'Escobar e eu somos amigos e nos encontramos nos parques e no trabalho. Isso alimenta o ciúme de Bentinho.',
-            'escobar':'Capitu e eu somos amigos e nos encontramos nos parques e no trabalho. Isso alimenta o ciúme de Bentinho.',
-        },
-        'seminario': {
-            'bentinho':'Escobar e eu estudamos juntos no seminário e mantivemos uma ligação antiga.',
-            'escobar':'Bentinho e eu estudamos juntos no seminário e mantivemos uma ligação antiga.',
-        },
-        'tratamento': {
-            'bentinho':'Eu faço acompanhamento com Bacamarte, mas resisto às consultas e à medicação. Não sei confirmar cada dose.',
-            'bacamarte':'Eu acompanho Bentinho, que resiste às consultas e à medicação. Não sei confirmar cada dose.',
-        },
-        'internacao': {
-            'florenca':'Contesto Bacamarte por ter internado meu pai e procuro quem me escute.',
-            'bacamarte':'Florença me contesta por eu ter internado o pai dela e procura quem a escute.',
-        },
-        'aproximacao': {
-            'rubiao':'Tento aproximar-me de Florença, embora ela não corresponda e se incomode com minha insistência.',
-            'florenca':'Rubião tenta aproximar-se de mim, embora eu não corresponda e me incomode com a insistência.',
-        },
-    }
-    prefixes = (
-        ('Capitu e Bentinho são casados;', 'casamento'),
-        ('Capitu e Escobar são amigos e se encontram', 'amizade'),
-        ('Bentinho e Escobar estudaram juntos no seminário', 'seminario'),
-        ('Bentinho faz acompanhamento com Bacamarte, mas resiste', 'tratamento'),
-        ('Florença contesta Bacamarte por ter internado seu pai', 'internacao'),
-        ('Rubião tenta aproximar-se de Florença, embora ela não corresponda', 'aproximacao'),
-    )
-    for prefix,topic in prefixes:
-        if statement.startswith(prefix):
-            return forms[topic].get(npc_id,statement)
-    return statement
 
 
 def _lead(statement, npc_id):
@@ -200,27 +160,8 @@ def dialogue_supports(profile, observations, question):
     return tuple(selected)
 
 
-def supported_reply(profile, observations, question, support_id=None):
-    supports=(observations or {}).get('apoios_de_conversa') or dialogue_supports(profile,observations,question)
-    if not supports:
-        return None
-    chosen=next((s for s in supports if s['id']==support_id),supports[0])
-    statement=chosen['statement'].strip()
-    if chosen.get('authored',False): statement=_authored_voice(statement,profile.id)
-    return f"{statement} {chosen['lead']}" if asks_for_guidance(question) else statement
 
 
-def has_useful_anchor(content, supports):
-    """Triagem conservadora de utilidade, não uma prova de verdade semântica."""
-    actual=words(content)
-    for support in supports:
-        expected=words(support['statement'])
-        overlap=actual & expected
-        # Merely repeating names is not useful testimony.
-        meaningful=overlap-{normalized(n) for n in NAMES.values()}
-        if len(meaningful)>=2 and len(overlap)>=min(4,max(2,len(expected)//3)):
-            return True
-    return False
 
 
 def compact_observations(profile, observations, question):

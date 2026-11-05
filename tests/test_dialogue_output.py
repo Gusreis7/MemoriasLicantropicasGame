@@ -51,7 +51,7 @@ async def test_response_is_normalized_before_memory_and_reply(harness, storage, 
     await storage.games.create(game)
 
     async def response(messages):
-        return LLMResponse(content='{"remetente":"bentinho","fala":"Não sei, detetive."}',
+        return LLMResponse(content='{"fala":"Não sei, detetive."}',
                            model="provider-model", input_tokens=12, output_tokens=18)
 
     monkeypatch.setattr(llm, "complete", response)
@@ -63,18 +63,21 @@ async def test_response_is_normalized_before_memory_and_reply(harness, storage, 
 
 
 @pytest.mark.anyio
-async def test_invalid_model_envelope_saves_no_partial_exchange(harness, storage, game, llm, monkeypatch):
+async def test_invalid_new_envelope_uses_explicit_technical_fallback(harness, storage, game, llm, monkeypatch):
+    from memorias_licantropicas.modules.agents.workflow import TECHNICAL_FALLBACK
     await storage.games.create(game)
-
+    calls = []
     async def response(messages):
+        calls.append(messages)
         return LLMResponse(content='{"remetente":"capitu","fala":"PRIVATE_PAYLOAD"}', model="stub")
-
     monkeypatch.setattr(llm, "complete", response)
     conversation_id = uuid4()
-    with pytest.raises(LLMUnavailableError) as captured:
-        await harness.respond(game.id, "bentinho", conversation_id, "player", "Bom dia")
-    assert "PRIVATE_PAYLOAD" not in str(captured.value)
-    assert await storage.memory.list_messages(game.id, conversation_id, "player") == ()
+    reply = await harness.respond(game.id, "bentinho", conversation_id, "player", "Bom dia")
+    assert reply.model == "dialogue-fallback" and reply.message.content == TECHNICAL_FALLBACK
+    assert not reply.message.useful and not reply.message.narrative_authorized
+    assert len(calls) == 2
+    history = await storage.memory.list_messages(game.id, conversation_id, "player")
+    assert len(history) == 2 and all("PRIVATE_PAYLOAD" not in message.content for message in history)
 
 
 @pytest.mark.anyio
@@ -83,7 +86,7 @@ async def test_private_objective_cannot_be_echoed_to_player(harness, storage, ga
     private_objective = (await catalog.get("bentinho")).werewolf_objective
 
     async def response(messages):
-        return LLMResponse(content=private_objective, model="stub", input_tokens=12, output_tokens=18)
+        return LLMResponse(content=json.dumps({"fala":private_objective}), model="stub", input_tokens=12, output_tokens=18)
 
     monkeypatch.setattr(llm, "complete", response)
     conversation_id = uuid4()
@@ -103,7 +106,7 @@ async def test_personal_secret_from_biography_is_filtered_before_persistence(
     secret = (await catalog.get("capitu")).protected_secrets[0]
 
     async def response(messages):
-        return LLMResponse(content=secret, model="stub")
+        return LLMResponse(content=json.dumps({"fala":secret}), model="stub")
 
     monkeypatch.setattr(llm, "complete", response)
     conversation_id = uuid4()

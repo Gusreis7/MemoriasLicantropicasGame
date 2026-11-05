@@ -5,7 +5,7 @@ import json
 import pytest
 from memorias_licantropicas.contracts.model import ConversationMessage,LLMResponse
 from memorias_licantropicas.contracts.social import Relationship,SocialState
-from memorias_licantropicas.modules.agents.support import dialogue_supports,compact_observations,supported_reply,has_useful_anchor
+from memorias_licantropicas.modules.agents.support import dialogue_supports,compact_observations
 from memorias_licantropicas.modules.knowledge.mechanics import can_confide_personal
 from memorias_licantropicas.modules.knowledge.service import KnowledgeService
 from memorias_licantropicas.modules.knowledge.seeds import seed_social_state
@@ -29,10 +29,9 @@ async def test_supports_select_relevant_authorized_facts_without_private_leak(ca
  profile=await catalog.get('escobar')
  supports=dialogue_supports(profile,social_observations(),'Você e Bentinho estudaram juntos?')
  assert len(supports)==1 and supports[0]['id']=='seminary'
- answer=supported_reply(profile,social_observations(),'Como foi o seminário?')
- assert 'seminário' in answer and 'Pergunte' not in answer and 'sinto' not in answer
- assert not has_useful_anchor('Bentinho é um enigma de sombras que dançam no destino.',supports)
- assert has_useful_anchor(answer,supports)
+ compact=compact_observations(profile,social_observations(),'Como foi o seminário?')
+ assert compact['apoios_de_conversa'][0]['statement']==supports[0]['statement']
+ assert 'sinto' not in compact['apoios_de_conversa'][0]['statement']
 
 
 async def test_compact_context_excludes_irrelevant_inventory_and_repeated_rules(catalog,harness,game):
@@ -45,17 +44,27 @@ async def test_compact_context_excludes_irrelevant_inventory_and_repeated_rules(
  assert 'omitir_quando' not in prompt and 'Pessoa sem relação' not in prompt
 
 
-async def test_enigmatic_generation_becomes_useful_without_extra_provider_call(harness,storage,game,llm):
+async def test_enigmatic_generation_is_repaired_by_persona_without_template_replacement(harness,storage,game,llm):
  await storage.games.create(game)
  async def context(*args):return social_observations()
  harness._context_provider=context
+ from types import SimpleNamespace
+ from unittest.mock import AsyncMock
+ async def persist(game_id,npc_id,conversation_id,incoming,outgoing,assessment):
+  await storage.memory.append_messages(game_id,conversation_id,(incoming,outgoing))
+ harness._session_master=SimpleNamespace(reconcile=AsyncMock(),
+  assess=AsyncMock(side_effect=[DialogueAssessment(issues=('off_topic',)),DialogueAssessment()]),
+  can_disclose_role=AsyncMock(return_value=False),persist_exchange=persist)
+ replies=iter(('As sombras do coração são um espelho que nunca responde.',
+               'Bentinho e eu estudamos no seminário; a amizade vem daquele tempo, Floriano.'))
  async def complete(prompt):
   llm.calls.append(prompt)
-  return LLMResponse(content='As sombras do coração são um espelho que nunca responde.',model='fake')
+  return LLMResponse(content=json.dumps({'fala':next(replies)}),model='fake')
  llm.complete=complete
  reply=await harness.respond(game.id,'escobar',uuid4(),'player','Pode me contar o que sabe da amizade com Bentinho?')
- assert 'seminário' in reply.message.content and 'Pergunte' in reply.message.content
- assert len(llm.calls)==1 and 'sombras' not in reply.message.content
+ assert 'seminário' in reply.message.content and 'Pergunte' not in reply.message.content
+ assert len(llm.calls)==2 and 'sombras' not in reply.message.content
+ assert any('[task:dialogue_repair]' in message.content for message in llm.calls[-1])
 
 
 async def test_personal_confidence_needs_repeated_meaningful_relationship_gain():
@@ -141,9 +150,9 @@ async def test_local_guard_rejects_paraphrased_early_confidence():
 
 
 async def test_compact_context_keeps_source_access_without_loading_every_transcript(catalog):
- from memorias_licantropicas.modules.agents.grounding import ground_dialogue_output
+ from memorias_licantropicas.modules.agents.grounding import grounding_issues
  profile=await catalog.get('virgilia');obs=social_observations()
  obs['memoria_social']['encontros_anteriores']=[{'interlocutor_id':'capitu','falas':[{'fala':'Uma acusação do detetive.'}]}]
  compact=compact_observations(profile,obs,'Por que está aborrecida comigo?')
  reply='Capitu me contou sua acusação, Floriano. Quero que esclareça o que disse a ela.'
- assert ground_dialogue_output(reply,compact,{'capitu':'Capitu'})==reply
+ assert grounding_issues(reply,compact,{'capitu':'Capitu'})==()
