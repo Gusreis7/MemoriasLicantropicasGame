@@ -97,3 +97,46 @@ regressões históricos importam sua classe `Simulation`. Ele cobre um experimen
 anterior de regras e amostras narrativas separadas. O novo runner é o caminho para
 exercitar partidas e a orquestração integrada; relatórios antigos não foram
 reescritos como se tivessem usado LangGraph.
+
+
+### Bateria executada na árvore integrada
+
+Foram executadas **100 partidas completas**, todas encerradas pelo motor: **75
+vitórias e 25 derrotas**. As 25 partidas passivas terminaram em derrota; cada uma
+das três políticas ativas venceu suas 25 partidas. Os sete personagens apareceram
+como lobisomem: Capitu 16, Bacamarte 16, Virgília 7, Escobar 18, Rubião 15,
+Florença 15 e Bentinho 13. As partidas duraram de 2 a 9 dias.
+
+| Caminho efetivamente exercitado | Quantidade |
+| --- | ---: |
+| Invocações do grafo de diálogo | 2.493 |
+| Diálogos com geração/revisão concluída | 2.011 |
+| Respostas de fallback explícito | 292 |
+| Erros de autenticação sem resposta gerada | 190 |
+| Álibis registrados por diálogo natural | 952 |
+| Encontros sociais / falas sociais confirmadas | 315 / 1.214 |
+| Manhãs resolvidas pelo motor | 292 |
+| Assembleias abertas e resolvidas | 25 |
+| Acusações apresentadas ao delegado | 90 |
+| Encerramentos por prisão / assembleia / sobrevivência da fera | 52 / 23 / 25 |
+
+O máximo observado foi de **duas tentativas de geração por invocação** e uma
+avaliação do mestre; o limite contratual também é testado para reparo semântico.
+A bateria contém 70 partidas sem falhas, 10 com um JSON inválido, 10 com JSON
+sempre inválido e 10 com autenticação recusada. As 7.425 chamadas foram ao dublê
+local: **zero chamadas AWS e custo AWS real US$ 0**. Os oito testes específicos
+das partidas passaram em 9,47 segundos na árvore integrada.
+
+A política ativa visita todos os moradores disponíveis e esgota os vestígios e
+depoimentos públicos. Por isso, a taxa de vitória de 100% dessas políticas **não
+é evidência de balanceamento para humanos**. O resultado revela também que o
+caminho determinístico de apresentação de itens permite continuar investigando
+mesmo se a geração estiver indisponível. A validação demonstrou transições,
+contratos, persistência e fallbacks; a avaliação narrativa com Qwen real permanece
+separada e não foi executada nesta bateria.
+
+Houve 1.226 tentativas de fala social e 1.214 mensagens sociais confirmadas. As
+12 tentativas restantes não devem ser contadas como interações propagadas; o
+relatório não exporta a causa individual dessas recusas. O total de 8.796 mensagens
+observadas no histórico público está sujeito ao limite de 50 por consulta.
+O relatório JSON registra essas limitações e verificações por partida.
