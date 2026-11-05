@@ -1,5 +1,12 @@
 # Partidas completas para validar a refatoração LLM
 
+O runner atual exige chamadas nativas de ferramenta: o schema segue em `tools` e
+os argumentos passam pelo `PydanticToolsParser`. O dublê também deve emitir esse
+envelope; texto contendo JSON não serve como resposta. A [correção nativa](saida_nativa_llm.md)
+substitui o contrato anterior de saída por instruções. A [validação atual](validacao_saida_nativa.md)
+registra dez partidas com esse protocolo e Redis real. O relatório anterior de
+100 partidas, citado adiante, permanece como evidência histórica do código anterior.
+
 ## Execução
 
 ```sh
@@ -78,7 +85,7 @@ KnowledgeEntry, nem uma cadeia de descendentes via parent_ids/root_id. Uma
 contaminação aborta a partida de teste com AssertionError. Um teste adicional
 injeta uma tentativa de revelar o prompt para verificar o caminho `guarded`.
 
-A bateria intercala JSON inválido uma vez, JSON sempre inválido e falha de
+A bateria intercala argumentos inválidos de ferramenta uma vez, argumentos sempre inválidos e falha de
 autenticação, além de partidas sem injeção de falhas. São testadas recuperação
 limitada, preservação de rascunho/histórico e continuidade das mecânicas. Uma partida
 que não alcançar um resultado terminal em 16 ciclos é falha do runner, nunca
