@@ -26,11 +26,16 @@ A [arquitetura LLM atual](docs/refatoracao_llm.md) separa transporte Mantle, pro
 
 O bridge utiliza `tool_choice="auto"` e trata ausência de chamada como falha explícita; não promete forcing ou constrained decoding. **Esse novo fluxo ainda não foi validado ao vivo no Qwen/Mantle.** Consulte os [contratos](docs/contratos_llm_estruturados.md) e [suporte nativo e limites](docs/saida_nativa_llm.md).
 
-A [simulação de partidas completas](docs/simulacao_partidas_refatoracao.md) executa os serviços e termina partidas pelo motor; o provedor padrão é um dublê declarado, sem chamadas AWS. Seus resultados não medem fluência ou custos reais do Qwen.
+A [simulação de partidas reais](docs/simulacao_partidas_refatoracao.md) usa um agente LLM para interpretar Floriano e interagir pela API pública da aplicação em execução. Os NPCs usam o LLM configurado na aplicação. Não há modo offline, política estática, relógio artificial nem resultado fabricado no runner; testes unitários continuam usando dublês isolados.
 
 ```sh
-uv run python scripts/run_session_simulations.py --games 100 --seed 20261105
+make setup
+uv run python scripts/run_session_simulations.py --games 10 \
+  --api-url http://localhost:7079 --max-live-calls 200 \
+  --output artifacts/simulations/live
 ```
+
+O limite de chamadas acima cobre **somente Floriano, incluindo tentativas**, e é compartilhado pelo lote. As chamadas dos NPCs, mestre e convivência ocorrem no servidor e geram consumo separado. Cada sessão mantém eventos incrementais, decisões, respostas, falhas e resultado; limites de passos e duração encerram a avaliação como incompleta, sem inventar um desfecho. Consulte o guia para credenciais, métricas e execução de N partidas.
 
 ## Deploy AWS
 
@@ -171,7 +176,7 @@ src/
   modules/                 # Characters, games, agents, conversations, world e admin
   infrastructure/          # Redis, cliente Mantle e ChatModel/output parser nativo
   prompts/                 # Tarefas e projeção das personas
-  simulation/              # Políticas públicas, provedor offline e partidas completas
+  simulation/              # Agente Floriano e partidas reais via API pública
   composition.py           # Construção e injeção dos serviços
   settings.py              # Configuração por ambiente
   main.py                  # Aplicação FastAPI: src.main:app

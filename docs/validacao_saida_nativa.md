@@ -27,17 +27,13 @@ rejeitadas. Marcadores internos em uma fala nativa válida também são bloquead
 A limpeza posterior removeu também o leitor de histórico antigo e os caminhos
 de migração; consulte [a manutenção](limpeza_reinicio.md). Códigos arbitrários de exceção não entram na telemetria de consumo.
 
-## Dez partidas completas com protocolo nativo
+## Experimento histórico offline, retirado do runner atual
 
-```sh
-uv run python scripts/run_session_simulations.py --games 10 --seed 20261105 \
-  --redis-url redis://127.0.0.1:16389/0 \
-  --output artifacts/simulations/native-sessions-10.json
-```
-
-O [relatório compacto](reports/native_sessions_10.json) preserva resultados,
-contadores de ações, tarefas e auditoria. O Redis era temporário; o runner apagou
-somente o prefixo exclusivo da execução.
+A execução abaixo utilizou um provedor simulado e não constitui medição de
+comportamento de LLM real. Seu runner e relatório gerado foram removidos do
+checkout; podem ser consultados no histórico Git anterior à implementação das
+[partidas reais com Floriano agente](simulacao_partidas_refatoracao.md).
+O Redis era temporário; o runner apagou somente o prefixo exclusivo da execução.
 
 | Indicador | Resultado |
 | --- | ---: |
@@ -74,6 +70,7 @@ usa suporte documentado, mas a taxa real de emissão de ferramentas ainda precis
 ser medida. A [documentação do protocolo](saida_nativa_llm.md) registra essa
 limitação. Nenhuma inferência paga foi executada nesta correção.
 
-Após renovar o login, o runner aceita `--live --aws-profile terraform
---max-live-calls 100 --games 1`, com cota compartilhada entre todos os agentes e
-relatório separado. A bateria offline não substitui essa etapa.
+O runner atual usa somente inferência real. Consulte o [guia de execução](simulacao_partidas_refatoracao.md)
+para credenciais e limites; o limite do CLI cobre somente Floriano, enquanto
+o consumo dos NPCs e demais agentes do servidor é contabilizado separadamente.
+A bateria histórica offline não substitui essa etapa.

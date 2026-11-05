@@ -1,1 +1,1 @@
-"""Partidas executáveis isoladas; nunca carregar credenciais AWS implicitamente."""
+"""Avaliação de partidas reais pela API pública, com Floriano controlado por LLM."""

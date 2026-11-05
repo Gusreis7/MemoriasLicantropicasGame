@@ -135,14 +135,14 @@ independente e sua falha não invalida uma resposta confirmada.
 uv sync --locked
 uv run uvicorn src.main:app --host 127.0.0.1 --port 7079
 uv run pytest -q
-uv run python scripts/run_session_simulations.py --games 100 --seed 20261105
+uv run python scripts/run_session_simulations.py --games 10 --api-url http://localhost:7079 --max-live-calls 200
 ```
 
-O runner executa os serviços e repositórios do jogo: cria partidas com sorteio,
-anda, conversa, extrai relatos, faz NPCs interagirem, investiga, acusa e resolve
-noites até um resultado terminal. A política recebe somente projeções públicas.
-O modo padrão utiliza provedor simulado; inferência real exige opção explícita,
-credencial renovada e limite de chamadas.
+O [runner atual](simulacao_partidas_refatoracao.md) usa um agente LLM como Floriano
+e a API pública da aplicação em execução. O servidor conserva autoridade sobre
+sorteio, movimento, diálogos, convivência, relógio, provas e resultado. Não há
+provedor offline no produto. O limite de chamadas do CLI cobre somente o agente
+Floriano; consumo do servidor é separado. O agente recebe somente dados públicos.
 
 Testes com MockTransport e Runnable real verificam protocolo, kwargs, validação,
 medição, cancelamento e tracing. Relatórios de baterias anteriores preservam seus

@@ -61,20 +61,18 @@ entrypoint ASGI é `src.main:app`, sem pacote intermediário `memorias_licantrop
 uv sync --locked
 uv run uvicorn src.main:app --host 127.0.0.1 --port 7079
 uv run pytest -q
-uv run python scripts/run_session_simulations.py --games 100 --seed 20261105
+uv run python scripts/run_session_simulations.py --games 10 --api-url http://localhost:7079 --max-live-calls 200
 ```
 
 ## Critérios de aceitação e limites
 
 Testes de protocolo devem verificar ferramentas no request, nome/cardinalidade,
 argumentos tipados, ausência de parsing de texto, medição, cancelamento e privacidade.
-Simulações executam serviços e repositórios reais com relógio controlado, investigação,
-conversas, noites e desfecho. A política recebe apenas projeções públicas; não pode
-consultar o papel para decidir acusações nem fabricar o resultado.
-
-O provedor padrão da simulação é um dublê declarado. Seus resultados não medem
-fluência, latência ou custo do Qwen. Relatórios anteriores continuam históricos,
-ligados ao código que os produziu; não comprovam a correção nativa posterior.
+O [runner atual](simulacao_partidas_refatoracao.md) substituiu a política estática
+por Floriano controlado por LLM e ações HTTP na aplicação, com relógio real. O agente
+recebe apenas projeções públicas e não consulta papéis secretos para decidir.
+As antigas simulações com dublês foram retiradas do produto; seus resultados
+continuam somente no histórico Git e não medem comportamento real do Qwen.
 **O novo fluxo ainda não foi validado ao vivo no Mantle/Qwen.** Isso exige credencial
 renovada e execução explicitamente limitada. Não usar AWS automaticamente nos testes.
 

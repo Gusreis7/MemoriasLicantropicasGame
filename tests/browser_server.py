@@ -14,7 +14,7 @@ import src.main as main_module
 from src.composition import build_services
 from src.contracts.model import LLMResponse
 from src.settings import Settings
-from src.simulation.model import OfflineSessionModel
+from browser_model import BrowserFixtureModel
 from pydantic import BaseModel, ConfigDict, Field
 
 clock_offset = [0.0]
@@ -44,7 +44,7 @@ def test_services(_settings):
     services.turns._clock = clock
     services.world._clock = clock
 
-    provider = OfflineSessionModel()
+    provider = BrowserFixtureModel()
 
     async def complete(messages, *, tools=(), tool_choice=None):
         task = provider.task_for(messages)
