@@ -1,0 +1,69 @@
+name: AWS infrastructure
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        type: choice
+        options: [plan, apply, destroy]
+        default: plan
+        required: true
+      confirm_destroy:
+        description: "Para destroy, digite memoriaslicantropicasgame.gustavodreis.dev.br"
+        type: string
+        required: false
+permissions: {contents: read}
+concurrency:
+  group: aws-production
+  cancel-in-progress: false
+jobs:
+  terraform:
+    if: github.ref == 'refs/heads/main' && github.repository == 'Gusreis7/MemoriasLicantropicasGame'
+    environment: ${{ inputs.operation == 'destroy' && 'destruction' || 'infrastructure' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    permissions: {contents: read, id-token: write}
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+      TF_VAR_aws_region: ${{ vars.AWS_REGION || 'us-east-1' }}
+      TF_VAR_state_bucket: ${{ vars.TF_STATE_BUCKET }}
+      TF_IN_AUTOMATION: "true"
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with: {persist-credentials: false}
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
+        with: {terraform_version: "1.17.1", terraform_wrapper: false}
+      - name: Confirmar configuração e destruição
+        env:
+          OPERATION: ${{ inputs.operation }}
+          ACCOUNT: ${{ vars.AWS_ACCOUNT_ID }}
+          ROLE: ${{ vars.AWS_INFRASTRUCTURE_ROLE_ARN }}
+          CONFIRM: ${{ inputs.confirm_destroy }}
+        run: |
+          set -euo pipefail
+          test -n "$TF_VAR_state_bucket"
+          [[ "$ACCOUNT" =~ ^[0-9]{12}$ ]]
+          [[ "$ROLE" == "arn:aws:iam::$ACCOUNT:role/"* ]]
+          case "$OPERATION" in plan|apply|destroy) ;; *) exit 1 ;; esac
+          if [ "$OPERATION" = destroy ]; then
+            test "$CONFIRM" = memoriaslicantropicasgame.gustavodreis.dev.br
+          fi
+      - uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708 # v5
+        with:
+          role-to-assume: ${{ vars.AWS_INFRASTRUCTURE_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: ml-infra-${{ github.run_id }}
+          role-duration-seconds: 3600
+          allowed-account-ids: ${{ vars.AWS_ACCOUNT_ID }}
+      - name: Inicializar state exclusivo da aplicação
+        run: terraform -chdir=infra/terraform/app init -lockfile=readonly -backend-config="bucket=$TF_VAR_state_bucket" -backend-config="key=production/terraform.tfstate" -backend-config="region=$AWS_REGION" -backend-config="encrypt=true" -backend-config="use_lockfile=true"
+      - run: terraform -chdir=infra/terraform/app validate
+      - name: Planejar
+        env: {OPERATION: "${{ inputs.operation }}"}
+        run: |
+          set -euo pipefail
+          options=()
+          if [ "$OPERATION" = destroy ]; then options+=(-destroy); fi
+          terraform -chdir=infra/terraform/app plan -input=false -lock-timeout=5m "${options[@]}" -out=reviewed.tfplan
+      - name: Executar o plano deste mesmo job
+        if: inputs.operation != 'plan'
+        run: terraform -chdir=infra/terraform/app apply -input=false -lock-timeout=5m reviewed.tfplan
