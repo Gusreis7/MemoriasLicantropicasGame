@@ -1,10 +1,16 @@
-from typing import Protocol
+from typing import Any, Protocol
 
 from memorias_licantropicas.contracts.model import ChatMessage, LLMResponse
 
 
 class LLMClient(Protocol):
-    async def complete(self, messages: tuple[ChatMessage, ...]) -> LLMResponse: ...
+    async def complete(
+        self,
+        messages: tuple[ChatMessage, ...],
+        *,
+        tools: tuple[dict[str, Any], ...] = (),
+        tool_choice: str | dict[str, Any] | None = None,
+    ) -> LLMResponse: ...
 
 
 class TokenProvider(Protocol):
