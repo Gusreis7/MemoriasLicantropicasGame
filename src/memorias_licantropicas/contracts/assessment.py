@@ -35,7 +35,7 @@ class AssessmentProposal(BaseModel):
             "off_topic",
         ],
         ...,
-    ] = Field(default=(), max_length=5)
+    ] = Field(default=(), max_length=5, strict=False)
 
 
 class DialogueAssessment(AssessmentProposal):
