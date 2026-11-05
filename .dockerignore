@@ -20,7 +20,8 @@ artifacts
 infra
 .github
 docs
-scripts
+scripts/*
+!scripts/run_session_simulations.py
 *.tfstate
 *.tfstate.*
 *.tfvars
