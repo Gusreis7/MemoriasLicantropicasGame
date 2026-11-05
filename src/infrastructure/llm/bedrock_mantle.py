@@ -54,9 +54,9 @@ class BedrockMantleClient:
     async def complete(
         self, messages: tuple[ChatMessage, ...], *, tools=(), tool_choice=None
     ) -> LLMResponse:
-        if tool_choice not in (None, "auto"):
+        if tool_choice not in (None, "auto", "required"):
             raise ValueError(
-                "Somente tool_choice='auto' foi validado para este adaptador"
+                "O adaptador aceita tool_choice='auto' ou 'required'"
             )
         if tool_choice is not None and not tools:
             raise ValueError("tool_choice exige ferramentas declaradas")

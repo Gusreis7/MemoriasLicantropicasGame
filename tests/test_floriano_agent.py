@@ -26,7 +26,7 @@ class NativeClient:
     async def complete(self, messages, *, tools=(), tool_choice=None):
         self.calls += 1
         self.messages.append(messages)
-        assert len(tools) == 1 and tool_choice == 'auto'
+        assert len(tools) == 1 and tool_choice == 'required'
         if self.calls <= self.invalid_before:
             return LLMResponse(content='{"action":"skip_day"}', model='test', input_tokens=10, output_tokens=4)
         return LLMResponse(tool_calls=({'name': tools[0]['function']['name'],

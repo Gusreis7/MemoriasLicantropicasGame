@@ -43,8 +43,7 @@ flowchart TD
 - Até duas tentativas de protocolo/schema por geração e um reparo semântico:
   no máximo quatro chamadas de fala. O mestre tem seu próprio orçamento; cada
   chamada continua passando pela medição existente.
-- `tool_choice="auto"` é explícito. A emissão de ferramenta não é garantida pelo
-  bridge; ausência ou nome incorreto termina em falha limitada e identificada.
+- `tool_choice="required"` solicita a ferramenta, com instrução system explícita; ausência ou nome incorreto termina em falha limitada e identificada.
 - Reparos devolvem somente códigos autorizados e contexto original. A saída
   rejeitada não volta como mensagem assistant. A própria persona regenera sua fala;
   o mestre não escreve frases substitutas por ela.
@@ -88,8 +87,7 @@ antigos ou importação de transcrições anteriores ao outbox.
 Os testes executam o StateGraph e o Runnable reais, com clientes simulados e Redis
 isolado, cobrindo reparo, erro nativo, autenticação, transição de dia, cancelamento,
 concorrência entre partidas, privacidade de traces e propagação dos schemas de
-ferramentas. Essa cobertura não equivale a uma inferência Qwen ao vivo: **o novo
-protocolo ainda requer essa validação após renovar a credencial AWS**.
+ferramentas. Essa cobertura não equivale a uma inferência Qwen ao vivo: a verificação ao vivo posterior está na [correção das conversas](correcao_ferramenta_dialogo.md).
 
 Referências oficiais: [StateGraph](https://reference.langchain.com/python/langgraph/graph/state/StateGraph)
 e [saída nativa e limites do provedor](saida_nativa_llm.md).

@@ -63,7 +63,8 @@ async def test_player_can_talk_to_each_persona(api_client, storage, llm, npc_id)
     history = (await api_client.get(f"{url}/messages")).json()["messages"]
     assert [message["speaker"] for message in history] == ["player", "npc"]
     await api_client.post(f"{url}/messages", json={"content": "Tem certeza?"})
-    assert "Brás Cubas" in llm.calls[-1][1].content
+    assert any(message.role == "user" and "Brás Cubas" in message.content
+               for message in llm.calls[-1])
     assert len((await api_client.get(f"{url}/messages")).json()["messages"]) == 4
 
 

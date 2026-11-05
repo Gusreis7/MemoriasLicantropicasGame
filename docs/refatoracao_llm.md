@@ -147,12 +147,11 @@ Floriano; consumo do servidor é separado. O agente recebe somente dados públic
 Testes com MockTransport e Runnable real verificam protocolo, kwargs, validação,
 medição, cancelamento e tracing. Relatórios de baterias anteriores preservam seus
 commits de origem; não constituem evidência do caminho nativo posterior.
-**O novo protocolo ainda não foi validado ao vivo no Qwen/Mantle.** O suporte
-client-side a ferramentas é documentado; a taxa de sucesso, fluência, latência e
-custo real deste fluxo continuam exigindo medição ao vivo.
+A [correção das conversas](correcao_ferramenta_dialogo.md) registra a verificação
+real posterior com Qwen/Mantle. `tool_choice="required"` e uma instrução de conclusão
+pela ferramenta substituem o modo opcional que causava fallbacks. Não há recuperação
+de propostas a partir de texto livre nem garantia de confiabilidade total do modelo.
 
-`tool_choice="auto"` é explícito e não garante emissão de ferramenta. O bridge
-falha se ela faltar e rejeita forcing não comprovado para o par modelo/endpoint.
 O workflow automático `Validate` permanece removido. Verificações são manuais e o
 push continua com o usuário. Veja [saída nativa](saida_nativa_llm.md) e
 [contratos](contratos_llm_estruturados.md) para os detalhes do protocolo.

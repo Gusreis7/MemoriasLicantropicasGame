@@ -24,7 +24,7 @@ A [limpeza e reinício local](docs/limpeza_reinicio.md) registra a retirada de c
 
 A [arquitetura LLM atual](docs/refatoracao_llm.md) separa transporte Mantle, prompts de persona, contratos Pydantic e grafos LangGraph de diálogo/convivência. A geração usa **tool calling nativo**, `ChatModel.with_structured_output(method="function_calling")` e `PydanticToolsParser`: o schema vai em `tools`, separado das instruções narrativas. Não há pedido de JSON no prompt, extração de texto ou regex para recuperar uma resposta estruturada.
 
-O bridge utiliza `tool_choice="auto"` e trata ausência de chamada como falha explícita; não promete forcing ou constrained decoding. **Esse novo fluxo ainda não foi validado ao vivo no Qwen/Mantle.** Consulte os [contratos](docs/contratos_llm_estruturados.md) e [suporte nativo e limites](docs/saida_nativa_llm.md).
+O bridge utiliza `tool_choice="required"` e instrução explícita para concluir pela ferramenta nativa. Texto livre continua sendo rejeitado. A [correção das conversas](docs/correcao_ferramenta_dialogo.md) registra a reprodução e a verificação real com Qwen/Mantle; isso não representa uma medição ampla de confiabilidade. Consulte os [contratos](docs/contratos_llm_estruturados.md) e [suporte nativo e limites](docs/saida_nativa_llm.md).
 
 A [simulação de partidas reais](docs/simulacao_partidas_refatoracao.md) usa um agente LLM para interpretar Floriano e interagir pela API pública da aplicação em execução. Os NPCs usam o LLM configurado na aplicação. Não há modo offline, política estática, relógio artificial nem resultado fabricado no runner; testes unitários continuam usando dublês isolados.
 

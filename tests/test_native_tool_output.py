@@ -80,7 +80,7 @@ async def client_with(handler, token_provider=None):
 
 
 @pytest.mark.anyio
-async def test_native_request_sends_schema_in_tools_and_keeps_prompt_unmodified():
+async def test_native_request_requires_tool_and_preserves_domain_prompt():
     seen = []
 
     def handler(request):
@@ -94,13 +94,14 @@ async def test_native_request_sends_schema_in_tools_and_keeps_prompt_unmodified(
         assert result.ok and result.value.fala == "Bom dia, Floriano."
         assert (result.response.input_tokens, result.response.output_tokens) == (12, 4)
         payload = seen[0]
-        assert payload["messages"] == [m.model_dump() for m in MESSAGES]
+        assert (payload["messages"][:1] + payload["messages"][2:]) == [m.model_dump() for m in MESSAGES]
+        assert "ferramenta Speech" in payload["messages"][1]["content"]
         assert payload["tools"][0]["function"]["name"] == "Speech"
         assert (
             payload["tools"][0]["function"]["parameters"]["additionalProperties"]
             is False
         )
-        assert payload["tool_choice"] == "auto"
+        assert payload["tool_choice"] == "required"
         assert "response_format" not in payload
     finally:
         await client.aclose()
@@ -222,7 +223,7 @@ async def test_false_forcing_and_unimplemented_modes_fail_before_transport():
     fake = AsyncMock()
     model = MantleChatModel(port=fake)
     with pytest.raises(ValueError):
-        model.bind_tools([Speech], tool_choice="required")
+        model.bind_tools([Speech], tool_choice={"type": "function", "function": {"name": "Speech"}})
     with pytest.raises(ValueError):
         model.with_structured_output(Speech, method="json_mode")
     assert fake.complete.await_count == 0

@@ -10,7 +10,7 @@ Os dados de ferramenta não executam ações: são propostas que passam pelo mot
 1. O schema Pydantic é convertido por `convert_to_openai_tool` do langchain-core.
 2. `MantleChatModel`, um `BaseChatModel` assíncrono, recebe
    `.with_structured_output(schema, method="function_calling", include_raw=True)`.
-3. O port medido envia `tools` e `tool_choice="auto"` ao Mantle. Os prompts de domínio
+3. O port medido envia `tools` e `tool_choice="required"` ao Mantle. Os prompts de domínio
    permanecem inalterados. O bearer é obtido novamente por chamada quando usa provider.
 4. O adaptador recebe `message.tool_calls`. O parser de protocolo do LangChain
    (`default_tool_parser`) decodifica `function.arguments`; não lê JSON do texto da fala.
@@ -19,11 +19,12 @@ Os dados de ferramenta não executam ações: são propostas que passam pelo mot
 6. Ausência de ferramenta, nome diferente, chamadas extras e erros de schema são
    falhas explícitas. Uma resposta textual contendo JSON válido também é rejeitada.
 
-O método público `with_structured_output` é especializado para este provedor usando
-`bind_tools(..., tool_choice="auto") | PydanticToolsParser`. O método padrão do
-BaseChatModel usa `any`; este bridge não mapeia silenciosamente uma solicitação de
-forcing para `auto`. Chamadores que pedem `required`, `any`, ferramenta nomeada ou
-`json_mode` recebem erro de configuração antes de chamar o provedor.
+O método público `with_structured_output` usa
+`bind_tools(..., tool_choice="required") | PydanticToolsParser`. O gerador acrescenta
+uma mensagem system instruindo a conclusão pela ferramenta exata, preservando o
+prompt de domínio e o histórico. O schema continua exclusivamente em `tools`.
+Chamadas diretas aceitam `auto` ou `required`; `any`, ferramenta nomeada e
+`json_mode` são rejeitados. Não há downgrade silencioso para texto livre.
 
 ## Port e tipos
 
@@ -59,10 +60,12 @@ lista **client-side tool calling** no Mantle, com modelo `qwen.qwen3-32b` e endp
 `https://bedrock-mantle.{region}.api.aws/v1`. O projeto mantém esse modelo/endpoint.
 
 A [documentação AWS de ferramentas client-side](https://docs.aws.amazon.com/bedrock/latest/userguide/tool-use-client-side.html)
-distingue `auto` de opções que forçam uma chamada: forcing não é suportado por todos
-os modelos. Não foi comprovado forcing para este par Mantle/Qwen, portanto esta
-entrega usa `auto` e falha se o modelo responder sem ferramenta. Não promete
-constrained decoding ou emissão garantida de chamada em todas as respostas.
+explica que `auto` permite texto livre e que a seleção obrigatória depende do modelo.
+Em 05/11/2026, chamadas reais confirmaram `required` com ferramentas em Qwen/Mantle.
+A opção nomeada retornou HTTP 200 mas texto livre; por isso ela permanece rejeitada.
+A validação do DTO e o limite de tentativas continuam necessários: isso não demonstra
+constrained decoding ou confiabilidade de 100% do modelo. Veja a
+[correção das conversas](correcao_ferramenta_dialogo.md).
 
 As fontes de integração são a [referência BaseChatModel](https://reference.langchain.com/python/langchain-core/language_models/chat_models/BaseChatModel),
 [o parser de ferramentas Pydantic](https://reference.langchain.com/python/langchain-core/output_parsers/openai_tools/PydanticToolsParser)
@@ -70,4 +73,4 @@ e [o guia LangChain de tool calling](https://www.langchain.com/blog/tool-calling
 
 Os testes usam `httpx.MockTransport`, clientes simulados e o Runnable real. Eles
 verificam o protocolo, schema, erros, renovação do bearer, medição e privacidade;
-**não são inferências reais do Qwen**. Não houve nova chamada paga nesta correção.
+**não são inferências reais do Qwen**. A correção posterior incluiu chamadas reais, registradas no documento da correção das conversas.

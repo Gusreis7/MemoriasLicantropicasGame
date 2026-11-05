@@ -26,7 +26,7 @@ propostas; identidade e autorização continuam sendo decisões do servidor.
 `src.infrastructure.llm.structured.MantleChatModel` implementa o `BaseChatModel`
 assíncrono. O fluxo chama
 `.with_structured_output(schema, method="function_calling", include_raw=True)`
-e compõe `bind_tools(..., tool_choice="auto")` com `PydanticToolsParser`.
+e compõe `bind_tools(..., tool_choice="required")` com `PydanticToolsParser`.
 O parser de protocolo do LangChain decodifica `function.arguments`; o parser
 Pydantic verifica tipos, limites e campos permitidos.
 
@@ -76,13 +76,11 @@ Variáveis LangSmith incidentais do host não habilitam exportação de prompts,
 personas ou argumentos. O jogo utiliza traces locais sanitizados e separados da
 memória narrativa.
 
-O projeto mantém **Qwen3 32B no Bedrock Mantle**. O suporte documentado a ferramentas
-client-side justifica o protocolo escolhido. `tool_choice="auto"` não garante que
-o modelo emitirá uma chamada; a ausência dela é tratada como falha, sem downgrade
-para texto. Opções de forcing não comprovadas para o par modelo/endpoint são
-rejeitadas pelo bridge.
+O projeto mantém **Qwen3 32B no Bedrock Mantle**. A geração estruturada solicita
+`tool_choice="required"`, com uma instrução system para usar a ferramenta esperada.
+O schema continua em `tools`, e texto livre não é convertido em proposta.
+Ferramentas nomeadas e modos não implementados continuam rejeitados.
 
-**O novo caminho nativo ainda não foi validado com Qwen ao vivo.** Os testes de
-protocolo usam HTTP MockTransport e clientes simulados com o Runnable real. Eles
-não comprovam fluência narrativa, taxa real de chamadas nativas, latência ou custo
-AWS. As fontes oficiais e esses limites estão em [saida_nativa_llm.md](saida_nativa_llm.md).
+A reprodução e as verificações ao vivo estão na
+[correção das conversas](correcao_ferramenta_dialogo.md). Testes de protocolo isolados
+não comprovam qualidade narrativa nem confiabilidade total do provedor.

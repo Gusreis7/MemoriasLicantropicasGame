@@ -1,7 +1,7 @@
 """Saída nativa por ferramentas: LangChain ChatModel e PydanticToolsParser.
 
-O schema viaja no parâmetro tools do provedor. Conteúdo textual nunca é tratado
-como objeto estruturado; nenhuma instrução de formatação é acrescentada ao prompt.
+O schema viaja em tools, com required e instrução explícita de chamar o DTO.
+Conteúdo textual nunca é tratado como objeto estruturado.
 """
 
 from __future__ import annotations
@@ -105,14 +105,14 @@ class MantleChatModel(BaseChatModel):
             raise asyncio.CancelledError() from None
 
     def bind_tools(self, tools: Sequence, *, tool_choice="auto", **kwargs):
-        # AWS documents auto for models supporting tools; forced/named choice
-        # has not been validated for this Mantle/Qwen pair. Never pretend forcing.
-        if tool_choice not in (None, "auto"):
-            raise ValueError("O bridge Mantle aceita somente tool_choice='auto'")
+        # Named forcing is deliberately unsupported: Mantle/Qwen accepted it
+        # with HTTP 200 but returned plain text during live verification.
+        if tool_choice not in (None, "auto", "required"):
+            raise ValueError("O bridge Mantle aceita tool_choice='auto' ou 'required'")
         if kwargs:
             raise ValueError("Opções de ferramenta não suportadas")
         converted = tuple(convert_to_openai_tool(tool) for tool in tools)
-        return self.bind(tools=converted, tool_choice="auto")
+        return self.bind(tools=converted, tool_choice=tool_choice or "auto")
 
     def with_structured_output(
         self, schema, *, include_raw=False, method="function_calling", **kwargs
@@ -128,7 +128,7 @@ class MantleChatModel(BaseChatModel):
             )
         if not isinstance(schema, type) or not issubclass(schema, BaseModel):
             raise TypeError("O contrato de saída deve ser um modelo Pydantic")
-        bound = self.bind_tools([schema], tool_choice="auto")
+        bound = self.bind_tools([schema], tool_choice="required")
         parser = PydanticToolsParser(tools=[schema], first_tool_only=True)
         if not include_raw:
             return bound | parser
@@ -180,6 +180,10 @@ async def generate_structured(
     )
     expected_name = convert_to_openai_tool(output_type)["function"]["name"]
     prompt = [(message.role, message.content) for message in messages]
+    prompt.insert(1 if messages[0].role == "system" else 0,
+                  ("system", f"Conclua esta tarefa chamando exatamente uma vez a ferramenta {expected_name}. "
+                   "Preencha os argumentos da ferramenta com o resultado solicitado. "
+                   "Não envie a resposta em texto livre fora da chamada da ferramenta."))
     response = None
     error_code = None
     for attempt in range(1, max_attempts + 1):

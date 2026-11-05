@@ -81,7 +81,8 @@ async def test_bounded_retry_preserves_prompt_and_uses_native_schema_each_time()
     result = await generate_structured(client, MESSAGES, Evaluation)
     assert result.ok and result.attempts == 2 and result.value.day == 1
     for prompt, tools, choice in client.calls:
-        assert prompt == MESSAGES and choice == "auto"
+        assert prompt[:1] + prompt[2:] == MESSAGES and choice == "required"
+        assert "ferramenta Evaluation" in prompt[1].content
         assert tools[0]["function"]["name"] == "Evaluation"
     assert "PRIVATE_CONTEXT" not in repr(result)
 
@@ -167,7 +168,7 @@ async def test_native_attempts_keep_usage_records_and_forward_tool_kwargs():
             summary.totals.known_input_tokens == 40
             and summary.totals.known_output_tokens == 10
         )
-        assert all(call[1] and call[2] == "auto" for call in raw.calls)
+        assert all(call[1] and call[2] == "required" for call in raw.calls)
     finally:
         await redis.aclose()
 
