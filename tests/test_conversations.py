@@ -111,12 +111,20 @@ async def test_http_dialogue_error_exposes_only_whitelisted_diagnostic(api_clien
     llm.error = LLMUnavailableError(raw_private, code=code)
     expected_code = code if code in LLM_PUBLIC_DETAILS else "llm_unavailable"
     response = await api_client.post(url, json={"content": "O que ouviu hoje?"})
-    assert response.status_code == 503
-    assert response.json() == {"detail": LLM_PUBLIC_DETAILS[expected_code], "code": expected_code}
-    assert (await api_client.get(url)).json()["messages"] == []
     diagnostic_logs = [record.getMessage() for record in caplog.records
                        if record.name == "memorias_licantropicas.main"]
-    assert diagnostic_logs == [f"dialogue_unavailable code={expected_code}"]
+    if expected_code in {"llm_invalid_response", "llm_response_truncated"}:
+        from memorias_licantropicas.modules.agents.workflow import TECHNICAL_FALLBACK
+        assert response.status_code == 200
+        assert response.json()["message"]["content"] == TECHNICAL_FALLBACK
+        saved = await storage.memory.list_messages(UUID(game["id"]), UUID(conversation["id"]), "player")
+        assert len(saved) == 2 and not saved[-1].narrative_authorized and not saved[-1].useful
+        assert diagnostic_logs == []
+    else:
+        assert response.status_code == 503
+        assert response.json() == {"detail": LLM_PUBLIC_DETAILS[expected_code], "code": expected_code}
+        assert (await api_client.get(url)).json()["messages"] == []
+        assert diagnostic_logs == [f"dialogue_unavailable code={expected_code}"]
     assert all(secret not in response.text + caplog.text for secret in raw_private.split())
     if code not in LLM_PUBLIC_DETAILS:
         assert code not in response.text + caplog.text
@@ -177,10 +185,14 @@ async def test_invalid_persona_output_returns_safe_specific_diagnostic(api_clien
         return LLMResponse(content='<think>PRIVATE_PROVIDER_REASONING</think>Olá', model="stub")
     monkeypatch.setattr(llm, "complete", invalid)
     response = await api_client.post(url, json={"content": "Olá"})
-    assert response.status_code == 503
-    assert response.json() == {"code": "llm_invalid_response", "detail": LLM_PUBLIC_DETAILS["llm_invalid_response"]}
+    from memorias_licantropicas.modules.agents.workflow import TECHNICAL_FALLBACK
+    assert response.status_code == 200
+    assert response.json()["message"]["content"] == TECHNICAL_FALLBACK
     assert "PRIVATE_PROVIDER_REASONING" not in response.text + caplog.text
-    assert (await api_client.get(url)).json()["messages"] == []
+    history = (await api_client.get(url)).json()["messages"]
+    assert len(history) == 2 and history[-1]["content"] == TECHNICAL_FALLBACK
+    saved = await storage.memory.list_messages(UUID(game["id"]), UUID(conversation["id"]), "player")
+    assert not saved[-1].narrative_authorized and not saved[-1].useful
 
 
 async def test_concurrent_messages_are_rejected_until_first_finishes(api_client, storage, llm, monkeypatch):

@@ -70,7 +70,7 @@ async def test_prior_claim_stays_attributed_and_is_not_promoted_to_fact(
 
     async def capture(messages):
         llm.calls.append(messages)
-        return LLMResponse(content=next(responses), model="stub")
+        return LLMResponse(content=json.dumps({"fala": next(responses)}), model="stub")
 
     monkeypatch.setattr(llm, "complete", capture)
     conversation_id = uuid4()
