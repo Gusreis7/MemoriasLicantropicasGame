@@ -105,7 +105,15 @@ exercitar partidas e a orquestração integrada; relatórios antigos não foram
 reescritos como se tivessem usado LangGraph.
 
 
-### Bateria executada na árvore integrada
+### Bateria final com Redis real
+
+A execução final usou o commit **14bebb7bda504819bff36f430e323c6b2b89d318**,
+Redis real isolado em `127.0.0.1:16389`, semente 20261105 e terminou com **exit 0**:
+
+```sh
+uv run python scripts/run_session_simulations.py --games 100 --seed 20261105 \
+  --redis-url redis://127.0.0.1:16389/0
+```
 
 Foram executadas **100 partidas completas**, todas encerradas pelo motor: **75
 vitórias e 25 derrotas**. As 25 partidas passivas terminaram em derrota; cada uma
@@ -120,7 +128,7 @@ Florença 15 e Bentinho 13. As partidas duraram de 2 a 9 dias.
 | Respostas de fallback explícito | 292 |
 | Erros de autenticação sem resposta gerada | 190 |
 | Álibis registrados por diálogo natural | 952 |
-| Encontros sociais / falas sociais confirmadas | 315 / 1.214 |
+| Encontros sociais / falas sociais confirmadas | 315 / 1.260 |
 | Manhãs resolvidas pelo motor | 292 |
 | Assembleias abertas e resolvidas | 25 |
 | Acusações apresentadas ao delegado | 90 |
@@ -129,20 +137,37 @@ Florença 15 e Bentinho 13. As partidas duraram de 2 a 9 dias.
 O máximo observado foi de **duas tentativas de geração por invocação** e uma
 avaliação do mestre; o limite contratual também é testado para reparo semântico.
 A bateria contém 70 partidas sem falhas, 10 com um JSON inválido, 10 com JSON
-sempre inválido e 10 com autenticação recusada. As 7.425 chamadas foram ao dublê
-local: **zero chamadas AWS e custo AWS real US$ 0**. Os oito testes específicos
-das partidas passaram em 9,47 segundos na árvore integrada.
+sempre inválido e 10 com autenticação recusada. As **7.452 chamadas** foram ao dublê
+local: **zero chamadas AWS e custo AWS real US$ 0**. Os nove testes específicos
+das partidas passaram em 9,56 segundos durante a integração.
+
+### Auditoria de fallback e resposta de guarda
+
+A bateria final auditou **4.398 pares persistidos**: 4.106 com geração `accepted`
+e 292 com `fallback`. Cruzou **584 IDs de mensagens de origem técnica** com as
+origens das memórias e seus descendentes por `root_id`/`parent_ids`. O resultado
+foi **zero entradas de conhecimento e zero memórias narrativas contaminadas**.
+As respostas técnicas permaneceram acessíveis no histórico: não foram apagadas.
+
+Uma partida adicional, separada da estatística das 100, injetou uma tentativa de
+revelar prompts. Ela também usou Redis real, terminou pela regra de derrota e
+registrou um par `guarded` e sete `accepted`. Os dois IDs da troca bloqueada não
+originaram memória narrativa. Assim, a cobertura `guarded` não é uma afirmação
+vazia baseada em uma bateria sem essa entrada.
+
+O total de 8.796 mensagens observado no histórico público equivale a duas mensagens
+por par persistido nesta bateria. A consulta continua tendo limite de 50 por
+conversa, e o relatório não a apresenta como contagem Redis universal.
+
+### O que os resultados permitem concluir
 
 A política ativa visita todos os moradores disponíveis e esgota os vestígios e
 depoimentos públicos. Por isso, a taxa de vitória de 100% dessas políticas **não
 é evidência de balanceamento para humanos**. O resultado revela também que o
 caminho determinístico de apresentação de itens permite continuar investigando
 mesmo se a geração estiver indisponível. A validação demonstrou transições,
-contratos, persistência e fallbacks; a avaliação narrativa com Qwen real permanece
-separada e não foi executada nesta bateria.
+contratos, persistência, isolamento dos fallbacks e execução em Redis real; a
+avaliação narrativa com Qwen real permanece separada e não foi executada.
 
-Houve 1.226 tentativas de fala social e 1.214 mensagens sociais confirmadas. As
-12 tentativas restantes não devem ser contadas como interações propagadas; o
-relatório não exporta a causa individual dessas recusas. O total de 8.796 mensagens
-observadas no histórico público está sujeito ao limite de 50 por consulta.
-O relatório JSON registra essas limitações e verificações por partida.
+Este relatório substitui a amostra preliminar feita antes da auditoria de
+`generation_status`; os números publicados correspondem à árvore final indicada.
