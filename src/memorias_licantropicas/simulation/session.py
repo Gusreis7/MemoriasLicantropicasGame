@@ -138,6 +138,7 @@ class SessionSimulation:
         pricing=None,
     ):
         self.redis, self.prefix, self.seed = redis, prefix, seed
+        self.fault = fault
         self.rng = random.Random(seed)
         self.clock = Clock(datetime(2026, 11, 5, 12, tzinfo=UTC))
         self.catalog = CatalogCharacterRepository()
@@ -542,6 +543,7 @@ class SessionSimulation:
                 "game_id": str(game.id),
                 "policy": policy,
                 "mode": self.mode,
+                "fault": self.fault if self.mode == "offline" else "none",
                 "werewolf_audit_after_game": wolf,
                 "result": case.status,
                 "day": case.day,
@@ -557,6 +559,16 @@ class SessionSimulation:
                     len(history.messages) for history in histories
                 ),
                 "graph_traces": len(self.traces),
+                "graph_statuses": dict(Counter(item["status"] for item in self.traces)),
+                "graph_fallbacks": sum(
+                    item.get("fallback", False) for item in self.traces
+                ),
+                "graph_max_attempts": max(
+                    (item["attempts"] for item in self.traces), default=0
+                ),
+                "graph_max_review_attempts": max(
+                    (item.get("review_attempts", 0) for item in self.traces), default=0
+                ),
                 "graph_nodes": sorted(
                     {node for item in self.traces for node in item.get("nodes", ())}
                 ),

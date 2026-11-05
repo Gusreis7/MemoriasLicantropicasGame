@@ -86,9 +86,25 @@ async def test_invalid_provider_json_is_retried_inside_a_full_game():
         ).play("investigator")
         assert result["result"] in {"won", "lost"}
         assert result["injected_faults"] == 1
+        assert 2 <= result["graph_max_attempts"] <= 4
         assert result["actions"]["dialogue"] > 0
         assert result["graph_traces"] > 0
         assert result["errors"] == []
+    finally:
+        await redis.aclose()
+
+
+async def test_permanently_invalid_json_uses_a_visible_bounded_fallback():
+    redis = fakeredis.FakeAsyncRedis(decode_responses=True)
+    try:
+        result = await SessionSimulation(
+            redis, "test:invalid-session", 20261108, fault="invalid_json_always"
+        ).play("passive")
+        assert result["result"] == "lost"
+        assert result["graph_fallbacks"] > 0
+        assert result["graph_statuses"]["fallback"] == result["actions"]["dialogue"]
+        assert result["graph_max_attempts"] <= 4
+        assert result["persisted_player_messages"] > 0
     finally:
         await redis.aclose()
 
