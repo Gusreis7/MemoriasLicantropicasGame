@@ -1,0 +1,61 @@
+{
+  "method": {
+    "draws": 1000,
+    "creation_endpoint": "POST /api/v1/games",
+    "truth_endpoint": "GET /admin/api/v1/games/{game_id}/state",
+    "concurrency": 25,
+    "isolated_redis_prefix": true,
+    "social_processing_enabled": false,
+    "transient_creation_conflicts_retried": 2352
+  },
+  "distribution": {
+    "bacamarte": {
+      "count": 133,
+      "percentage": 13.3,
+      "deviation_from_expected": -9.857
+    },
+    "bentinho": {
+      "count": 140,
+      "percentage": 14.0,
+      "deviation_from_expected": -2.857
+    },
+    "capitu": {
+      "count": 158,
+      "percentage": 15.8,
+      "deviation_from_expected": 15.143
+    },
+    "escobar": {
+      "count": 152,
+      "percentage": 15.2,
+      "deviation_from_expected": 9.143
+    },
+    "florenca": {
+      "count": 134,
+      "percentage": 13.4,
+      "deviation_from_expected": -8.857
+    },
+    "rubiao": {
+      "count": 136,
+      "percentage": 13.6,
+      "deviation_from_expected": -6.857
+    },
+    "virgilia": {
+      "count": 147,
+      "percentage": 14.7,
+      "deviation_from_expected": 4.143
+    }
+  },
+  "analysis": {
+    "categories": 7,
+    "expected_per_character": 142.857143,
+    "chi_square": 3.926,
+    "degrees_of_freedom": 6,
+    "p_value": 0.68669007,
+    "alpha": 0.05,
+    "reject_uniformity": false,
+    "max_absolute_deviation": 15.142857,
+    "max_relative_deviation_percent": 10.6,
+    "interpretation": "A amostra não apresenta evidência estatística contra a distribuição uniforme."
+  },
+  "duration_seconds": 16.715
+}
