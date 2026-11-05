@@ -63,7 +63,19 @@ class OfflineSessionModel:
                 return task
         raise AssertionError("Simulation received an unidentified LLM task")
 
-    async def complete(self, messages):
+    async def complete(self, messages, *, tools=(), tool_choice=None):
+        if len(tools) != 1:
+            raise AssertionError("Simulation requires a declared native output tool")
+        output_name = tools[0]["function"]["name"]
+        if tool_choice == "none":
+            raise AssertionError(
+                "Native output tools cannot be disabled in simulations"
+            )
+        if (
+            isinstance(tool_choice, dict)
+            and tool_choice["function"]["name"] != output_name
+        ):
+            raise AssertionError("Requested output tool name mismatch")
         task = self.task_for(messages)
         self.calls[task] += 1
         if task == "npc_dialogue" and self.fault == "authentication":
@@ -78,7 +90,15 @@ class OfflineSessionModel:
         ):
             self.injected_faults += 1
             return LLMResponse(
-                content='{"fala":',
+                invalid_tool_calls=(
+                    {
+                        "name": output_name,
+                        "args": '{"fala":',
+                        "id": "invalid-simulation-call",
+                        "type": "invalid_tool_call",
+                        "error": "invalid_tool_arguments",
+                    },
+                ),
                 model="offline-session-double",
                 input_tokens=0,
                 output_tokens=0,
@@ -110,7 +130,7 @@ class OfflineSessionModel:
                 speech
                 or "Bom dia, detetive. Quero ajudar; diga qual assunto deseja esclarecer."
             )
-            content = json.dumps({"fala": speech}, ensure_ascii=False)
+            arguments = {"fala": speech}
         elif task == "session_assessment":
             speech = payload.get("personagem", "")
             useful = any(
@@ -119,20 +139,17 @@ class OfflineSessionModel:
             )
             question = str(payload.get("jogador", "")).casefold()
             alibi = "onde estava" in question or "com quem" in question
-            content = json.dumps(
-                {
-                    "kind": "alibi" if alibi else "conversation",
-                    "quote": speech if alibi else "",
-                    "confidence": 1.0 if alibi else 0.0,
-                    "own_assertion": alibi,
-                    "period": "night" if alibi else None,
-                    "day": max(0, int(payload.get("dia", 1)) - 1) if alibi else None,
-                    "issues": [],
-                    "useful": useful,
-                    "useful_quote": speech if useful else "",
-                },
-                ensure_ascii=False,
-            )
+            arguments = {
+                "kind": "alibi" if alibi else "conversation",
+                "quote": speech if alibi else "",
+                "confidence": 1.0 if alibi else 0.0,
+                "own_assertion": alibi,
+                "period": "night" if alibi else None,
+                "day": max(0, int(payload.get("dia", 1)) - 1) if alibi else None,
+                "issues": [],
+                "useful": useful,
+                "useful_quote": speech if useful else "",
+            }
         elif task == "knowledge_extraction":
             claims = [
                 {
@@ -148,7 +165,7 @@ class OfflineSessionModel:
                 for item in payload.get("messages", ())
                 if 8 <= len(item["text"]) <= 1200
             ]
-            content = json.dumps({"claims": claims[:8]}, ensure_ascii=False)
+            arguments = {"claims": claims[:8]}
         elif task == "social_speech":
             authorized = self._context(messages, "Dados autorizados:\n")
             available = authorized.get("alegacoes_compartilhaveis", ())
@@ -158,33 +175,37 @@ class OfflineSessionModel:
                 if claim
                 else "Ainda tenho dúvidas sobre o que aconteceu; prefiro ouvir as pessoas."
             )
-            content = json.dumps(
-                {
-                    "fala": speech,
-                    "intent": "repeat" if claim else "ask",
-                    "claim_ids": [claim["id"]] if claim else [],
-                },
-                ensure_ascii=False,
-            )
+            arguments = {
+                "fala": speech,
+                "intent": "repeat" if claim else "ask",
+                "claim_ids": [claim["id"]] if claim else [],
+            }
         elif task == "assembly_debate":
-            content = json.dumps(
-                {"messages": payload["falas_publicas"], "argument_strength": 0.5},
-                ensure_ascii=False,
-            )
+            arguments = {
+                "messages": payload["falas_publicas"],
+                "argument_strength": 0.5,
+            }
         else:
             speech = (
                 "A cidade deve a Floriano o alívio de ver encerrada esta ameaça. "
                 "Celebramos sua persistência, sem esquecer o luto que nenhuma vitória apaga. "
                 "Os fatos confirmados encerram a investigação, e os moradores podem voltar a respirar."
             )
-            content = json.dumps({"opinion": speech}, ensure_ascii=False)
+            arguments = {"opinion": speech}
         # Explicit character-count approximation, not tokenizer/provider measurements.
         input_tokens = sum(len(message.content) for message in messages) // 4
         return LLMResponse(
-            content=content,
+            tool_calls=(
+                {
+                    "name": output_name,
+                    "args": arguments,
+                    "id": "simulation-call",
+                    "type": "tool_call",
+                },
+            ),
             model="offline-session-double",
             input_tokens=input_tokens,
-            output_tokens=max(1, len(content) // 4),
+            output_tokens=max(1, len(json.dumps(arguments, ensure_ascii=False)) // 4),
         )
 
     async def aclose(self):
@@ -202,14 +223,16 @@ class BudgetedSessionModel:
         self.injected_faults = 0
         self.exhausted = False
 
-    async def complete(self, messages):
+    async def complete(self, messages, *, tools=(), tool_choice=None):
         if sum(self.calls.values()) >= self.max_calls:
             self.exhausted = True
             raise LLMUnavailableError(
                 "Simulation provider-call budget exhausted", code="llm_unavailable"
             )
         self.calls[OfflineSessionModel.task_for(messages)] += 1
-        return await self.client.complete(messages)
+        return await self.client.complete(
+            messages, tools=tools, tool_choice=tool_choice
+        )
 
     async def aclose(self):
         await self.client.aclose()

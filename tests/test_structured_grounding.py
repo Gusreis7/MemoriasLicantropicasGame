@@ -3,29 +3,48 @@ from uuid import uuid4
 
 import pytest
 
-from memorias_licantropicas.infrastructure.llm.structured import (
-    parse_model_output,
-    StructuredOutputError,
-)
+from memorias_licantropicas.infrastructure.llm.structured import generate_structured
+from memorias_licantropicas.contracts.model import ChatMessage, LLMResponse
+from native_fixtures import respond_to_tools, invalid_tool_response
 from memorias_licantropicas.contracts.generation import Extraction
 from memorias_licantropicas.modules.knowledge.service import attributed_utterance
 from memorias_licantropicas.modules.agents.grounding import grounding_issues
 
 
-def test_extraction_requires_complete_typed_document():
-    assert parse_model_output('{"claims": []}', Extraction).claims == ()
+@pytest.mark.anyio
+async def test_extraction_requires_the_declared_native_output_tool():
+    class Client:
+        async def complete(self, messages, *, tools=(), tool_choice=None):
+            return respond_to_tools({"claims": []}, tools, tool_choice)
+
+    result = await generate_structured(
+        Client(), (ChatMessage(role="user", content="Extraia relatos."),), Extraction
+    )
+    assert result.ok and result.value.claims == ()
+    assert (
+        result.response.content == ""
+        and result.response.tool_calls[0].name == "Extraction"
+    )
 
 
+@pytest.mark.anyio
 @pytest.mark.parametrize(
     "text",
     ["Aqui: {}", '```json\n{"claims": []}\n```', '{"claims":[],"claims":[]}', "[]"],
 )
-def test_rejects_prose_fences_duplicates_and_nonobject(text):
-    with pytest.raises(StructuredOutputError):
-        parse_model_output(text, Extraction)
+async def test_free_text_is_never_rescued_as_native_structured_output(text):
+    class Client:
+        async def complete(self, messages, *, tools=(), tool_choice=None):
+            return LLMResponse(content=text, model="unstructured-provider")
+
+    result = await generate_structured(
+        Client(), (ChatMessage(role="user", content="Extraia relatos."),), Extraction
+    )
+    assert not result.ok and result.error_code == "invalid_tool_response"
 
 
-def test_invalid_claim_rejects_batch_instead_of_silent_partial_acceptance():
+@pytest.mark.anyio
+async def test_invalid_claim_rejects_the_native_batch_without_partial_acceptance():
     good = {
         "message_id": str(uuid4()),
         "source_span": "Virgília esteve no cais.",
@@ -33,8 +52,17 @@ def test_invalid_claim_rejects_batch_instead_of_silent_partial_acceptance():
         "kind": "report",
     }
     bad = {**good, "kind": "accusation"}
-    with pytest.raises(StructuredOutputError):
-        parse_model_output(json.dumps({"claims": [bad, good]}), Extraction)
+
+    class Client:
+        async def complete(self, messages, *, tools=(), tool_choice=None):
+            return respond_to_tools({"claims": [bad, good]}, tools, tool_choice)
+
+    result = await generate_structured(
+        Client(), (ChatMessage(role="user", content="Extraia relatos."),), Extraction
+    )
+    assert (
+        not result.ok and result.error_code == "invalid_schema" and result.value is None
+    )
 
 
 def test_unrecorded_presence_and_invented_source_are_rejected_without_rewriting():

@@ -254,7 +254,7 @@ class RecordingClient:
     def __init__(self, client, records, max_calls):
         self.client, self.records, self.max_calls = client, records, max_calls
 
-    async def complete(self, messages):
+    async def complete(self, messages, *, tools=(), tool_choice=None):
         if len(self.records) >= self.max_calls:
             raise LLMUnavailableError("Cota local de avaliação esgotada.")
         record = {"prompt_sha256": sha256(json.dumps([m.model_dump() for m in messages],
@@ -263,7 +263,7 @@ class RecordingClient:
         started = monotonic()
         try:
             async with asyncio.timeout(30):
-                response = await self.client.complete(messages)
+                response = await self.client.complete(messages, tools=tools, tool_choice=tool_choice)
             record.update({"status": "completed", **response.model_dump(mode="json")})
             return response
         except Exception as exc:

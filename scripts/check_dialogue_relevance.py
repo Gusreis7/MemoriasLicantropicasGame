@@ -22,9 +22,9 @@ async def run(rounds):
         calls=[]
         for label,client in [('persona',services.harness._llm),('master',services.harness._session_master._llm)]:
             original=client.complete
-            async def capture(prompt,original=original,label=label):
-                result=await original(prompt)
-                calls.append({'stage':label,'output':result.content})
+            async def capture(prompt,original=original,label=label,*,tools=(),tool_choice=None):
+                result=await original(prompt,tools=tools,tool_choice=tool_choice)
+                calls.append({'stage':label,'output':result.model_dump(mode='json', include={'tool_calls','invalid_tool_calls'})})
                 return result
             client.complete=capture
         memory=RedisMemoryRepository(services.redis,prefix)

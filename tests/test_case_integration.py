@@ -15,9 +15,18 @@ pytestmark = pytest.mark.anyio
 
 async def seed_case(api_client, storage, catalog, wolf="capitu"):
     now = datetime.now(UTC)
-    game = GameState(id=uuid4(), created_at=now, content_version=catalog.content_version,
-                     characters=tuple(GameCharacter(character_id=profile.id,
-                        role="werewolf" if profile.id == wolf else "civil") for profile in await catalog.list()))
+    game = GameState(
+        id=uuid4(),
+        created_at=now,
+        content_version=catalog.content_version,
+        characters=tuple(
+            GameCharacter(
+                character_id=profile.id,
+                role="werewolf" if profile.id == wolf else "civil",
+            )
+            for profile in await catalog.list()
+        ),
+    )
     assert await storage.games.create(game)
     clock = [now]
     services = api_client._transport.app.state.services
@@ -33,38 +42,70 @@ async def place(storage, game_id, location="praca_verde", x=600, npc_id=None):
     if npc_id:
         npc = next(npc for npc in world.npcs if npc.npc_id == npc_id)
         location, x = npc.location_id, npc.x
-    updated = world.model_copy(update={"revision": world.revision + 1,
-        "player": world.player.model_copy(update={"location_id": location, "x": x, "direction": "idle"})})
+    updated = world.model_copy(
+        update={
+            "revision": world.revision + 1,
+            "player": world.player.model_copy(
+                update={"location_id": location, "x": x, "direction": "idle"}
+            ),
+        }
+    )
     assert await repository.save(updated, expected_revision=world.revision)
 
 
-async def test_clock_blocks_every_mutation_at_night_and_publishes_actual_death(api_client, storage, catalog, single_wolf_attack):
+async def test_clock_blocks_every_mutation_at_night_and_publishes_actual_death(
+    api_client, storage, catalog, single_wolf_attack
+):
     game, clock, base, case = await seed_case(api_client, storage, catalog)
-    assert case["seconds_remaining"] == 300 and case["journal"][0]["title"] == "O Clarim do Rio"
-    assert all(secret not in json.dumps(case) for secret in ("killer_id", "deposited_by", "truthful", "werewolf_id"))
+    assert (
+        case["seconds_remaining"] == 300
+        and case["journal"][0]["title"] == "O Clarim do Rio"
+    )
+    assert all(
+        secret not in json.dumps(case)
+        for secret in ("killer_id", "deposited_by", "truthful", "werewolf_id")
+    )
     crime = case["crimes"][0]
-    assert (await api_client.post(f"{base}/crime-scenes/{crime['id']}/search", json={})).status_code == 403
+    assert (
+        await api_client.post(f"{base}/crime-scenes/{crime['id']}/search", json={})
+    ).status_code == 403
     await place(storage, game.id)
-    case = (await api_client.post(f"{base}/crime-scenes/{crime['id']}/search", json={})).json()
+    case = (
+        await api_client.post(f"{base}/crime-scenes/{crime['id']}/search", json={})
+    ).json()
     evidence_id = case["inventory"][0]["id"]
     await place(storage, game.id, npc_id="capitu")
-    conversation = (await api_client.post(f"{base}/approaches", json={"npc_id": "capitu"})).json()
+    conversation = (
+        await api_client.post(f"{base}/approaches", json={"npc_id": "capitu"})
+    ).json()
     clock[0] += timedelta(seconds=300)
     case = (await api_client.get(f"{base}/investigation")).json()
     assert case["phase"] == "night" and case["seconds_remaining"] == 8
     world = (await api_client.get(f"{base}/world")).json()
     commands = (
-        ("movement", {"direction": "right", "seq": world["player"]["movement_seq"] + 1,
-                      "location_id": world["location"]["id"], "revision": world["revision"]}),
+        (
+            "movement",
+            {
+                "direction": "right",
+                "seq": world["player"]["movement_seq"] + 1,
+                "location_id": world["location"]["id"],
+                "revision": world["revision"],
+            },
+        ),
         ("travel", {"target_location_id": "casa_verde", "revision": world["revision"]}),
         ("approaches", {"npc_id": "capitu"}),
         (f"conversations/{conversation['id']}/messages", {"content": "Olá"}),
         (f"crime-scenes/{crime['id']}/search", {}),
         (f"evidence/{evidence_id}/present", {"npc_id": "capitu"}),
-        ("accusations", {"suspect_id": "capitu", "evidence_ids": [], "testimony_ids": []}),
+        (
+            "accusations",
+            {"suspect_id": "capitu", "evidence_ids": [], "testimony_ids": []},
+        ),
     )
     for path, body in commands:
-        assert (await api_client.post(f"{base}/{path}", json=body)).status_code == 409, path
+        assert (
+            await api_client.post(f"{base}/{path}", json=body)
+        ).status_code == 409, path
     clock[0] += timedelta(seconds=8)
     dawn = (await api_client.get(f"{base}/investigation")).json()
     assert dawn["phase"] == "day" and dawn["day"] == 2
@@ -73,26 +114,41 @@ async def test_clock_blocks_every_mutation_at_night_and_publishes_actual_death(a
     public_game = (await api_client.get(base)).json()
     assert sum(npc["alive"] for npc in public_game["characters"]) == 6
     morning_world = (await api_client.get(f"{base}/world")).json()
-    assert morning_world["player"]["location_id"] == "praca_verde" and morning_world["player"]["x"] == 160
-    events = await storage.client.lrange(f"{storage.prefix}:game:{{{game.id}}}:events", 0, -1)
+    assert (
+        morning_world["player"]["location_id"] == "praca_verde"
+        and morning_world["player"]["x"] == 160
+    )
+    events = await storage.client.lrange(
+        f"{storage.prefix}:game:{{{game.id}}}:events", 0, -1
+    )
     assert sum(json.loads(event)["type"] == "character.killed" for event in events) == 1
     await api_client.get(f"{base}/investigation")
-    assert await storage.client.llen(f"{storage.prefix}:game:{{{game.id}}}:events") == len(events)
+    assert await storage.client.llen(
+        f"{storage.prefix}:game:{{{game.id}}}:events"
+    ) == len(events)
 
 
 @pytest.mark.parametrize("wolf", tuple(INVENTORIES))
-async def test_specific_examined_dossier_only_authorizes_detention_after_second_morning(api_client, storage, catalog, wolf, single_wolf_attack):
+async def test_specific_examined_dossier_only_authorizes_detention_after_second_morning(
+    api_client, storage, catalog, wolf, single_wolf_attack
+):
     game, clock, base, case = await seed_case(api_client, storage, catalog, wolf)
 
     async def collect_examine_and_ask(case):
         for crime in case["crimes"]:
             await place(storage, game.id, crime["location_id"], crime["x"])
-            for _ in range(crime["remaining_clues"] + 1):  # Busca extra continua idempotente.
-                result = await api_client.post(f"{base}/crime-scenes/{crime['id']}/search", json={})
+            for _ in range(
+                crime["remaining_clues"] + 1
+            ):  # Busca extra continua idempotente.
+                result = await api_client.post(
+                    f"{base}/crime-scenes/{crime['id']}/search", json={}
+                )
                 assert result.status_code == 200
                 case = result.json()
         for evidence in case["inventory"]:
-            examined = await api_client.post(f"{base}/evidence/{evidence['id']}/inspect", json={})
+            examined = await api_client.post(
+                f"{base}/evidence/{evidence['id']}/inspect", json={}
+            )
             assert examined.status_code == 200
             case = examined.json()
             assert "crime_link_verified" not in json.dumps(case)
@@ -104,7 +160,10 @@ async def test_specific_examined_dossier_only_authorizes_detention_after_second_
                 continue
             await place(storage, game.id, npc_id=npc.character_id)
             for evidence in case["inventory"]:
-                result = await api_client.post(f"{base}/evidence/{evidence['id']}/present", json={"npc_id": npc.character_id})
+                result = await api_client.post(
+                    f"{base}/evidence/{evidence['id']}/present",
+                    json={"npc_id": npc.character_id},
+                )
                 assert result.status_code == 200
                 case = result.json()
         return case
@@ -112,8 +171,14 @@ async def test_specific_examined_dossier_only_authorizes_detention_after_second_
     case = await collect_examine_and_ask(case)
     assert len(case["inventory"]) == 2
     linked = [t["id"] for t in case["testimonies"] if t["claimed_owner_id"] == wolf]
-    early = await api_client.post(f"{base}/accusations", json={"suspect_id": wolf,
-        "evidence_ids": [e["id"] for e in case["inventory"]], "testimony_ids": linked})
+    early = await api_client.post(
+        f"{base}/accusations",
+        json={
+            "suspect_id": wolf,
+            "evidence_ids": [e["id"] for e in case["inventory"]],
+            "testimony_ids": linked,
+        },
+    )
     assert early.status_code == 200
     case = early.json()
     assert not case["accusations"][-1]["accepted"]
@@ -128,13 +193,23 @@ async def test_specific_examined_dossier_only_authorizes_detention_after_second_
     assert any(e["kind"] == "unique" and e["examined"] for e in case["inventory"])
     members_before = (await storage.games.get(game.id)).characters
     linked = [t["id"] for t in case["testimonies"] if t["claimed_owner_id"] == wolf]
-    result = await api_client.post(f"{base}/accusations", json={"suspect_id": wolf,
-        "evidence_ids": [e["id"] for e in case["inventory"]], "testimony_ids": linked})
+    result = await api_client.post(
+        f"{base}/accusations",
+        json={
+            "suspect_id": wolf,
+            "evidence_ids": [e["id"] for e in case["inventory"]],
+            "testimony_ids": linked,
+        },
+    )
     assert result.status_code == 200
     detained = result.json()
-    assert detained["accusations"][-1]["accepted"] and detained["detained_npc_id"] == wolf
+    assert (
+        detained["accusations"][-1]["accepted"] and detained["detained_npc_id"] == wolf
+    )
     assert detained["status"] == "active" and detained["ending"] is None
-    assert (await api_client.post(f"{base}/accusations", json={"suspect_id": wolf})).status_code == 409
+    assert (
+        await api_client.post(f"{base}/accusations", json={"suspect_id": wolf})
+    ).status_code == 409
     assert detained["phase"] == "night" and detained["seconds_remaining"] == 8
     clock[0] += timedelta(seconds=7)
     waiting = (await api_client.get(f"{base}/investigation")).json()
@@ -147,22 +222,35 @@ async def test_specific_examined_dossier_only_authorizes_detention_after_second_
     assert finished["journal"][-1]["detention_outcome"] == "transformed"
     assert finished["journal"][-1]["victim_id"] is None
     assert (await api_client.get(base)).json()["status"] == "won"
-    after_expulsion = await RedisWorldRepository(storage.client, storage.prefix).get(game.id)
+    after_expulsion = await RedisWorldRepository(storage.client, storage.prefix).get(
+        game.id
+    )
     assert wolf not in {npc.npc_id for npc in after_expulsion.npcs}
     assert (await storage.games.get(game.id)).characters == members_before
 
 
-async def test_inference_crossing_deadline_cannot_append_a_dialogue(api_client, storage, catalog, llm, monkeypatch):
+async def test_inference_crossing_deadline_cannot_append_a_dialogue(
+    api_client, storage, catalog, llm, monkeypatch
+):
     game, clock, base, case = await seed_case(api_client, storage, catalog)
     await place(storage, game.id, npc_id="capitu")
-    conversation = (await api_client.post(f"{base}/approaches", json={"npc_id": "capitu"})).json()
+    conversation = (
+        await api_client.post(f"{base}/approaches", json={"npc_id": "capitu"})
+    ).json()
     complete = llm.complete
-    async def late(messages):
+
+    async def late(messages, *, tools=(), tool_choice=None):
         clock[0] += timedelta(seconds=300)
         return await complete(messages)
+
     monkeypatch.setattr(llm, "complete", late)
-    result = await api_client.post(f"{base}/conversations/{conversation['id']}/messages", json={"content": "O que viu hoje?"})
+    result = await api_client.post(
+        f"{base}/conversations/{conversation['id']}/messages",
+        json={"content": "O que viu hoje?"},
+    )
     assert result.status_code == 409
-    history = await api_client.get(f"{base}/conversations/{conversation['id']}/messages")
+    history = await api_client.get(
+        f"{base}/conversations/{conversation['id']}/messages"
+    )
     assert history.json()["messages"] == []
     assert (await api_client.get(f"{base}/investigation")).json()["phase"] == "night"

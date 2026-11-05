@@ -41,21 +41,25 @@ class Client:
         self.value = value
         self.calls = 0
 
-    async def complete(self, messages):
+    async def complete(self, messages, *, tools=(), tool_choice=None):
         self.calls += 1
-        return LLMResponse(content=self.value, model="contract-fixture")
+        if isinstance(self.value, str):
+            return invalid_tool_response(self.value, "AssessmentProposal")
+        return respond_to_tools(
+            self.value, tools, tool_choice, model="contract-fixture"
+        )
 
 
 @pytest.mark.parametrize(
     "output",
     [
         '```json\n{"kind":"conversation"}\n```',
-        '{"issues":[{"type":"off_topic"}]}',
-        '{"kind":"conversation","source":"local"}',
-        '{"kind":"conversation","discovery_ids":["escobar_affection"]}',
-        '{"kind":"conversation","corrected_reply":"SEGREDO_INTERNO"}',
-        '{"kind":"conversation","repair_support_id":"arbitrary"}',
-        '{"own_assertion":"true"}',
+        {"issues": [{"type": "off_topic"}]},
+        {"kind": "conversation", "source": "local"},
+        {"kind": "conversation", "discovery_ids": ["escobar_affection"]},
+        {"kind": "conversation", "corrected_reply": "SEGREDO_INTERNO"},
+        {"kind": "conversation", "repair_support_id": "arbitrary"},
+        {"own_assertion": "true"},
     ],
 )
 async def test_master_rejects_shape_repairs_coercions_and_control_fields(output):
@@ -65,7 +69,7 @@ async def test_master_rejects_shape_repairs_coercions_and_control_fields(output)
     assessment = await master.assess(uuid4(), "escobar", uuid4(), incoming, outgoing)
     assert client.calls == 2
     assert assessment.source == "fallback" and assessment.error_code in {
-        "invalid_json",
+        "invalid_tool_arguments",
         "invalid_schema",
     }
     assert (
@@ -77,9 +81,7 @@ async def test_master_rejects_shape_repairs_coercions_and_control_fields(output)
 
 
 async def test_useful_report_requires_a_literal_quote_from_the_npc():
-    client = Client(
-        json.dumps({"useful": True, "useful_quote": "Uma fala que o NPC nunca disse."})
-    )
+    client = Client({"useful": True, "useful_quote": "Uma fala que o NPC nunca disse."})
     master = SessionMasterService(Turns(), None, None, client)
     incoming, outgoing = exchange()
     assessment = await master.assess(uuid4(), "escobar", uuid4(), incoming, outgoing)
@@ -136,7 +138,7 @@ async def test_internal_extraction_bug_does_not_advance_the_durable_cursor(
     )
 
     class BrokenClient:
-        async def complete(self, messages):
+        async def complete(self, messages, *, tools=(), tool_choice=None):
             raise TypeError("fixture internal bug")
 
     with pytest.raises(TypeError, match="fixture internal bug"):
