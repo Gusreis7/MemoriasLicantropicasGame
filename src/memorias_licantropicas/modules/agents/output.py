@@ -1,4 +1,4 @@
-"""Contrato de saída: fala pública, nunca o envelope ou instruções do modelo."""
+"""Leitor de compatibilidade de históricos; gerações novas usam NpcSpeech tipado."""
 
 import json
 import re
@@ -29,11 +29,11 @@ def _unique_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
 
 
 def parse_dialogue_output(content: str, expected_sender: str) -> str:
-    """Aceita prosa ou o envelope legado exato ``{remetente, fala}``.
+    """Lê prosa ou o envelope legado exato ``{remetente, fala}`` persistido.
 
     Não procura JSON dentro de prosa, não conserta truncamentos e não executa
     metadados. O remetente do envelope precisa coincidir com o NPC validado no
-    servidor. A mesma normalização atende respostas novas e históricos antigos.
+    servidor. Esta função não participa da geração de novas respostas.
     """
     if not isinstance(content, str) or not expected_sender:
         raise _invalid()

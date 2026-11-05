@@ -47,7 +47,7 @@ async def test_conversation_does_not_become_unrelated_clue(harness,storage,game,
         return observations()
     async def complete(prompt):
         llm.calls.append(prompt)
-        return LLMResponse(content=answer,model='fake')
+        return LLMResponse(content=json.dumps({"fala":answer}),model='fake')
     harness._context_provider=context
     llm.complete=complete
     reply=await harness.respond(game.id,npc,uuid4(),'player',question)

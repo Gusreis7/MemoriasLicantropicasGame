@@ -2,8 +2,9 @@
 from datetime import UTC, datetime
 from uuid import uuid4
 import pytest
-from memorias_licantropicas.contracts.model import ConversationMessage
-from memorias_licantropicas.modules.agents.support import dialogue_supports, supported_reply
+from memorias_licantropicas.contracts.model import ConversationMessage, GameCharacter, LLMResponse
+from memorias_licantropicas.modules.agents.support import dialogue_supports
+import json
 from memorias_licantropicas.modules.achievements.rules import award, discoveries_in_reply
 from memorias_licantropicas.modules.knowledge.seeds import TOPICS
 from memorias_licantropicas.modules.investigation.rules import make_initial_investigation
@@ -28,24 +29,36 @@ def observations(topic, origin='authored'):
     ('florenca','causa-florenca','internado meu pai','Bacamarte'),
     ('rubiao','rubiao-insistente','minha insistência',None),
 ])
-async def test_authorial_support_uses_own_voice_and_another_source(catalog,npc,topic,first,other):
+async def test_persona_keeps_generated_voice_and_canonical_prompt_facts(catalog,harness,storage,game,llm,npc,topic,first,other):
     profile=await catalog.get(npc);obs=observations(topic)
     original=obs['memoria_social']['memorias_relevantes'][0]['conteudo']
-    supports=dialogue_supports(profile,obs,'O que sabe?')
-    reply=supported_reply(profile,obs,'O que sabe?')
-    assert first in reply
+    if npc not in {member.character_id for member in game.characters}:
+        game=game.model_copy(update={'characters':(*game.characters,GameCharacter(character_id=npc,role='civil'))})
+    await storage.games.create(game)
+    async def context(*args):return obs
+    harness._context_provider=context
+    answer=first+'.'
+    async def complete(messages):
+        llm.calls.append(messages)
+        return LLMResponse(content=json.dumps({'fala':answer}),model='voice-fixture')
+    llm.complete=complete
+    reply=await harness.respond(game.id,npc,uuid4(),'player','O que sabe?')
+    assert reply.message.content==answer and reply.model=='voice-fixture'
+    projected=json.loads(llm.calls[0][0].content.split('Ficha privada:\n',1)[1])
+    supports=projected['observacoes_autorizadas']['apoios_de_conversa']
     assert supports[0]['statement']==original
-    lead=reply.rsplit('. ',1)[-1]
-    assert profile.name not in lead
-    if other: assert other in lead
+    assert profile.name not in supports[0]['lead']
+    if other:assert other in supports[0]['lead']
 
 
-async def test_forwarded_and_recorded_testimony_are_not_rewritten(catalog):
+async def test_forwarded_and_recorded_testimony_keep_source_in_persona_prompt(catalog,harness,game):
     profile=await catalog.get('escobar');obs=observations('seminario','heard')
     original=obs['memoria_social']['memorias_relevantes'][0]['conteudo']
-    assert f'Ouvi de Virgília: {original}' in supported_reply(profile,obs,'seminário')
+    supports=dialogue_supports(profile,obs,'seminário')
+    assert supports[0]['statement']==f'Ouvi de Virgília: {original}'
     obs={'seus_depoimentos_registrados':[{'fala':original,'evidence_id':'test'}]}
-    assert original in supported_reply(profile,obs,'seminário')
+    supports=dialogue_supports(profile,obs,'seminário')
+    assert supports[0]['statement']==original
 
 
 @pytest.mark.parametrize('npc,text,expected',[
