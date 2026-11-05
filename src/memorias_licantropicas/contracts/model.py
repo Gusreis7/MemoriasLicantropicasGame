@@ -86,6 +86,7 @@ class ChatMessage(Contract):
 
 class NativeToolCall(Contract):
     """Chamada DTO recebida pelo protocolo; nunca executada como ação."""
+
     name: str = Field(min_length=1, max_length=80)
     args: dict[str, Any] = Field(repr=False)
     id: str | None = None
@@ -94,6 +95,7 @@ class NativeToolCall(Contract):
 
 class InvalidNativeToolCall(Contract):
     """Falha de argumentos recebidos; dados brutos não aparecem em repr/logs."""
+
     name: str | None = None
     args: str | None = Field(default=None, repr=False)
     id: str | None = None
@@ -104,7 +106,9 @@ class InvalidNativeToolCall(Contract):
 class LLMResponse(Contract):
     content: str = Field(default="", max_length=8000, repr=False)
     tool_calls: tuple[NativeToolCall, ...] = Field(default=(), repr=False)
-    invalid_tool_calls: tuple[InvalidNativeToolCall, ...] = Field(default=(), repr=False)
+    invalid_tool_calls: tuple[InvalidNativeToolCall, ...] = Field(
+        default=(), repr=False
+    )
     model: str
     input_tokens: int | None = None
     output_tokens: int | None = None
