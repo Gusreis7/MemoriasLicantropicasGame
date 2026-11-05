@@ -126,15 +126,16 @@ class MeteredLLMClient:
         self._repository = repository
         self._configured_model = configured_model
 
-    async def complete(self, messages):
+    async def complete(self, messages, *, tools=(), tool_choice=None):
+        native = {"tools": tools, "tool_choice": tool_choice} if tools or tool_choice is not None else {}
         context = _usage_context.get()
         if context is None:
             logger.warning("llm_usage code=usage_context_missing")
-            return await self._client.complete(messages)
+            return await self._client.complete(messages, **native)
         identifier, started_at, start = uuid4(), datetime.now(UTC), monotonic()
         response, status, error_code = None, "failed", None
         try:
-            response = await self._client.complete(messages)
+            response = await self._client.complete(messages, **native)
             status = "completed"
             return response
         except asyncio.CancelledError:
