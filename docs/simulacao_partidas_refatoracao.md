@@ -107,6 +107,10 @@ momento da coleta, pois suas partidas e convivência continuam em execução.
 
 ## Como interpretar
 
+A [avaliação posterior à correção dos diálogos](avaliacao_simulacoes_reais_20261105.md)
+registra cinco amostras reais, o ajuste dos argumentos obrigatórios por ação e
+os dois diálogos aceitos, além dos erros e limitações que ainda interromperam o lote.
+
 Compare resultados, duração, perguntas, repetição de ações, evidências utilizadas,
 recusas do delegado, diálogos degradados e erros técnicos. Separe taxas de vitória
 entre partidas concluídas da proporção de sessões que conseguiram terminar. Um

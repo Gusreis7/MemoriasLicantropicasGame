@@ -30,7 +30,7 @@ class NativeClient:
         if self.calls <= self.invalid_before:
             return LLMResponse(content='{"action":"skip_day"}', model='test', input_tokens=10, output_tokens=4)
         return LLMResponse(tool_calls=({'name': tools[0]['function']['name'],
-            'args': {'action': 'dialogue', 'npc_id': 'capitu', 'content': 'Onde estava ontem?'},
+            'args': {'decision': {'action': 'dialogue', 'npc_id': 'capitu', 'content': 'Onde estava ontem?'}},
             'id': str(self.calls), 'type': 'tool_call'},), model='test', input_tokens=10, output_tokens=4)
 
     async def aclose(self):
@@ -44,7 +44,7 @@ class NativeClient:
 ])
 def test_action_contract_rejects_missing_arguments_and_extra_secrets(arguments):
     with pytest.raises(ValidationError):
-        FlorianoAction.model_validate(arguments)
+        FlorianoAction.model_validate({'decision': arguments})
 
 
 async def test_native_retry_uses_budget_and_preserves_observation():
@@ -120,3 +120,15 @@ def test_cli_rejects_zero_budget_and_offline_flag():
                       ['--games', '1', '--max-live-calls', '1', '--no-faults']):
         with pytest.raises(SystemExit):
             runner.parser().parse_args(arguments)
+
+
+def test_action_schema_exposes_required_arguments_for_each_decision():
+    schema = FlorianoAction.model_json_schema()
+    assert schema['required'] == ['decision']
+    for name, field in [('MoveAction', 'x'), ('ApproachAction', 'npc_id'),
+                        ('SearchAction', 'crime_id'), ('InspectAction', 'evidence_id'),
+                        ('DialogueAction', 'content')]:
+        assert field in schema['$defs'][name]['required']
+    assert 'npc_id' in schema['$defs']['DialogueAction']['required']
+    accepted = FlorianoAction.model_validate({'decision': {'action': 'move', 'x': 600}})
+    assert accepted.decision.model_dump()['x'] == 600

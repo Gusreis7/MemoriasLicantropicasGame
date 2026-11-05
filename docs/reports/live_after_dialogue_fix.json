@@ -1,0 +1,172 @@
+{
+  "date": "2026-11-05",
+  "model": "qwen.qwen3-32b",
+  "mode": "live_http_llm",
+  "persisted_sessions": [
+    {
+      "source": "artifacts/simulations/live-after-dialogue-fix-diagnostic/summary.json",
+      "stage": "flat_action_schema",
+      "game_id": "35ce4617-2598-4f22-b08d-0fa633ce2f7d",
+      "status": "error",
+      "stop_reason": "invalid_schema",
+      "steps": 11,
+      "dialogue_turns": 0,
+      "action_counts": {
+        "search": 5,
+        "travel": 4,
+        "approach": 1,
+        "move": 1
+      },
+      "action_errors": 6,
+      "case_statistics": {
+        "inventory": 0,
+        "testimonies": 0,
+        "accusations": 0,
+        "achievements": 0,
+        "crimes": 1
+      },
+      "agent_usage": {
+        "calls": 13,
+        "completed": 13,
+        "failed": 0,
+        "input_tokens": 70484,
+        "output_tokens": 929,
+        "missing_tokens": 0,
+        "duration_seconds": 19.438521054951707,
+        "cost_complete": true,
+        "estimated_cost_usd": 0.01113
+      },
+      "npc_generation_status_counts": {},
+      "server_usage": {
+        "calls": 0,
+        "completed_calls": 0,
+        "failed_calls": 0,
+        "cancelled_calls": 0,
+        "known_input_tokens": 0,
+        "known_output_tokens": 0,
+        "calls_with_missing_tokens": 0,
+        "unpriced_calls": 0,
+        "known_estimated_cost_usd": "0",
+        "cost_complete": false,
+        "duration_ms": 0
+      }
+    },
+    {
+      "source": "artifacts/simulations/live-after-dialogue-fix-diagnostic/summary.json",
+      "stage": "flat_action_schema",
+      "game_id": "c256616a-5e28-40eb-9a3e-bcff9664eb01",
+      "status": "error",
+      "stop_reason": "invalid_schema",
+      "steps": 17,
+      "dialogue_turns": 0,
+      "action_counts": {
+        "move": 1,
+        "search": 10,
+        "travel": 4,
+        "approach": 1,
+        "observe": 1
+      },
+      "action_errors": 11,
+      "case_statistics": {
+        "inventory": 0,
+        "testimonies": 0,
+        "accusations": 0,
+        "achievements": 0,
+        "crimes": 1
+      },
+      "agent_usage": {
+        "calls": 22,
+        "completed": 22,
+        "failed": 0,
+        "input_tokens": 118567,
+        "output_tokens": 1688,
+        "missing_tokens": 0,
+        "duration_seconds": 35.233919414138654,
+        "cost_complete": true,
+        "estimated_cost_usd": 0.018797849999999998
+      },
+      "npc_generation_status_counts": {},
+      "server_usage": {
+        "calls": 0,
+        "completed_calls": 0,
+        "failed_calls": 0,
+        "cancelled_calls": 0,
+        "known_input_tokens": 0,
+        "known_output_tokens": 0,
+        "calls_with_missing_tokens": 0,
+        "unpriced_calls": 0,
+        "known_estimated_cost_usd": "0",
+        "cost_complete": false,
+        "duration_ms": 0
+      }
+    },
+    {
+      "source": "artifacts/simulations/live-explicit-actions-1/summary.json",
+      "stage": "explicit_action_schema",
+      "game_id": "3247a580-de47-41e8-b478-88eab4c80b6c",
+      "status": "error",
+      "stop_reason": "invalid_tool_response",
+      "steps": 41,
+      "dialogue_turns": 2,
+      "action_counts": {
+        "search": 19,
+        "travel": 8,
+        "approach": 6,
+        "observe": 3,
+        "move": 3,
+        "dialogue": 2
+      },
+      "action_errors": 23,
+      "case_statistics": {
+        "inventory": 0,
+        "testimonies": 0,
+        "accusations": 0,
+        "achievements": 0,
+        "crimes": 1
+      },
+      "agent_usage": {
+        "calls": 44,
+        "completed": 44,
+        "failed": 0,
+        "input_tokens": 324829,
+        "output_tokens": 2726,
+        "missing_tokens": 0,
+        "duration_seconds": 74.90135132797877,
+        "cost_complete": true,
+        "estimated_cost_usd": 0.05035995000000002
+      },
+      "npc_generation_status_counts": {
+        "accepted": 2
+      },
+      "server_usage": {
+        "calls": 9,
+        "completed_calls": 9,
+        "failed_calls": 0,
+        "cancelled_calls": 0,
+        "known_input_tokens": 36214,
+        "known_output_tokens": 1861,
+        "calls_with_missing_tokens": 0,
+        "unpriced_calls": 0,
+        "known_estimated_cost_usd": "0.00654870",
+        "cost_complete": true,
+        "duration_ms": 26905
+      }
+    }
+  ],
+  "initial_container_batch": {
+    "steps": [
+      9,
+      8
+    ],
+    "stop_reason": "invalid_schema",
+    "dialogue_turns": 0,
+    "agent_calls": 23,
+    "agent_estimated_cost_usd": 0.02103135,
+    "note": "Resumo observado no terminal; logs de /tmp não estavam disponíveis na cópia posterior. As execuções seguintes gravaram diretamente no checkout."
+  },
+  "limitations": [
+    "Cinco amostras curtas, nenhuma partida terminal.",
+    "Estados iniciais aleatórios diferentes; comparação não é experimento controlado.",
+    "Auditoria é uma fotografia por sessão; consumo posterior do worker não está incluído."
+  ]
+}

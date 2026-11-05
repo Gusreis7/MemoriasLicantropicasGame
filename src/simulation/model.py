@@ -4,9 +4,9 @@ from __future__ import annotations
 import asyncio
 import json
 from time import perf_counter
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 from src.contracts.model import ChatMessage
 from src.infrastructure.llm.structured import generate_structured
@@ -22,45 +22,92 @@ class AgentDecisionError(RuntimeError):
         super().__init__(f"A decisão de Floriano falhou: {code}")
 
 
-class FlorianoAction(BaseModel):
-    """Uma intenção pública; o servidor continua autorizando cada efeito."""
+Reference = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=80)]
+
+
+class ActionBase(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
-    action: Literal[
-        "observe", "move", "travel", "approach", "dialogue", "close_dialogue",
-        "search", "inspect", "present", "review", "accuse", "open_assembly",
-        "resolve_assembly", "skip_day", "wait",
-    ]
-    objective: str = Field(default="", max_length=300, description="Objetivo breve da ação, sem raciocínio privado.")
-    x: float | None = Field(default=None, ge=0, le=4000)
-    target_location_id: str | None = Field(default=None, max_length=80)
-    npc_id: str | None = Field(default=None, max_length=80)
-    content: str = Field(default="", max_length=8000)
-    crime_id: str | None = Field(default=None, max_length=80)
-    evidence_id: str | None = Field(default=None, max_length=80)
-    suspect_id: str | None = Field(default=None, max_length=80)
-    evidence_ids: list[str] = Field(default_factory=list, max_length=100)
-    testimony_ids: list[str] = Field(default_factory=list, max_length=100)
+    objective: str = Field(default="", max_length=300, description="Objetivo breve observável, sem raciocínio privado.")
+
+
+class SimpleAction(ActionBase):
+    action: Literal["observe", "close_dialogue", "skip_day"]
+
+
+class MoveAction(ActionBase):
+    action: Literal["move"]
+    x: float = Field(ge=0, le=4000)
+
+
+class TravelAction(ActionBase):
+    action: Literal["travel"]
+    target_location_id: Reference
+
+
+class ApproachAction(ActionBase):
+    action: Literal["approach"]
+    npc_id: Reference
+
+
+class DialogueAction(ActionBase):
+    action: Literal["dialogue"]
+    npc_id: Reference
+    content: str = Field(min_length=1, max_length=8000)
+
+
+class SearchAction(ActionBase):
+    action: Literal["search"]
+    crime_id: Reference
+
+
+class InspectAction(ActionBase):
+    action: Literal["inspect"]
+    evidence_id: Reference
+
+
+class PresentAction(ActionBase):
+    action: Literal["present"]
+    evidence_id: Reference
+    npc_id: Reference
+
+
+class AccusationAction(ActionBase):
+    action: Literal["review", "accuse"]
+    suspect_id: Reference
+    evidence_ids: list[Reference] = Field(default_factory=list, max_length=100)
+    testimony_ids: list[Reference] = Field(default_factory=list, max_length=100)
+
+
+class AssemblyAction(ActionBase):
+    action: Literal["open_assembly"]
+    suspect_id: Reference
+    evidence_ids: list[Reference] = Field(default_factory=list, max_length=100)
+    testimony_ids: list[Reference] = Field(default_factory=list, max_length=100)
     speech: str = Field(default="", max_length=800)
+
+
+class ResolveAssemblyAction(ActionBase):
+    action: Literal["resolve_assembly"]
     reply: str = Field(default="", max_length=800)
+
+
+class WaitAction(ActionBase):
+    action: Literal["wait"]
     seconds: float = Field(default=1.0, ge=0.1, le=30)
 
-    @model_validator(mode="after")
-    def required_action_arguments(self):
-        required = {
-            "move": ("x",), "travel": ("target_location_id",),
-            "approach": ("npc_id",), "dialogue": ("npc_id", "content"),
-            "search": ("crime_id",), "inspect": ("evidence_id",),
-            "present": ("evidence_id", "npc_id"), "review": ("suspect_id",),
-            "accuse": ("suspect_id",), "open_assembly": ("suspect_id",),
-        }
-        for name in required.get(self.action, ()):
-            value = getattr(self, name)
-            if value is None or isinstance(value, str) and not value.strip():
-                raise ValueError(f"A ação {self.action} exige {name}")
-        for identifier in (*self.evidence_ids, *self.testimony_ids):
-            if not identifier or len(identifier) > 80:
-                raise ValueError("Referência de prova inválida")
-        return self
+
+Decision = Annotated[
+    SimpleAction | MoveAction | TravelAction | ApproachAction | DialogueAction |
+    SearchAction | InspectAction | PresentAction | AccusationAction |
+    AssemblyAction | ResolveAssemblyAction | WaitAction,
+    Field(discriminator="action"),
+]
+
+
+class FlorianoAction(BaseModel):
+    """Uma decisão pública com argumentos obrigatórios visíveis no schema."""
+    model_config = ConfigDict(extra="forbid", strict=True)
+    decision: Decision
 
 
 class BudgetedSessionModel:
@@ -114,7 +161,8 @@ class BudgetedSessionModel:
 
 FLORIANO_PROMPT = """Você interpreta Floriano, detetive no Rio de Janeiro de 1890, jogando uma investigação real.
 Seu objetivo é identificar e deter o lobisomem com provas e testemunhos, preservando moradores.
-Decida sua próxima ação através da ferramenta FlorianoAction. Você só conhece os dados públicos recebidos.
+Decida sua próxima ação no campo decision da ferramenta FlorianoAction.
+Preencha os argumentos obrigatórios do tipo de ação escolhido, usando os IDs públicos. Você só conhece os dados públicos recebidos.
 Não conhece papéis secretos, assassinos ou biografias privadas. Falas de NPCs podem ser mentira, engano ou boato;
 distinga afirmações e provas. Não invente IDs, objetos, fontes, testemunhas, cenas ou ações já realizadas.
 Use os identificadores existentes na observação. Caminhe e viaje para alcançar cenas e moradores antes de interagir.
@@ -150,4 +198,4 @@ class FlorianoAgent:
         )
         if result.value is None:
             raise AgentDecisionError(result.error_code or "invalid_decision")
-        return result.value.model_dump(exclude_none=True)
+        return result.value.decision.model_dump(exclude_none=True)
