@@ -74,3 +74,32 @@ async def test_read_only_review_has_no_accusation_or_clock_cost(inquiry):
  review=await inquiry.service.review_accusation(inquiry.game.id,'capitu',ev,ts)
  assert review.ready and review.route=='corroborated_personal_marks'
  assert (await inquiry.turns.sync(inquiry.game.id))==before
+
+@pytest.mark.anyio
+async def test_review_rest_contract_is_read_only_and_rejects_client_truth(inquiry,api_client):
+ from memorias_licantropicas.modules.investigation.router import get_investigation_service
+ from test_interrogations import dossier as ready_dossier
+ state,game,ev,ts=await ready_dossier(inquiry)
+ await inquiry.storage.client.set(inquiry.key+':investigation',state.model_dump_json())
+ app=api_client._transport.app
+ app.dependency_overrides[get_investigation_service]=lambda:inquiry.service
+ body={'suspect_id':'capitu','evidence_ids':[str(i) for i in ev],'testimony_ids':[str(i) for i in ts]}
+ response=await api_client.post(f'/api/v1/games/{game.id}/accusations/review',json=body)
+ assert response.status_code==200 and response.json()['ready']
+ assert set(response.json())=={'ready','route','missing','reason'}
+ assert (await inquiry.turns.sync(game.id))==state
+ injected=await api_client.post(f'/api/v1/games/{game.id}/accusations/review',json={**body,'killer_id':'capitu'})
+ assert injected.status_code==422
+
+@pytest.mark.anyio
+async def test_examining_a_piece_reopens_the_same_selection_after_rejection(inquiry):
+ state,game,ev,ts=dossier('capitu',after_night=True,examine=False)
+ state=state.model_copy(update={'game_id':inquiry.game.id,'phase_ends_at':inquiry.clock[0]+timedelta(minutes=5)})
+ await inquiry.turns.sync(inquiry.game.id)
+ await inquiry.storage.client.set(inquiry.key+':investigation',state.model_dump_json())
+ refused=await inquiry.service.accuse(inquiry.game.id,'capitu',ev,ts)
+ assert not refused.accusations[-1].accepted
+ personal=next(e for c in state.crimes for e in c.evidence if e.item_id in items_of_kind('capitu','unique'))
+ await inquiry.service.inspect(inquiry.game.id,personal.id)
+ approved=await inquiry.service.accuse(inquiry.game.id,'capitu',ev,ts)
+ assert approved.accusations[-1].accepted and approved.day==refused.day

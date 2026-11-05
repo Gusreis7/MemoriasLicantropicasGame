@@ -38,7 +38,7 @@ async def place(storage, game_id, location="praca_verde", x=600, npc_id=None):
     assert await repository.save(updated, expected_revision=world.revision)
 
 
-async def test_clock_blocks_every_mutation_at_night_and_publishes_actual_death(api_client, storage, catalog):
+async def test_clock_blocks_every_mutation_at_night_and_publishes_actual_death(api_client, storage, catalog, single_wolf_attack):
     game, clock, base, case = await seed_case(api_client, storage, catalog)
     assert case["seconds_remaining"] == 300 and case["journal"][0]["title"] == "O Clarim do Rio"
     assert all(secret not in json.dumps(case) for secret in ("killer_id", "deposited_by", "truthful", "werewolf_id"))
