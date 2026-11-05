@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import type {CasePublic, CharacterAsset, CharacterManifest, Direction, Location, LocationID, WorldSnapshot} from '../shared/api';
 import {POPULATION} from './population';
+import {locationLighting, sunsetOpacity} from './daylight';
 
 interface SceneHooks {
   frame: (delta: number, direction: Direction) => {x: number; facing: 'left' | 'right'};
@@ -10,6 +11,7 @@ interface SceneHooks {
   blocked: () => boolean;
   loaded: () => void;
   failed: () => void;
+  dayProgress?: () => number;
 }
 
 type AmbientFrame = 'tree' | 'dog' | 'cat' | 'bird';
@@ -47,6 +49,7 @@ export class CityScene extends Phaser.Scene {
   private ambient: Phaser.GameObjects.GameObject[] = [];
   private wanderers: Array<{image: Phaser.GameObjects.Image | Phaser.GameObjects.Sprite; placement: AmbientPlacement}> = [];
   private background?: Phaser.GameObjects.Image;
+  private sunsetBackground?: Phaser.GameObjects.Image;
   private currentLocation = '';
   private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
   private keys?: Record<string, Phaser.Input.Keyboard.Key>;
@@ -74,7 +77,9 @@ export class CityScene extends Phaser.Scene {
       else if (asset.type === 'image') this.load.image(asset.id, asset.path);
       else this.load.spritesheet(asset.id, asset.path, {frameWidth: asset.frameWidth, frameHeight: asset.frameHeight});
     }
-    for (const location of this.locations) this.load.image(`location-${location.id}`, location.background);
+    for (const location of this.locations) {
+      for (const layer of Object.values(locationLighting(location.id))) this.load.image(layer.key, layer.path);
+    }
     this.load.atlas('animals-walk','/assets/ambient/animals-walk.png','/assets/ambient/animals-walk.json');
     this.load.atlas('scene-life', '/assets/ambient/scene-life.png', '/assets/ambient/scene-life.json');
     this.load.atlas('citizens', '/assets/ambient/citizens.png', '/assets/ambient/citizens.json');
@@ -87,7 +92,7 @@ export class CityScene extends Phaser.Scene {
     for (const asset of this.manifest.characters) {
       if (this.textures.exists(asset.id)) this.textures.get(asset.id).setFilter(Phaser.Textures.FilterMode.NEAREST);
       if (asset.walkFrames.length) {
-        this.anims.create({key: `${asset.id}-walk`, frames: asset.walkFrames.map(frame => ({key: asset.id, frame})), frameRate: 7, repeat: -1});
+        this.anims.create({key: `${asset.id}-walk`, frames: asset.walkFrames.map(frame => ({key: asset.id, frame})), frameRate: asset.id === 'player' ? 12 : 7, repeat: -1});
       }
     }
     for(const kind of ['dog','cat','bird']) this.anims.create({key:`${kind}-move`,frames:[0,1,2,3].map(i=>({key:'animals-walk',frame:`${kind}-${i}`})),frameRate:kind==='bird'?8:6,repeat:-1});
@@ -202,14 +207,19 @@ export class CityScene extends Phaser.Scene {
     if (world.location.id !== this.currentLocation) {
       this.currentLocation = world.location.id; this.npcPositions.clear();
       this.background?.destroy();
-      this.background = this.add.image(0, 0, `location-${world.location.id}`).setOrigin(0)
+      this.sunsetBackground?.destroy();
+      const lighting = locationLighting(world.location.id);
+      this.background = this.add.image(0, 0, lighting.morning.key).setName('background-morning').setOrigin(0)
         .setDisplaySize(world.location.width, world.location.height).setDepth(-10).setScrollFactor(0);
+      this.sunsetBackground = this.add.image(0, 0, lighting.sunset.key).setName('background-sunset').setOrigin(0)
+        .setDisplaySize(world.location.width, world.location.height).setDepth(-9).setScrollFactor(0)
+        .setAlpha(sunsetOpacity(this.hooks.dayProgress?.() ?? 0));
       this.dressLocation(world.location.id, world.location.ground_y);
       this.npcSignature = '\0';
       this.drawCaseMarkers();
       if (!this.player) {
         this.add.ellipse(world.player.x, world.location.ground_y + 1, 34, 7, 0x173e31, .3).setName('player-shadow').setDepth(2);
-        this.player = this.sprite('player', world.player.x, world.location.ground_y);
+        this.player = this.sprite('player', world.player.x, world.location.ground_y)?.setName('player');
         this.selected = this.add.ellipse(0, world.location.ground_y + 2, 43, 11).setStrokeStyle(1, 0xf9d18b, .9).setVisible(false).setDepth(2);
       }
       this.player?.setPosition(Math.round(world.player.x), world.location.ground_y).setDepth(3);
@@ -268,6 +278,7 @@ export class CityScene extends Phaser.Scene {
   }
 
   update(time: number, delta: number) {
+    this.sunsetBackground?.setAlpha(sunsetOpacity(this.hooks.dayProgress?.() ?? 0));
     const blocked = this.hooks.blocked();
     let direction: Direction = 'idle';
     if (!blocked) {
@@ -277,11 +288,12 @@ export class CityScene extends Phaser.Scene {
     }
     const position = this.hooks.frame(delta, direction);
     if (this.player) {
+      const moving = direction !== 'idle' && Math.abs(position.x - this.player.x) > .01;
       this.player.x = Math.round(position.x);
       this.player.setFlipX(position.facing === 'left');
-      if (direction === 'idle') {
+      if (!moving) {
         this.player.anims.stop();
-        this.player.setFrame(this.assets.get('player')?.frameNames?.[0] ?? 0);
+        this.player.setFrame(this.assets.get('player')?.idleFrames[0] ?? this.assets.get('player')?.frameNames?.[0] ?? 0);
       } else if (this.anims.exists('player-walk')) this.player.anims.play('player-walk', true);
       const shadow = this.children.getByName('player-shadow') as Phaser.GameObjects.Ellipse | null;
       if (shadow) shadow.x = Math.round(position.x);

@@ -186,18 +186,22 @@
       "type": "atlas",
       "path": "/assets/characters/player.png",
       "atlasPath": "/assets/characters/player.json",
-      "sourceWidth": 2172,
-      "sourceHeight": 724,
-      "frameWidth": 512,
-      "frameHeight": 724,
-      "frames": 6,
+      "sourceWidth": 1635,
+      "sourceHeight": 962,
+      "frameWidth": 374,
+      "frameHeight": 528,
+      "frames": 10,
       "frameNames": [
         "0",
         "1",
         "2",
         "3",
         "4",
-        "5"
+        "5",
+        "6",
+        "7",
+        "8",
+        "9"
       ],
       "idleFrames": [
         "0",
@@ -207,13 +211,17 @@
         "2",
         "3",
         "4",
-        "5"
+        "5",
+        "6",
+        "7",
+        "8",
+        "9"
       ],
       "displayWidth": 64,
       "displayHeight": 88,
       "origin": {
         "x": 0.5,
-        "y": 0.9447513812154696
+        "y": 0.9450757575757576
       },
       "portraitPath": null
     },

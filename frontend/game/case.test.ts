@@ -1,6 +1,6 @@
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import type {CasePublic, WorldSnapshot} from '../shared/api';
-import {CaseClock, CasePoller, closestCrime, formatClock} from './case';
+import {CaseClock, CasePoller, closestCrime, formatClock, formatGameTime, gameDayProgress} from './case';
 
 const state = {game_id: 'case', revision: 0, day: 1, phase: 'day', status: 'active',
   server_time: '2026-11-01T12:00:00Z', phase_ends_at: '2026-11-01T12:05:00Z', seconds_remaining: 300,
@@ -27,6 +27,47 @@ describe('server clock', () => {
     const clock = new CaseClock(); clock.accept({...state, phase_ends_at: 'invalid'}, 0);
     expect(clock.blocked(0)).toBe(true);
     expect(formatClock(300)).toBe('05:00'); expect(formatClock(8)).toBe('00:08'); expect(formatClock(-1)).toBe('00:00');
+  });
+  it('restores the same city time from a new server snapshot or a reloaded clock', () => {
+    const resumed = {...state, server_time: '2026-11-01T12:02:30Z', seconds_remaining: 150};
+    const clock = new CaseClock(); clock.accept(state, 0);
+    clock.accept(resumed, 5000);
+    const restored = new CaseClock(); restored.accept(resumed, 80000);
+    expect(formatGameTime(clock.seconds(5000))).toBe('13:30');
+    expect(formatGameTime(restored.seconds(80000))).toBe('13:30');
+    expect(formatGameTime(clock.seconds(65000))).toBe('15:18');
+  });
+  it('freezes city time during debate using public deadlines and resumes after voting', () => {
+    const debating = {...state, phase_ends_at: '2026-11-01T12:06:00Z', server_time: '2026-11-01T12:02:15Z', seconds_remaining: 225,
+      assembly_session: {id: 'assembly', suspect_id: 'bentinho', phase: 'debate', deadline: '2026-11-01T12:03:00Z',
+        opening_speech: 'Examine as provas.', evidence_ids: [], testimony_ids: [], messages: []},
+    } satisfies CasePublic;
+    const clock = new CaseClock(); clock.accept(debating, 1000);
+    expect(clock.seconds(1000)).toBe(180);
+    expect(clock.seconds(31000)).toBe(180);
+    expect(formatGameTime(clock.seconds(31000))).toBe('12:36');
+    const restored = new CaseClock();
+    restored.accept({...debating, server_time: '2026-11-01T12:02:45Z', seconds_remaining: 195}, 0);
+    expect(restored.seconds(10000)).toBe(180);
+    clock.accept({...state, server_time: '2026-11-01T12:02:50Z', phase_ends_at: '2026-11-01T12:05:50Z', seconds_remaining: 180}, 36000);
+    expect(clock.seconds(46000)).toBe(170);
+    expect(formatGameTime(clock.seconds(46000))).toBe('12:54');
+  });
+});
+
+describe('city time', () => {
+  it.each([[300, '09:00'], [250, '10:30'], [200, '12:00'], [150, '13:30'], [100, '15:00'], [50, '16:30'], [0, '18:00']])(
+    'translates %s real seconds remaining to %s', (seconds, time) => {
+      expect(formatGameTime(Number(seconds))).toBe(time);
+    },
+  );
+  it('clamps daylight at morning and sunset and keeps a shared normalized progress', () => {
+    expect(gameDayProgress(300)).toBe(0);
+    expect(gameDayProgress(150)).toBe(.5);
+    expect(gameDayProgress(0)).toBe(1);
+    expect(formatGameTime(500)).toBe('09:00');
+    expect(formatGameTime(-20)).toBe('18:00');
+    expect(formatGameTime(Number.NaN)).toBe('09:00');
   });
 });
 

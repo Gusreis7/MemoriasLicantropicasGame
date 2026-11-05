@@ -1,7 +1,7 @@
 import {api, ApiError, type CasePublic, type CaseEvidence, type CaseTestimony, type GamePublic, type CharacterManifest, type Conversation, type ExitSide, type Location, type LocationID, type Message, type HeardReport, type WorldSnapshot} from '../shared/api';
 import {closestNPC, MovementController} from './movement';
 import {ExitBoundary} from './exits';
-import {CaseClock, CasePoller, closestCrime, formatClock} from './case';
+import {CaseClock, CasePoller, closestCrime, formatClock, formatGameTime, gameDayProgress} from './case';
 import {CityScene, makeGame} from './scene';
 import {sendDialogue} from './dialogue';
 import {CustodyScene, makeCustodyGame, type CustodyMode} from './custody';
@@ -26,7 +26,7 @@ app.innerHTML = `
 
       <section id="investigation" class="investigation" aria-label="Sua investigação" hidden>
         <div class="scene-heading"><div><p class="eyebrow">OS CAMINHOS DA INVESTIGAÇÃO</p><h1 id="location-name">Praça Verde</h1></div><button id="open-map" class="button map-button" type="button"><span aria-hidden="true">⌘</span> Mapa da cidade <kbd>M</kbd></button></div>
-        <div class="case-toolbar"><div class="day-clock"><span id="case-day">DIA 1</span><strong id="case-clock" aria-label="Tempo restante do período">05:00</strong><small id="case-phase">A cidade está acordada</small></div><nav aria-label="Ferramentas de investigação"><button id="open-journal" class="button secondary small" type="button">O Clarim do Rio</button><button id="open-notebook" class="button secondary small" type="button" title="Abrir ou fechar o caderno (C)">Caderno <kbd>C</kbd> <span id="evidence-count">0 pistas</span></button><button id="open-assembly" class="button secondary small" type="button">Assembleia da cidade</button><button id="open-delegate" class="button secondary small" type="button">Chamar o delegado</button></nav></div><div class="scene-frame"><div class="frame-corner top-left"></div><div class="frame-corner top-right"></div><div id="game-canvas" aria-label="Cenário lateral. Use as setas para andar e E para conversar." tabindex="0"></div><div class="scene-vignette" aria-hidden="true"></div><div id="scene-loading" class="scene-loading" role="status">Preparando a cidade…</div><div class="world-caption"><span class="caption-dot"></span><span id="world-caption">O bairro guarda suas histórias.</span></div><button id="inspect-crime" class="approach-button inspect-button" type="button" hidden><kbd>E</kbd><span>Procurar vestígios</span></button><button id="approach" class="approach-button" type="button" hidden><kbd>E</kbd><span></span></button></div>
+        <div class="case-toolbar"><div class="day-clock"><span id="case-day">DIA 1</span><strong id="case-clock" aria-label="Horário na cidade">09:00</strong><small id="case-phase">Investigue até as 18h</small></div><nav aria-label="Ferramentas de investigação"><button id="open-journal" class="button secondary small" type="button">O Clarim do Rio</button><button id="open-notebook" class="button secondary small" type="button" title="Abrir ou fechar o caderno (C)">Caderno <kbd>C</kbd> <span id="evidence-count">0 pistas</span></button><button id="open-assembly" class="button secondary small" type="button">Assembleia da cidade</button><button id="open-delegate" class="button secondary small" type="button">Chamar o delegado</button></nav></div><div class="scene-frame"><div class="frame-corner top-left"></div><div class="frame-corner top-right"></div><div id="game-canvas" aria-label="Cenário lateral. Use as setas para andar e E para conversar." tabindex="0"></div><div class="scene-vignette" aria-hidden="true"></div><div id="scene-loading" class="scene-loading" role="status">Preparando a cidade…</div><div class="world-caption"><span class="caption-dot"></span><span id="world-caption">O bairro guarda suas histórias.</span></div><button id="inspect-crime" class="approach-button inspect-button" type="button" hidden><kbd>E</kbd><span>Procurar vestígios</span></button><button id="approach" class="approach-button" type="button" hidden><kbd>E</kbd><span></span></button></div>
         <div class="scene-footer"><div class="touch-controls" aria-label="Caminhar pela cidade"><button id="walk-left" type="button" aria-label="Caminhar para a esquerda">←</button><button id="walk-right" type="button" aria-label="Caminhar para a direita">→</button></div><div class="control-guide"><span><kbd>←</kbd><kbd>→</kbd> Caminhar</span><span><kbd>E</kbd> Conversar</span><span><kbd>M</kbd> Viajar</span></div><span class="connection-label" id="connection-label"><i></i> Caso em andamento</span></div>
         <div class="notebook"><div class="notebook-number">01</div><div><p class="eyebrow">O CADERNO DE FLORIANO</p><h2 id="case-hint-title">Uma boa pergunta abre portas.</h2><p id="case-hint">Aproxime-se de um morador para ouvir sua versão. Procure marcas de cenas do crime e apresente os vestígios recolhidos.</p></div><span class="notebook-ornament" aria-hidden="true">✦</span></div>
       </section>
@@ -187,6 +187,7 @@ async function launch(resume: boolean) {
     exitBoundary = new ExitBoundary();
     controller = new MovementController(snapshot, api.move, () => api.world(id), applySnapshot, error => toast(explain(error)));
     scene = new CityScene(manifest, locations, snapshot, {
+      dayProgress: () => !caseState ? 0 : caseState.phase === 'day' ? gameDayProgress(caseClock.seconds()) : 1,
       blocked: () => Boolean(modal || activeAssembly() || busy || transitioning || starting || caseClock.blocked() || document.hidden || $('#investigation').hidden),
       frame: (delta, direction) => {
         if (!caseClock.blocked() && !transitioning) controller?.update(delta, direction);
@@ -651,10 +652,12 @@ async function applyCase(next: CasePublic, initial = false) {
 function renderClock() {
   if (!caseState || $('#investigation').hidden) return;
   $('#case-day').textContent = `DIA ${caseState.day}`;
-  $('#case-clock').textContent = caseState.phase === 'finished' ? 'FIM' : activeAssembly() ? 'DEBATE' : formatClock(caseClock.seconds());
+  const gameTime = caseState.phase === 'night' ? '18:00' : formatGameTime(caseClock.seconds());
+  $('#case-clock').textContent = caseState.phase === 'finished' ? 'FIM' : gameTime;
+  $('#case-clock').setAttribute('aria-label', caseState.phase === 'finished' ? 'Caso encerrado' : `Horário na cidade: ${gameTime}${activeAssembly() ? ', pausado durante a assembleia' : ''}`);
   $('#case-phase').textContent = activeAssembly() ? 'Assembleia em curso · o dia aguarda a votação' : caseState.phase === 'night' ? 'A noite não é jogável'
     : caseState.phase === 'finished' ? 'Este caso chegou ao fim'
-    : caseClock.seconds() ? 'Cinco minutos até a noite' : 'Aguardando os acontecimentos da noite…';
+    : caseClock.seconds() ? 'Investigue até as 18h' : 'Aguardando os acontecimentos da noite…';
   $('#open-delegate').toggleAttribute('disabled', caseClock.blocked() || Boolean(activeAssembly()));
   $('#open-assembly').toggleAttribute('disabled', caseState.status !== 'active' || (caseClock.blocked() && !activeAssembly()));
   $('#open-assembly').textContent = activeAssembly() ? 'Retomar assembleia' : caseState.assembly ? 'Resultado da assembleia' : 'Assembleia da cidade';
@@ -663,7 +666,7 @@ function renderClock() {
   if (caseState.phase === 'day' && caseState.status === 'active' && !caseClock.seconds() && modal !== 'phase' && modal !== 'custody' && !activeAssembly()) {
     scene?.setInputEnabled(false); showPhase();
   }
-  if (modal === 'custody') $('#custody-clock').textContent = caseState.status === 'won' ? 'Transformação confirmada pelo delegado' : caseState.phase === 'night' ? `Amanhecer em ${formatClock(caseClock.seconds())}` : `Anoitecer em ${formatClock(caseClock.seconds())}`;
+  if (modal === 'custody') $('#custody-clock').textContent = caseState.status === 'won' ? 'Transformação confirmada pelo delegado' : caseState.phase === 'night' ? `Amanhecer em ${formatClock(caseClock.seconds())}` : `${gameTime} · Anoitecer às 18h`;
   if (modal === 'phase') $('#phase-countdown').textContent = caseState.phase === 'finished' ? ''
     : caseState.phase === 'night' ? `A manhã se aproxima · ${formatClock(caseClock.seconds())}` : 'Aguardando confirmação da cidade…';
 }

@@ -1,0 +1,163 @@
+{
+  "id": "player",
+  "generator": "image_gen built-in",
+  "prompt": "Use case: identity-preserve.\nAsset type: production sprite animation sheet, transparent pixel-art detective game set in Rio de Janeiro1890.\nInput image: player.png is the SAME detective Floriano, both identity and exact pixel-art style reference. Preserve face, dark hair, small dark mustache, warm medium-brown skin, chestnut-brown jacket with pocket notebook, charcoal waistcoat with brass buttons, ivory collar, dark trousers, brown boots, adult body proportions.\nPrimary request: completely redraw the WALKING POSES into a convincing alternating two-leg walk cycle, fixing the reference where the same front leg keeps kicking forward. Exact TEN full-body poses, laid out in EXACTLY FIVE columns and TWO rows, with generous transparent gutters and padding; every figure looks to the RIGHT in the same side-on three-quarter angle. This is ONE character repeated in animation phases, not ten different men.\nLayout in reading order:\nTop row cell1: relaxed standing idle both feet on ground.\nTop row cell2: same standing idle, tiny breathing difference only.\nTop row cell3 WALK1: near leg leads forward and heel contacts ground, far leg stretched backward toe on ground; far arm leads forward.\nTop row cell4 WALK2: near foot flat supports weight, far heel lifts as far leg begins swinging forward underneath pelvis; knees slightly flexed.\nTop row cell5 WALK3: near leg straight under body bearing weight, far knee bent and moving forward PAST the support leg, far foot lifted; both legs almost cross underneath torso.\nBottom row cell1 WALK4: near leg behind, far thigh swings forward with knee slightly bent and foot preparing contact; near heel lifts.\nBottom row cell2 WALK5: OPPOSITE contact to WALK1: far leg leads forward with heel contact, near leg stretched backward with toe contact; near arm leads forward.\nBottom row cell3 WALK6: far foot flat supports weight, near heel lifts as near leg swings under pelvis.\nBottom row cell4 WALK7: far leg straight below body bearing weight, near knee bent passing forward, near boot lifted.\nBottom row cell5 WALK8: far leg behind, near thigh swinging forward, preparing return to WALK1.\nCritical animation invariants: ALTERNATE which leg is in front across the cycle; clearly distinct foot positions; arms swing in opposition to legs. Normal relaxed walking, NOT jogging, hopping, marching or kicking. Stable head and torso scale, jacket length, hair and face across every cell. Consistent foot baseline in EACH row, no cropped feet/hair/arms, no overlapping cells. Near trouser leg slightly lighter charcoal and far trouser leg darker, consistently, to make leg alternation readable. Subtle vertical head movement only, no dramatic pose changes. Full body and broad transparent margins.\nStyle: exact same handcrafted expressive 16-bit raster pixel art as source, clean dark stepped outlines and visible square pixel clusters, warm restrained earthy colors. No blurry painting, photorealism, vector, outlines of grid, cell numbers, labels or text. TRUE TRANSPARENT alpha background; no floor, shadow rectangle, scenery, watermark, props added. Preserve notebook in jacket pocket. Output one landscape sheet aspect about 1.7:1, 5 columns x2rows, ten poses total.",
+  "revision": 2,
+  "path": "/assets/characters/player.png",
+  "atlasPath": "/assets/characters/player.json",
+  "source": "/home/gustavoreis/.codex/generated_images/01a1a8ed-645a-70a1-88dd-269f9994cd6b/exec-b4bba8a8-b9ae-408e-b3f2-0eabfb6af3ed.png",
+  "sha256": "bfbb36de2f0469c9a559c60b0d731002e835d8a5e8207d3cc1892c1db7af2158",
+  "replacesSha256": "df925bf478feca9edc3d66a62c5a4094ebf543ccd59e13b9f50cc80ae1b78f97",
+  "transparent_background": true,
+  "width": 1635,
+  "height": 962,
+  "reference": "previous revision of /assets/characters/player.png",
+  "referenceSource": "/home/gustavoreis/.codex/generated_images/01a198c6-2221-71c3-8e31-1f04b88b8711/exec-2bb7d700-73ac-4db3-a8bf-b4e4857d0c5a.png",
+  "layout": "two rows, five columns; atlas uses measured cutouts rather than assumed uniform cells",
+  "idleFrames": [
+    "0",
+    "1"
+  ],
+  "walkFrames": [
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9"
+  ],
+  "walkPhases": [
+    "near_contact",
+    "near_down",
+    "far_passing",
+    "far_reach",
+    "far_contact",
+    "far_down",
+    "near_passing",
+    "near_reach"
+  ],
+  "virtualFrame": {
+    "width": 374,
+    "height": 528,
+    "footBaseline": 499
+  },
+  "display": {
+    "width": 64,
+    "height": 88
+  },
+  "packing": "Visible alpha >20 bounds padded by2 pixels; PNG unmodified. Common virtual canvas and feet baseline; horizontal anchor follows head center minus9px to keep torso stable.",
+  "measuredAnchors": [
+    {
+      "frame": "0",
+      "visibleBounds": [
+        137,
+        32,
+        289,
+        449
+      ],
+      "hipAnchorX": 214.5,
+      "footBaseline": 499
+    },
+    {
+      "frame": "1",
+      "visibleBounds": [
+        440,
+        31,
+        594,
+        448
+      ],
+      "hipAnchorX": 520.5,
+      "footBaseline": 499
+    },
+    {
+      "frame": "2",
+      "visibleBounds": [
+        714,
+        37,
+        945,
+        451
+      ],
+      "hipAnchorX": 829.0,
+      "footBaseline": 499
+    },
+    {
+      "frame": "3",
+      "visibleBounds": [
+        1024,
+        35,
+        1216,
+        450
+      ],
+      "hipAnchorX": 1124.5,
+      "footBaseline": 499
+    },
+    {
+      "frame": "4",
+      "visibleBounds": [
+        1332,
+        31,
+        1494,
+        450
+      ],
+      "hipAnchorX": 1419.5,
+      "footBaseline": 499
+    },
+    {
+      "frame": "5",
+      "visibleBounds": [
+        108,
+        517,
+        338,
+        928
+      ],
+      "hipAnchorX": 220.5,
+      "footBaseline": 499
+    },
+    {
+      "frame": "6",
+      "visibleBounds": [
+        407,
+        517,
+        662,
+        928
+      ],
+      "hipAnchorX": 526.0,
+      "footBaseline": 499
+    },
+    {
+      "frame": "7",
+      "visibleBounds": [
+        736,
+        514,
+        907,
+        928
+      ],
+      "hipAnchorX": 820.0,
+      "footBaseline": 499
+    },
+    {
+      "frame": "8",
+      "visibleBounds": [
+        1036,
+        517,
+        1204,
+        928
+      ],
+      "hipAnchorX": 1119.0,
+      "footBaseline": 499
+    },
+    {
+      "frame": "9",
+      "visibleBounds": [
+        1313,
+        517,
+        1537,
+        930
+      ],
+      "hipAnchorX": 1414.5,
+      "footBaseline": 499
+    }
+  ]
+}
