@@ -27,3 +27,5 @@ A cena compara a composição dos NPCs mesmo sem trocar de localização, remove
 - Build TypeScript/Vite e27 testes Vitest: relógio, bloqueio, proximidade, polling sequencial e contratos HTTP, além dos anteriores.
 - Dois fluxos Playwright no **Brave instalado**, com API simulada conforme o contrato: busca, apresentação, caderno, acusação, noite e vitória; e amanhecer, jornal e atualização do elenco. Sem AWS.
 - A coordenação valida backend/Redis, relógio controlado e Docker. Os fluxos anteriores precisam ler o jornal inicial (`#read-journal`) antes de caminhar.
+
+O botão **Pular o dia**, na barra de investigação, avança diretamente até a manhã seguinte e abre o Clarim. Aguarda movimentos pendentes e atualiza mundo e elenco pela resposta do servidor. Fica desabilitado durante ações, janelas abertas, assembleia, noite ou fim de partida; falhas permitem nova tentativa sem avançar o relógio local.

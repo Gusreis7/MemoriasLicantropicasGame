@@ -32,6 +32,13 @@ async function cityFixture(page: import('@playwright/test').Page) {
       state.server_time = new Date().toISOString(); state.seconds_remaining = Math.max(0, (Date.parse(state.phase_ends_at) - Date.now()) / 1000);
       return json(route, state);
     }
+    if (path.endsWith('/investigation/skip-day')) {
+      state.day++; state.revision++; state.phase_ends_at = new Date(Date.now() + 300000).toISOString();
+      state.journal.push({day: state.day, title: 'O Clarim do Rio', headline: 'Uma nova manhã na cidade', body: 'A noite revelou uma nova vítima.', victim_id: 'rubiao', victim_name: 'Rubião', location_id: 'praca_verde', detention_outcome: 'none'});
+      cast.characters.find(member => member.character.id === 'rubiao')!.alive = false;
+      world.visible_npcs = []; world.revision++; world.player.x = 160;
+      return json(route, state);
+    }
     if (path.endsWith('/world')) return json(route, world);
     if (path.endsWith('/movement')) {
       movementCalls++;
@@ -142,6 +149,33 @@ test('busca, apresenta vestígios e pede detenção antes de aguardar a noite', 
   await expect(page.locator('#phase-description')).toContainText('expulsou'); await expect(page.locator('#ending-new-case')).toBeVisible();
 });
 
+for (const width of [1440, 390]) {
+  test(`pular o dia abre o jornal da manhã seguinte em ${width}px`, async ({page}) => {
+    await page.setViewportSize({width, height: 1000});
+    const city = await cityFixture(page); await begin(page);
+    await page.locator('#skip-day').click();
+    await expect(page.locator('#journal-overlay')).toBeVisible();
+    await expect(page.locator('#journal-headline')).toHaveText('Uma nova manhã na cidade');
+    await expect(page.locator('#case-day')).toHaveText('DIA 2');
+    await expect(page.locator('#case-clock')).toHaveText('09:00');
+    expect(city.requests.filter(request => request.path.endsWith('/skip-day')).map(request => request.body)).toEqual([{day: 1}]);
+    await page.locator('#read-journal').click();
+    await expect(page.locator('#skip-day')).toBeEnabled();
+    expect(city.cast.characters.find(member => member.character.id === 'rubiao')?.alive).toBe(false);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  });
+}
+
+test('falha ao pular o dia permite tentar novamente sem avançar localmente', async ({page}) => {
+  const city = await cityFixture(page); await begin(page);
+  await page.route('**/investigation/skip-day', route => route.fulfill({status: 503, json: {detail: 'A cidade está indisponível.'}}));
+  await page.locator('#skip-day').click();
+  await expect(page.locator('#toast')).toContainText('A cidade está indisponível.');
+  await expect(page.locator('#skip-day')).toBeEnabled();
+  await expect(page.locator('#case-day')).toHaveText('DIA 1');
+  expect(city.state.day).toBe(1);
+});
+
 test('quarta vítima encerra o caso com a edição de derrota do Clarim', async ({page}) => {
   const city = await cityFixture(page); await begin(page);
   city.state.day = 5; city.state.phase = 'finished'; city.state.status = 'lost'; city.state.revision++;
@@ -153,6 +187,7 @@ test('quarta vítima encerra o caso com a edição de derrota do Clarim', async 
   await expect(page.locator('#victory-paper .press-picture')).toBeHidden();
   await expect(page.locator('#ending-new-case')).toBeVisible();
   await expect(page.locator('#open-map')).toBeDisabled();
+  await expect(page.locator('#skip-day')).toBeDisabled();
 });
 
 test('amanhecer retorna à banca e publica a morte sem manter o NPC no cenário', async ({page}) => {

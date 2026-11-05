@@ -14,6 +14,10 @@ class SearchRequest(Contract):
     pass
 
 
+class SkipDayRequest(Contract):
+    day: int = Field(ge=1, strict=True)
+
+
 class PresentRequest(Contract):
     npc_id: str = Field(min_length=1, max_length=40)
 

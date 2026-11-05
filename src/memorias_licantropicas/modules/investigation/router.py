@@ -4,7 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Request
 
 from memorias_licantropicas.modules.investigation.schema import (
-    AccusationReviewPublic, AssemblyOpenRequest, AssemblyResolveRequest, AssemblyRequest, AccuseRequest, CasePublic, PresentRequest, SearchRequest, InterrogateRequest, ConfrontRequest,
+    AccusationReviewPublic, AssemblyOpenRequest, AssemblyResolveRequest, AssemblyRequest, AccuseRequest, CasePublic, PresentRequest, SearchRequest, SkipDayRequest, InterrogateRequest, ConfrontRequest,
 )
 from memorias_licantropicas.modules.investigation.service import InvestigationService
 
@@ -26,6 +26,11 @@ async def get_case(game_id: UUID, service: Service):
 @router.post("/crime-scenes/{crime_id}/search", response_model=CasePublic)
 async def search(game_id: UUID, crime_id: UUID, body: SearchRequest, service: Service):
     return await service.search(game_id, crime_id)
+
+
+@router.post("/investigation/skip-day", response_model=CasePublic)
+async def skip_day(game_id: UUID, body: SkipDayRequest, service: Service):
+    return await service.skip_day(game_id, body.day)
 
 
 @router.post("/evidence/{evidence_id}/present", response_model=CasePublic)

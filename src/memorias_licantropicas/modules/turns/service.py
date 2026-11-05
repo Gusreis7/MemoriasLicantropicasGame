@@ -126,6 +126,33 @@ class TurnService:
             state, game, world = updated, next_game, updated_world
         raise StorageUnavailableError("O ciclo ultrapassou o limite de recuperação.")
 
+    async def skip_day(self, game_id: UUID, day: int) -> InvestigationState:
+        """Resolve uma noite e abre a manhã agora, em uma única transação."""
+        from memorias_licantropicas.modules.investigation.interrogation import record_activities
+
+        async with self._gate.hold(game_id):
+            state = await self.require_day_locked(game_id)
+            if state.day != day:
+                raise ConflictError("O dia já mudou; consulte a edição atual do jornal.")
+            game, world, _ = await self._load(game_id)
+            now = self.now()
+            records = state.activity_records
+            if not any(record.day == day and record.period == "day" for record in records):
+                records += record_activities(game, world, day, "day", now,
+                    excluded_ids=(state.detained_npc_id,) if state.detained_npc_id else ())
+            night = state.model_copy(update={"phase": "night", "phase_ends_at": now,
+                                             "activity_records": records})
+            updated, next_game, next_world, events = await self._resolve_night(night, game, world, now)
+            updated = await self._edit_victory(state, updated, next_game)
+            await self._repository.commit(
+                previous=state, state=updated, previous_game=game, game=next_game,
+                previous_world=world, world=next_world, occurred_at=now,
+                events=(CaseEvent(type="day.skipped", data={"day": day}),
+                        CaseEvent(type="night.started", data={"day": day, "reason": "day_skipped"}),
+                        *events),
+            )
+            return updated
+
     async def _resolve_night(self, state, game, world, boundary):
         from memorias_licantropicas.modules.investigation.rules import (
             choose_victim, make_crime, werewolf_cast_victims, WEREWOLF_DEFEAT_THRESHOLD,
