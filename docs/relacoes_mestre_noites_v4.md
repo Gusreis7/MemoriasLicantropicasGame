@@ -28,11 +28,13 @@ Somente a linha do próprio personagem vai para sua instância de diálogo. Esco
 
 ## Contratos e validação
 
-Contratos aditivos com defaults preservam leituras antigas: `Relationship.sentiment_label/sentiments`, `ConversationMessage.useful`, `MessagePublic.useful`, `HeardReport.useful`, `Crime.cause` e `InvestigationState.night_story`. O relógio, mortes, casos e eventos continuam na transação do ciclo Redis; só os serviços de domínio determinam consequências.
+As partidas novas usam a matriz atual e os assuntos autorais inicializados uma
+vez. A inicialização preserva os deltas das relações atuais; não existe migração
+entre matrizes de saves antigos. Os testes de relações/noites cobrem as 64
+relações, probabilidades, sorteios, duas causas de morte, estresse e confissão civil.
 
-`tests/test_relationships_nights_master_v 4.py` verifica as 64 relações, migração sem perda de causas/deltas, probabilidades, sorteios, proteção policial, duas mortes, estresse, confissão civil, edição final e projeções públicas. Cenários antigos que exigem exatamente um ataque usam sorteio controlado explícito; os novos testes cobrem as noites opcionais e o segundo autor.
-
-`scripts/validate_relationships_nights_v 4.py` executou 100 partidas passivas, isoladas em fakeredis, com dados em [validacao_relacoes_noites_v 4](validacao_relacoes_noites_v 4/resumo.json). Foram 779 noites:190 sem morte,578 com uma e 11 com duas;16 homicídios civis. Planos terminaram em 16 sucessos,44 frustrações e 40 interrupções. Fim entre os dias 6 e 12; nenhuma violação das invariantes verificadas. São testes do motor com jogador passivo, não avaliação de diálogo nem equilíbrio para humanos. Nenhuma chamada LLM/AWS; custo de inferência dessas 100 partidas: US$ 0.
+O runner passivo anterior e seus artefatos foram retirados. Use a
+[simulação atual de partidas completas](simulacao_partidas_refatoracao.md).
 
 ## Conferência da entrega
 

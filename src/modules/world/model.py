@@ -13,8 +13,7 @@ Direction = Literal["left", "right", "idle"]
 
 class WorldPlayer(Contract):
     location_id: LocationID = "praca_verde"
-    # Limite legado para ler partidas anteriores; bounds atuais vêm do catálogo.
-    x: float = Field(default=160, ge=32, le=1888)
+    x: float = Field(default=160, ge=32, le=928)
     facing: Literal["left", "right"] = "right"
     movement_seq: int = Field(default=0, ge=0)
     direction: Direction = "idle"
@@ -24,7 +23,7 @@ class WorldPlayer(Contract):
 class WorldNPC(Contract):
     npc_id: str
     location_id: LocationID
-    x: float = Field(ge=32, le=1888)
+    x: float = Field(ge=32, le=928)
     activity: Literal["idle", "travelling", "talking"] = "idle"
     social_encounter_id: UUID | None = None
     travel_destination_id: LocationID | None = None

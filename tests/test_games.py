@@ -41,16 +41,14 @@ async def test_missing_game_raises_domain_error(catalog, storage):
         await GameService(catalog, storage.games).get(uuid4())
 
 
-async def test_catalog_v3_reads_existing_v2_game_without_rewriting_it(catalog, storage, game):
-    legacy = game.model_copy(update={"id": uuid4(), "content_version": "2"})
-    assert await storage.games.create(legacy)
-    public = await GameService(catalog, storage.games).get(legacy.id)
-    assert public.content_version == "2"
-    assert await storage.games.get(legacy.id) == legacy
-    assert supports_content_version("2", catalog.content_version)
-    assert supports_content_version("3", catalog.content_version)
-    assert not supports_content_version("1", catalog.content_version)
-    assert not supports_content_version("2", "4")
+@pytest.mark.parametrize("version", ["1", "2"])
+async def test_previous_catalog_versions_are_rejected(catalog, storage, game, version):
+    incompatible = game.model_copy(update={"id": uuid4(), "content_version": version})
+    assert await storage.games.create(incompatible)
+    with pytest.raises(ConflictError):
+        await GameService(catalog, storage.games).get(incompatible.id)
+    assert not supports_content_version(version, catalog.content_version)
+    assert supports_content_version(catalog.content_version, catalog.content_version)
 
 
 @pytest.mark.parametrize("roles", [(), ("civil",), ("werewolf", "werewolf")])

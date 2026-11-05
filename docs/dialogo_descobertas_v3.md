@@ -21,7 +21,7 @@ Uma cooperação explícita e processada ganha confiança5 e afinidade3, limitad
 - Escobar: confiança>=20, afinidade>=12 e proximidade>=35; exige uma relação mais construída.
 - Amigos preexistentes com proximidade>=65 continuam aptos a confidências.
 
-`seeded_topics_version=2` migra só a política dos assuntos autorais existentes; não apaga histórias ou efeitos de relação e não reinicializa resultados. Fonte/visibilidade da informação ouvida continua controlada.
+`topics_initialized` registra a inicialização única dos assuntos atuais. Não há migração de saves ou rebase de relações antigas. Fonte e visibilidade da informação ouvida continuam controladas.
 
 ## Conquistas opcionais
 

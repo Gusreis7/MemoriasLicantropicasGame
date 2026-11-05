@@ -24,8 +24,8 @@ Os módulos estão diretamente em `src/`; entrypoint `src.main:app`.
 Os testes de protocolo executam o Runnable e os grafos reais, substituindo apenas
 o transporte/inferência. Respostas contendo JSON textual sem ferramenta são
 rejeitadas. Marcadores internos em uma fala nativa válida também são bloqueados.
-O leitor de histórico antigo permanece isolado na persistência; não extrai saídas
-novas do modelo. Códigos arbitrários de exceção não entram na telemetria de consumo.
+A limpeza posterior removeu também o leitor de histórico antigo e os caminhos
+de migração; consulte [a manutenção](limpeza_reinicio.md). Códigos arbitrários de exceção não entram na telemetria de consumo.
 
 ## Dez partidas completas com protocolo nativo
 

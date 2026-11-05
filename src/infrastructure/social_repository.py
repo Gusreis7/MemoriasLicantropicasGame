@@ -12,7 +12,7 @@ from redis.exceptions import RedisError, WatchError
 
 from src.contracts.errors import StorageUnavailableError
 from src.contracts.investigation import InvestigationState
-from src.contracts.model import Conversation, ConversationMessage, GameState
+from src.contracts.model import Conversation, GameState
 from src.contracts.social import ExchangeRecord, SocialState
 from src.modules.world.model import WorldState
 
@@ -105,88 +105,6 @@ class RedisSocialRepository:
         except (RedisError, ValidationError, ValueError, TypeError):
             raise StorageUnavailableError("Fila de relatos indisponível.") from None
 
-    async def backfill_history(self, game_id):
-        """Importa uma vez as transcrições anteriores ao outbox, sem alterar a origem."""
-        async with self.lease(game_id) as acquired:
-            if not acquired:
-                return False
-            return await self._backfill_history(game_id)
-
-    async def _backfill_history(self, game_id):
-        base = self._base(game_id)
-        marker, outbox = f"{base}:social:history_imported", f"{base}:social:exchanges"
-        index, lease_key = f"{base}:conversations", f"{base}:social:busy"
-        owner = self._owner.get()
-        try:
-            for _ in range(5):
-                try:
-                    async with self._client.pipeline() as pipe:
-                        await pipe.watch(marker, outbox, index, lease_key, f"{base}:state")
-                        if (owner is None or owner[0] != game_id or owner[2] is not asyncio.current_task()
-                                or await pipe.get(lease_key) != owner[1]):
-                            return False
-                        if await pipe.exists(marker):
-                            return True
-                        raw_game = await pipe.get(f"{base}:state")
-                        game = GameState.model_validate_json(raw_game) if raw_game is not None else None
-                        if game is None or game.id != game_id:
-                            raise ValueError("Caso do histórico divergente.")
-                        cast = {member.character_id for member in game.characters}
-                        existing = await self._read_exchanges(await pipe.lrange(outbox, 0, -1), game_id,
-                                                              reader=pipe, game=game)
-                        seen = {record.outgoing.id: record for record in existing}
-                        pending = []
-                        for raw_id in await pipe.zrange(index, 0, -1):
-                            conversation_id = UUID(raw_id.decode() if isinstance(raw_id, bytes) else raw_id)
-                            key = f"{base}:conversation:{conversation_id}"
-                            await pipe.watch(key)
-                            raw_conversation = await pipe.get(key)
-                            conversation = Conversation.model_validate_json(raw_conversation) if raw_conversation is not None else None
-                            if (conversation is None or conversation.id != conversation_id or conversation.game_id != game_id
-                                    or not set(conversation.participant_ids).issubset(cast | {"player"})):
-                                raise ValueError("Metadados do histórico divergentes.")
-                            if "player" not in conversation.participant_ids:
-                                continue
-                            npc_id = next(identifier for identifier in conversation.participant_ids if identifier != "player")
-                            order_key, messages_key = f"{key}:order", f"{key}:messages"
-                            await pipe.watch(order_key, messages_key)
-                            raw_order = await pipe.lrange(order_key, 0, -1)
-                            order = tuple(identifier.decode() if isinstance(identifier, bytes) else identifier
-                                          for identifier in raw_order)
-                            if len(order) != len(set(order)) or await pipe.hlen(messages_key) != len(order):
-                                raise ValueError("Índice de mensagens divergente.")
-                            values = await pipe.hmget(messages_key, order) if order else ()
-                            messages = tuple(ConversationMessage.model_validate_json(value) for value in values)
-                            if any(str(message.id) != identifier or message.sender_id not in conversation.participant_ids
-                                   for identifier, message in zip(order, messages, strict=True)):
-                                raise ValueError("Mensagem do histórico divergente.")
-                            for incoming, outgoing in zip(messages, messages[1:]):
-                                if incoming.sender_id != "player" or outgoing.sender_id != npc_id:
-                                    continue
-                                record = ExchangeRecord(conversation_id=conversation_id, npc_id=npc_id, day=None,
-                                                        incoming=incoming, outgoing=outgoing)
-                                previous = seen.get(outgoing.id)
-                                if previous is not None:
-                                    if (previous.conversation_id != record.conversation_id or previous.npc_id != record.npc_id
-                                            or previous.incoming != record.incoming or previous.outgoing != record.outgoing):
-                                        raise ValueError("ID de resposta reutilizado no histórico.")
-                                    continue
-                                seen[outgoing.id] = record
-                                pending.append(record)
-                        pending.sort(key=lambda record: (record.incoming.created_at, record.outgoing.created_at,
-                                                         str(record.conversation_id), str(record.outgoing.id)))
-                        serialized = tuple(record.model_dump_json() for record in pending)
-                        pipe.multi()
-                        if serialized:
-                            pipe.rpush(outbox, *serialized)
-                        pipe.set(marker, "1")
-                        await pipe.execute()
-                        return True
-                except WatchError:
-                    continue
-            return False
-        except (RedisError, ValidationError, ValueError, TypeError, StopIteration):
-            raise StorageUnavailableError("Migração de histórico social indisponível.") from None
 
     async def active_game_ids(self):
         try:

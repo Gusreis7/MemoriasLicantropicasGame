@@ -51,7 +51,9 @@ class TurnService:
             raise ConflictError("A partida usa uma versão anterior de personagens.")
         if world is None:
             raise ConflictError("Esta partida não possui mundo visual.")
-        if state is not None and state.status != game.status:
+        if state is None:
+            raise StorageUnavailableError("Ciclo da partida ausente; crie uma nova partida.")
+        if state.status != game.status:
             raise StorageUnavailableError("Estado da partida e do ciclo inconsistentes.")
 
     async def _load(self, game_id: UUID) -> tuple[GameState, WorldState, InvestigationState | None]:
@@ -69,25 +71,14 @@ class TurnService:
         if state is not None and not assembly_expired and (state.status != "active" or state.phase == "finished"
                                   or self.now() < state.phase_ends_at):
             return state
-        # Só a inicialização ou uma fase vencida exigem reserva. Leituras de um
+        # Só uma fase vencida exige reserva. Leituras de um
         # dia em curso continuam disponíveis durante a inferência de uma fala.
         async with self._gate.hold(game_id):
             return await self._sync_locked(game_id)
 
     async def _sync_locked(self, game_id: UUID) -> InvestigationState:
-        from src.modules.investigation.rules import make_initial_investigation
-
         game, world, state = await self._load(game_id)
         now = self.now()
-        if state is None:
-            state = make_initial_investigation(game, now, day_seconds=self._day_seconds)
-            if game.status != "active":
-                state = state.model_copy(update={"status": game.status, "phase": "finished"})
-            await self._repository.commit(
-                previous=None, state=state, previous_game=game, game=game,
-                previous_world=world, world=world, occurred_at=now,
-                events=(CaseEvent(type="investigation.initialized", data={"legacy": True, "day": state.day}),),
-            )
         if (state.assembly_session and state.assembly_session.phase == "debate"
                 and now >= state.assembly_session.deadline):
             from src.modules.investigation.assembly import resolve_transition, apply_assembly_effects

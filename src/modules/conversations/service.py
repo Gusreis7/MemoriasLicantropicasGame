@@ -1,14 +1,13 @@
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
-from src.contracts.errors import InteractionUnavailableError, AccessDeniedError, ConflictError, LLMUnavailableError, NotFoundError
+from src.contracts.errors import InteractionUnavailableError, AccessDeniedError, ConflictError, NotFoundError
 from src.contracts.model import Conversation, ConversationMessage
 from src.contracts.repository import (
     CharacterRepository, ConversationGate, GameRepository, MemoryRepository, InteractionPolicy, PlayerActionGate,
 )
 from src.modules.agents.service import HarnessService, PLAYER_ID
 from src.modules.agents.guard import DialogueGuard, SAFE_DIALOGUE_REPLY
-from src.infrastructure.legacy_history import read_persisted_dialogue
 from src.modules.characters.catalog import supports_content_version
 from src.modules.conversations.schema import (
     ConversationHistory, ConversationPublic, MessagePublic, MessageReply,
@@ -18,10 +17,6 @@ from src.modules.conversations.schema import (
 def public_message(message: ConversationMessage, private_markers: tuple[str, ...] = ()) -> MessagePublic:
     content = message.content
     if message.sender_id != PLAYER_ID:
-        try:
-            content = read_persisted_dialogue(content, message.sender_id)
-        except LLMUnavailableError:
-            content = SAFE_DIALOGUE_REPLY
         decision = DialogueGuard().inspect_output(content, () if message.narrative_authorized else private_markers,
             allow_role_disclosure=message.narrative_authorized)
         if not decision.allowed:

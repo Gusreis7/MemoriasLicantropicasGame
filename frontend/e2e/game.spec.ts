@@ -1,5 +1,23 @@
 import { test, expect } from '@playwright/test';
 
+test('volume reiniciado descarta referência ao caso ausente e permite começar de novo', async ({page}) => {
+  const missing = '11111111-1111-4111-8111-111111111111';
+  await page.addInitScript(id => {
+    localStorage.setItem('memorias-licantropicas:game', id);
+    localStorage.setItem(`memorias-licantropicas:assembly:${id}`, '{"speech":"rascunho antigo"}');
+  }, missing);
+  await page.goto('/');
+  await page.locator('#continue').click();
+  await expect(page.locator('#launch-status')).toContainText('Inicie uma nova investigação');
+  await expect(page.locator('#continue')).toBeHidden();
+  expect(await page.evaluate(() => localStorage.getItem('memorias-licantropicas:game'))).toBeNull();
+  expect(await page.evaluate(id => localStorage.getItem(`memorias-licantropicas:assembly:${id}`), missing)).toBeNull();
+  await page.locator('#start').click();
+  await expect(page.locator('#scene-loading')).toBeHidden({timeout: 30000});
+  await expect(page.locator('#read-journal')).toBeVisible();
+  expect(await page.evaluate(() => localStorage.getItem('memorias-licantropicas:game'))).not.toBe(missing);
+});
+
 test('moradores de diferentes ofícios povoam os cinco locais',async({page})=>{
   const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
   const atlas=await page.request.get('/assets/ambient/citizens.json');expect(atlas.ok()).toBeTruthy();

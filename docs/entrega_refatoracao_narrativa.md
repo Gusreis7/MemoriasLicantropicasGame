@@ -27,7 +27,7 @@ Contratos: `docs/contrato_refatoracao_narrativa_execucao.md`.
 - TypeScript e build Vite concluíram; Docker reconstruiu API, jogo e painel com checks de saúde.
 - Testes backend incluem fakeredis/ASGI e namespace isolado; testes Brave usam fixtures/mocks. Os dados de partidas em andamento do usuário não foram usados na exploração.
 - 100 cenários contabilizados:21 tentativas com falha de inicialização do runner (preservadas),72 partidas completas com políticas programadas e7 encontros reais de Qwen, cada um continuado por três turnos. São21 trocas reais/42 chamadas, não100 partidas com LLM.
-- O relatório completo, CSV, resumo JSON e transcrições/uso das amostras estão em `docs/exploracao_narrativa/`.
+- Os artefatos desse experimento foram retirados do checkout; permanecem no histórico Git anterior à limpeza.
 
 ## Limitações e resultados não aprovados
 

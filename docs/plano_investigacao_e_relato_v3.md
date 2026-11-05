@@ -49,7 +49,7 @@ O estudo concluiu 100 cenários anteriores e 100 posteriores, com uma troca Qwen
 
 O indicador lexical de utilidade passou de 58/100 para 94/100 tentativas (94/99 respostas concluídas). Houve uma resposta bloqueada por revisão. A auditoria encontrou invenção de detalhes e atribuição de relação ao par errado; fidelidade narrativa continua parcial. Os dados originais foram preservados, inclusive a falha. Custo estimado registrado: US$ 0,12955590 antes + US$ 0,07549245 depois = **US$ 0,20504835**, segundo o snapshot configurado, não a fatura AWS.
 
-Leia [o relatório completo](exploracao_investigacao_v3/relatorio.md), [as regras de provas](evidencias_especificidade_v3.md) e [os contratos de diálogo e descobertas](dialogo_descobertas_v3.md). A correção determinística de voz em primeira pessoa posterior ao congelamento do estudo tem validação de regressão separada; não foi retroativamente incluída nas métricas das 100 falas posteriores.
+Leia o estudo anterior no histórico Git, [as regras de provas](evidencias_especificidade_v3.md) e [os contratos de diálogo e descobertas](dialogo_descobertas_v3.md). A correção determinística de voz em primeira pessoa posterior ao congelamento do estudo tem validação de regressão separada; não foi retroativamente incluída nas métricas das 100 falas posteriores.
 
 ## Validação da entrega
 

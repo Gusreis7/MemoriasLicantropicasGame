@@ -50,7 +50,7 @@ class RedisTurnRepository:
 
         GETs numa transação somente de leitura mantêm erros de tipo Redis. MGET
         devolveria nil também para uma chave com tipo incorreto, confundindo
-        corrupção com ausência de agregado legado.
+        corrupção com ausência de agregado.
         """
         base = self._base(game_id)
         try:

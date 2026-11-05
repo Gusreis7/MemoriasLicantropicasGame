@@ -69,7 +69,7 @@ fofoca, relato útil, confissão ou conquista. Auth indisponível retorna erro e
 preserva o rascunho; falha esgotada de protocolo/qualidade produz resposta técnica
 identificada como `dialogue-fallback`.
 
-## Observabilidade e compatibilidade
+## Observabilidade e persistência
 
 Grafo e gerador desabilitam tracing externo por
 `tracing_context(enabled=False, parent=False)`, inclusive com variáveis de ambiente
@@ -79,9 +79,9 @@ O evento `llm.dialogue.graph` é consultado pelo admin autenticado.
 
 A gravação do diagnóstico é best-effort, com prazo independente de um segundo.
 Ela não mascara a falha original nem bloqueia a resposta indefinidamente.
-O leitor em `src/infrastructure/legacy_history.py` trata somente mensagens antigas
-armazenadas; a geração nova exige ferramentas e não recupera JSON de texto. Os
-históricos existentes não são reescritos.
+A geração exige ferramentas e a persistência guarda texto canônico. Envelopes
+serializados são bloqueados pela guarda; não existe decodificador de históricos
+antigos ou importação de transcrições anteriores ao outbox.
 
 ## Verificação
 

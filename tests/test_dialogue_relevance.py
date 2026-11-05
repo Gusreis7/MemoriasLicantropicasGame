@@ -16,7 +16,6 @@ from src.contracts.model import (
 )
 from src.modules.agents.support import (
     dialogue_supports,
-    historical_dialogue_content,
     is_courtesy_reply,
 )
 from src.modules.session_master.service import SessionMasterService
@@ -142,15 +141,6 @@ async def test_player_item_presentation_is_not_a_shareable_discovery(catalog):
             "Você acredita em lobisomens, Rubião?",
         )
         == ()
-    )
-
-
-def test_legacy_template_loses_only_automatic_frame_in_prompt():
-    text = "Posso lhe ajudar com isso: Eu sou casada com Bentinho. Ouça também Bentinho sobre essas discussões."
-    assert historical_dialogue_content(text) == "Eu sou casada com Bentinho."
-    assert (
-        historical_dialogue_content("Ouça, Floriano: não sei.")
-        == "Ouça, Floriano: não sei."
     )
 
 

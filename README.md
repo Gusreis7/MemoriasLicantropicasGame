@@ -18,6 +18,8 @@ A [correção de relevância dos diálogos](docs/correcao_relevancia_dialogos.md
 
 Para instalação, escolha de credencial, comandos de parada e solução de problemas, veja o [guia de execução com Docker](docs/execucao_docker.md). Se o Redis não iniciar, siga a seção de recuperação do guia antes de tentar outra subida.
 
+A [limpeza e reinício local](docs/limpeza_reinicio.md) registra a retirada de compatibilidades antigas e o reset do volume. Use `make destroy` seguido de `make setup` para recomeçar sem partidas salvas.
+
 ## Agentes, grafos e simulações
 
 A [arquitetura LLM atual](docs/refatoracao_llm.md) separa transporte Mantle, prompts de persona, contratos Pydantic e grafos LangGraph de diálogo/convivência. A geração usa **tool calling nativo**, `ChatModel.with_structured_output(method="function_calling")` e `PydanticToolsParser`: o schema vai em `tools`, separado das instruções narrativas. Não há pedido de JSON no prompt, extração de texto ou regex para recuperar uma resposta estruturada.
@@ -62,7 +64,7 @@ A suíte comum usa Redis em memória/real e inferência simulada. Experimentos h
 
 Os [interrogatórios e confrontos](docs/interrogatorios.md) registram local, companhia e atividade por período. Além da prisão confirmada à noite, é possível vencer por confissão sustentada em provas, com dificuldade própria de cada persona. Os civis colaboram conforme suas lembranças e interesses. No diálogo, abra **Interrogar e confrontar versões**; os registros ficam no caderno.
 
-O [plano desta evolução](docs/plano_interrogatorios_equilibrio.md) define os contratos de implementação. O [relatório das dez simulações](docs/relatorio_simulacoes.md) registra equilíbrio exploratório e avaliação real do Qwen. O [consumo por partida](docs/consumo_llm.md) aparece no admin autenticado, com tokens, chamadas e estimativa USD.
+O [plano desta evolução](docs/plano_interrogatorios_equilibrio.md) define os contratos de implementação. A [simulação atual](docs/simulacao_partidas_refatoracao.md) executa partidas completas e identifica explicitamente o provedor utilizado. O [consumo por partida](docs/consumo_llm.md) aparece no admin autenticado, com tokens, chamadas e estimativa USD.
 
 O [planejamento do projeto](docs/planejamento.md) descreve o ciclo do jogo, os módulos, o harness de agentes, a memória, as etapas de desenvolvimento e as decisões ainda em aberto.
 

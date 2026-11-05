@@ -45,8 +45,6 @@ class KnowledgeService:
         async with self._repository.lease(game_id) as acquired:
             if not acquired:
                 return False
-            if not await self._repository.backfill_history(game_id):
-                return False
             return await self._process_pending(game_id, day)
 
     async def _process_pending(self, game_id, day):

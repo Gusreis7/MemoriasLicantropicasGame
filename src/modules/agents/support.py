@@ -115,35 +115,6 @@ def dialogue_focus(question, observations):
     return "Responda à última mensagem de Floriano. Seus objetivos influenciam seu tom, mas não substituem o assunto da pergunta. Não apresente as palavras dele como uma descoberta sua."
 
 
-def historical_dialogue_content(content):
-    """Retira apenas a moldura legada no prompt; o histórico salvo é preservado."""
-    prefixes = (
-        "Uma coisa eu lhe digo:",
-        "Posso lhe ajudar com isso:",
-        "Posso lhe contar uma coisa:",
-        "Isso eu posso lhe contar:",
-        "Pois escute:",
-        "Vamos ao que importa:",
-        "Comecemos pelo que sabemos:",
-    )
-    if not content.startswith(prefixes):
-        return content
-    statement = content.split(":", 1)[1].strip()
-    return next(
-        (
-            statement.split(marker, 1)[0] + "."
-            for marker in (
-                ". Compare ",
-                ". Converse com ",
-                ". Ouça ",
-                ". Pergunte também ",
-            )
-            if marker in statement
-        ),
-        statement,
-    )
-
-
 def _lead(statement, npc_id):
     text = normalized(statement)
     if "seminario" in text:
