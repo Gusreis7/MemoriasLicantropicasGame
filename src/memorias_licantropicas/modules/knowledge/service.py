@@ -2,7 +2,7 @@
 
 import asyncio
 import json
-import re
+from memorias_licantropicas.textutils import word_tokens, has_word_start
 import unicodedata
 from datetime import UTC, datetime
 from uuid import NAMESPACE_URL, uuid5
@@ -306,7 +306,7 @@ class KnowledgeService:
                     and named_source
                     and named_source != npc_id
                     and any(alias and alias in normalized for alias in aliases)
-                    and re.search(r"denunci|acus|delat", normalized)
+                    and has_word_start(normalized, ('denunci','acus','delat'))
                 ):
                     reactions.append((named_source, root_id))
             # Uma transcrição ambígua continua recuperável, mas não entra na agenda de fofoca.

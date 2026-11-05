@@ -1,7 +1,7 @@
 """Encontros limitados: geração fora de reservas do jogador e commit revalidado."""
 
 import asyncio
-import re
+from memorias_licantropicas.textutils import word_tokens, has_word_start
 import unicodedata
 
 from langsmith import tracing_context
@@ -106,7 +106,7 @@ def expresses_claim(text, proposition):
         )
         return {
             w[:5]
-            for w in re.findall(r"[a-z]+", normalized)
+            for w in word_tokens(normalized)
             if len(w) > 3 and w not in stop
         }
 

@@ -1,6 +1,6 @@
 """Consequências canônicas do diálogo: opinião não cria provas materiais."""
 
-import re
+from memorias_licantropicas.textutils import word_tokens, has_phrase
 from uuid import NAMESPACE_URL, uuid5
 from memorias_licantropicas.contracts.investigation import (
     CaseEvent,
@@ -32,16 +32,27 @@ def dialogue_transition(
     # A fala própria precisa apontar à fera, aos ataques ou a uma vítima real do caso.
     specific = any(
         (
-            re.search(r"\b(lobisomem|fera|mortes|ataques|assassinatos)\b", clause)
+            (
+                set(word_tokens(clause))
+                & {"lobisomem", "assassinatos", "fera", "ataques", "mortes"}
+            )
             or (
-                re.search(
-                    r"\b(matei|matou|ataquei|atacou|assassinei|tirei|ceifei|arranquei|causei|cometi)\b",
-                    clause,
+                (
+                    set(word_tokens(clause))
+                    & {
+                        "causei",
+                        "ceifei",
+                        "ataquei",
+                        "cometi",
+                        "assassinei",
+                        "atacou",
+                        "tirei",
+                        "arranquei",
+                        "matou",
+                        "matei",
+                    }
                 )
-                and any(
-                    re.search(r"\b" + re.escape(victim) + r"\b", clause)
-                    for victim in victims
-                )
+                and any(has_phrase(clause, victim) for victim in victims)
             )
         )
         for clause in own_assertion_clauses(outgoing.content, incoming.content)
@@ -66,7 +77,10 @@ def dialogue_transition(
             and c.cause == "civil"
             and any(
                 normalize(c.victim_id.replace("_", " ")) in clause
-                and re.search(r"\b(matei|ataquei|assassinei|tirei|ceifei)\b", clause)
+                and (
+                    set(word_tokens(clause))
+                    & {"matei", "ataquei", "assassinei", "tirei", "ceifei"}
+                )
                 for clause in own_assertion_clauses(outgoing.content, incoming.content)
             )
             for c in state.crimes
@@ -198,9 +212,7 @@ def dialogue_transition(
                 "cais_lanternas": "cais",
             }
             mentioned = {
-                key
-                for key, alias in places.items()
-                if re.search(r"\b" + alias + r"\b", text)
+                key for key, alias in places.items() if has_phrase(text, alias)
             }
             observations = tuple(
                 claim

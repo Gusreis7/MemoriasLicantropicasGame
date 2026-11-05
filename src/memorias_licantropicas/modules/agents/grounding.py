@@ -1,27 +1,24 @@
-"""Validação conservadora de presenças/fontes; nunca reescreve uma fala."""
+"""Âncoras literais de presença/fonte; ambiguidade é avaliada pelo mestre."""
 
-import re
-import unicodedata
 from typing import Literal
+from memorias_licantropicas.textutils import (
+    normalize,
+    word_tokens,
+    has_phrase,
+    has_any_phrase,
+    clauses,
+    without_quotes,
+)
 
 GroundingIssue = Literal["unsupported_presence", "unsupported_source"]
+normalized = normalize
 
 
-def normalized(text: str) -> str:
-    return "".join(
-        c
-        for c in unicodedata.normalize("NFKD", text.casefold())
-        if not unicodedata.combining(c)
-    )
-
-
-def grounding_issues(
-    content: str, observations: dict | None, names: dict[str, str]
-) -> tuple[GroundingIssue, ...]:
+def grounding_issues(content, observations, names):
     if observations is None:
         return ()
-    issues: list[GroundingIssue] = []
-    text = normalized(content)
+    issues = []
+    statements = clauses(without_quotes(normalize(content)))
     versions = observations.get("suas_versoes_de_interrogatorio", ())
     locations = {
         "praca_verde": "praca",
@@ -30,21 +27,32 @@ def grounding_issues(
         "cafe_largo": "cafe",
         "cais_lanternas": "cais",
     }
-    # First-person assertions only: reporting "Bentinho estava no cais" is not
-    # an assertion that the speaker was there. Semantic review handles ambiguity.
-    has_presence = re.search(
-        r"\b(?:estive|passei|encontrei|fui|andei)\b|\beu\s+(?:estava|andava)\b|^\s*estava\b",
-        text,
-    )
     own_locations = {
         locations.get(record.get("local_id"))
         for record in (*versions, *observations.get("suas_atividades", ()))
         if record.get("local_id")
     }
-    if has_presence and any(
-        place in text and place not in own_locations for place in locations.values()
-    ):
-        issues.append("unsupported_presence")
+    for statement in statements:
+        tokens = word_tokens(statement)
+        if statement.endswith("?") or set(tokens) & {
+            "nao",
+            "nunca",
+            "jamais",
+            "talvez",
+            "se",
+        }:
+            continue
+        first_person = (
+            bool(set(tokens) & {"estive", "passei", "encontrei", "fui", "andei"})
+            or has_any_phrase(statement, ("eu estava", "eu andava"))
+            or tokens[:1] == ("estava",)
+        )
+        if first_person and any(
+            has_phrase(statement, place) and place not in own_locations
+            for place in locations.values()
+        ):
+            issues.append("unsupported_presence")
+            break
     memory = observations.get("memoria_social", {})
     known_sources = {
         entry.get("quem_falou") for entry in memory.get("memorias_relevantes", ())
@@ -58,13 +66,43 @@ def grounding_issues(
     for identifier, name in names.items():
         if identifier in known_sources or identifier == "player":
             continue
-        person = re.escape(normalized(name.split()[0]))
-        direct_source = (
-            rf"\b{person}\b.{{0,16}}\bme (?:contou|disse|relatou|avisou)\b|"
-            rf"\b(?:ouvi(?: dizer)?[ ,]*(?:de|pela?|da)|soube por|por meio de)\s+(?:senhora?\s+)?{person}\b|"
-            rf"\b(?:me foi (?:contad[ao]|dit[ao]|relatad[ao]) por)\s+{person}\b"
-        )
-        if re.search(direct_source, text):
-            issues.append("unsupported_source")
-            break
+        person = normalize(name.split()[0])
+        for statement in statements:
+            tokens = word_tokens(statement)
+            if statement.endswith("?") or set(tokens) & {
+                "nao",
+                "nunca",
+                "jamais",
+                "talvez",
+                "se",
+            }:
+                continue
+            attributed = person in tokens and has_any_phrase(
+                statement, ("me contou", "me disse", "me relatou", "me avisou")
+            )
+            prefixes = (
+                "ouvi de",
+                "ouvi dizer de",
+                "ouvi da",
+                "ouvi pela",
+                "ouvi pelo",
+                "ouvi dizer da",
+                "ouvi dizer pela",
+                "soube por",
+                "por meio de",
+                "me foi contado por",
+                "me foi contada por",
+                "me foi dito por",
+                "me foi dita por",
+                "me foi relatado por",
+                "me foi relatada por",
+            )
+            attributed = attributed or any(
+                has_phrase(statement, f"{prefix} {honorific}{person}")
+                for prefix in prefixes
+                for honorific in ("", "senhor ", "senhora ")
+            )
+            if attributed:
+                issues.append("unsupported_source")
+                return tuple(issues)
     return tuple(issues)

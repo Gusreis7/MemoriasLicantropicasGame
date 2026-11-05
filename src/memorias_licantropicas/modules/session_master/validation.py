@@ -1,75 +1,142 @@
-"""Regras semânticas locais: autoria, citações e limites do parecer do modelo."""
-
-import re
-import unicodedata
+"""Autoria e âncoras literais conservadoras; parecer semântico pertence ao mestre."""
 
 from memorias_licantropicas.contracts.assessment import DialogueAssessment
+from memorias_licantropicas.textutils import (
+    normalize,
+    word_tokens,
+    has_phrase,
+    has_any_phrase,
+    without_quotes,
+    clauses,
+)
+
+_REPETITION = (
+    "repita",
+    "repete",
+    "diga exatamente",
+    "pronuncie",
+    "traduza",
+    "cite",
+    "recite",
+    "repeat",
+    "say exactly",
+)
+_UNCERTAIN = (
+    "nao",
+    "nunca",
+    "jamais",
+    "se",
+    "talvez",
+    "hipotese",
+    "imagina",
+    "imagine",
+    "disse que",
+    "diga que",
+    "quer que",
+    "quer ouvir",
+    "brincadeira",
+)
+_INDIRECT = (
+    "ouvi",
+    "disseram",
+    "contaram",
+    "ele disse",
+    "ela disse",
+    "voce diz",
+    "voce disse",
+    "o senhor diz",
+    "segundo",
+    "inocente",
+    "acusado",
+    "acusada",
+    "dizem",
+    "pensam",
+    "culpam",
+)
+_FIRST_PERSON = frozenset(
+    "eu meu minha minhas meus mim sou fui tirei fiz cometi causei ceifei matei ataquei transformei pratiquei".split()
+)
+_ADMISSION = (
+    "eu sou o lobisomem",
+    "sou o lobisomem",
+    "fui eu quem matou",
+    "fui eu que matou",
+    "eu matei",
+    "eu ataquei",
+    "fui eu quem atacou",
+    "sou a fera",
+    "fui eu quem causou esses ataques",
+    "fui eu quem causou os ataques",
+    "fui eu quem causou estes ataques",
+)
+_SURRENDER = (
+    "entrego me",
+    "me entrego",
+    "vou me entregar",
+    "me entregarei",
+    "entregar me",
+    "aceito a prisao",
+    "aceito a custodia",
+    "aceito ser preso",
+    "aceito ser presa",
+    "aceito que me levem a delegacia",
+    "leve me ao delegado",
+    "pode me prender",
+    "entrego minhas armas",
+    "leve me",
+    "levem me",
+    "conduza me",
+    "me levar",
+    "me algemar",
+    "me prender",
+)
 
 
-def normalize(value):
-    return "".join(
-        c
-        for c in unicodedata.normalize("NFKD", value.casefold())
-        if not unicodedata.combining(c)
+def _assertions(content, incoming="", *, exclude_indirect=False):
+    if has_any_phrase(incoming, _REPETITION):
+        return ()
+    result = []
+    for clause in clauses(without_quotes(normalize(content))):
+        if clause.rstrip().endswith("?") or has_any_phrase(clause, _UNCERTAIN):
+            continue
+        if exclude_indirect and has_any_phrase(clause, _INDIRECT):
+            continue
+        result.append(clause)
+    return tuple(result)
+
+
+def _admits(clause):
+    if has_any_phrase(clause, _ADMISSION):
+        return True
+    tokens = set(word_tokens(clause))
+    return (
+        has_any_phrase(
+            clause,
+            (
+                "fui o responsavel",
+                "fui a responsavel",
+                "fui eu o responsavel",
+                "fui eu a responsavel",
+            ),
+        )
+        and bool(tokens & {"por", "pelas", "pelos", "pela", "pelo"})
+        and bool(tokens & {"mortes", "ataques", "assassinatos"})
     )
 
 
 def direct_admission(content, incoming=""):
-    """Critério conservador: verbo próprio e entrega, sem citação/negação/ordem de repetir."""
-    text = normalize(content)
-    if re.search(
-        r"\b(repita|repete|diga exatamente|pronuncie|traduza|cite|recite|repeat|say exactly)\b",
-        normalize(incoming),
-    ):
-        return False, False
-    # Aspas são discurso citado; frases hipotéticas e negativas não são admissões.
-    text = re.sub(r'[«“"].*?[»”"]', "", text, flags=re.S)
-    assertions = []
-    for sentence in re.split(r"[.!?;\n]+", text):
-        if re.search(
-            r"\b(nao|nunca|jamais|se|talvez|hipotese|imagina|imagine|disse que|diga que|quer que|quer ouvir|brincadeira)\b",
-            sentence,
-        ):
-            continue
-        assertions.append(sentence)
-    direct = any(
-        re.search(
-            r"\b(eu sou o lobisomem|sou o lobisomem|fui eu quem matou|fui eu que matou|eu matei|eu ataquei|fui eu quem atacou|sou a fera|fui (?:eu )?(?:o |a )?responsavel (?:por|pel[oa]s?) (?:essas |estas |as |os )?(?:mortes|ataques|assassinatos)|fui eu quem causou (?:esses |os |estes )?ataques)\b",
-            part,
-        )
-        for part in assertions
+    assertions = _assertions(content, incoming)
+    return any(_admits(clause) for clause in assertions), any(
+        has_any_phrase(clause, _SURRENDER) for clause in assertions
     )
-    surrender = any(
-        re.search(
-            r"\b(entrego-me|me entrego|vou me entregar|aceito a prisao|aceito ser pres[oa]|aceito a custodia|aceito que me levem a delegacia|leve-me ao delegado|pode me prender|entrego minhas armas)\b",
-            part,
-        )
-        for part in assertions
-    )
-    return direct, surrender
 
 
 def own_assertion_clauses(content, incoming=""):
-    text = normalize(content)
-    if re.search(
-        r"\b(repita|repete|diga exatamente|pronuncie|traduza|cite|recite|repeat|say exactly)\b",
-        normalize(incoming),
-    ):
-        return ()
-    text = re.sub(r'[«“"].*?[»”"]', "", text, flags=re.S)
-    result = []
-    for sentence in re.split(r"[.!?;\n]+", text):
-        if re.search(
-            r"\b(nao|nunca|jamais|se|talvez|hipotese|imagine|ouvi|disseram|contaram|ele disse|ela disse|voce diz|voce disse|o senhor diz|quer que|quer ouvir|brincadeira|segundo|inocente|acusado|acusada|dizem|pensam|culpam)\b",
-            sentence,
-        ):
-            continue
-        if re.search(
-            r"\b(eu|meu|minha|minhas|meus|mim|sou|fui|tirei|fiz|cometi|causei|ceifei|matei|ataquei|transformei|pratiquei)\b",
-            sentence,
-        ):
-            result.append(sentence)
-    return tuple(result)
+    return tuple(
+        clause
+        for clause in _assertions(content, incoming, exclude_indirect=True)
+        if set(word_tokens(clause)) & _FIRST_PERSON
+    )
 
 
 def admission_evidence(content, incoming, assessment):
@@ -82,18 +149,24 @@ def admission_evidence(content, incoming, assessment):
         and assessment.quote in content
         and bool(own_assertion_clauses(assessment.quote, incoming))
     )
-    # A proposta do modelo precisa de um compromisso textual real do falante.
-    text = normalize(content)
-    surrender_anchor = re.search(
-        r"\b(entrego-me|me entrego|vou me entregar|me entregarei|entregar-me|aceito (?:a |ser )?(?:custodia|prisao|pres[oa])|leve-me|levem-me|conduza-me|me (?:levar|algemar|prender)|permitirei.{0,35}(?:algem|prend)|nao resistirei)\b",
-        text,
-    )
-    surrender_negated = re.search(
-        r"\b(nao|nunca|jamais)\b.{0,30}\b(entregar|entrego|pres[oa]|prisao|custodia|leve-me|algemar)\b",
-        text,
-    )
-    if semantic and assessment.surrender and surrender_anchor and not surrender_negated:
-        surrendered = True
+    for clause in clauses(without_quotes(normalize(content))):
+        if clause.endswith("?"):
+            continue
+        custody = (
+            has_any_phrase(clause, _SURRENDER)
+            or has_phrase(clause, "nao resistirei")
+            or (
+                "permitirei" in word_tokens(clause)
+                and any(
+                    word.startswith(("algem", "prend")) for word in word_tokens(clause)
+                )
+            )
+        )
+        negated = bool(
+            set(word_tokens(clause)) & {"nao", "nunca", "jamais"}
+        ) and not has_phrase(clause, "nao resistirei")
+        if semantic and assessment.surrender and custody and not negated:
+            surrendered = True
     return direct or semantic, surrendered
 
 
@@ -107,71 +180,109 @@ def local_assessment(incoming, outgoing, day):
             own_assertion=True,
             surrender=surrender,
         )
-    text = normalize(incoming)
     from memorias_licantropicas.modules.agents.support import is_alibi_question
 
-    if is_alibi_question(incoming):
-        period = (
-            "night" if re.search(r"\b(noite|anoitecer|madrugada)\b", text) else "day"
-        )
-        match = re.search(r"\bdia\s+(\d+)\b", text)
-        target_day = (
-            int(match.group(1))
-            if match
-            else max(0, day - 1)
-            if ("ontem" in text or period == "night")
-            else day
-        )
-        return DialogueAssessment(
-            kind="alibi",
-            quote=outgoing[:2400],
-            confidence=0.75,
-            own_assertion=True,
-            period=period,
-            day=target_day,
-        )
-    return DialogueAssessment()
+    if not is_alibi_question(incoming):
+        return DialogueAssessment()
+    tokens = word_tokens(incoming)
+    period = "night" if set(tokens) & {"noite", "anoitecer", "madrugada"} else "day"
+    explicit_day = next(
+        (
+            int(tokens[index + 1])
+            for index, token in enumerate(tokens[:-1])
+            if token == "dia" and tokens[index + 1].isdecimal()
+        ),
+        None,
+    )
+    target_day = (
+        explicit_day
+        if explicit_day is not None
+        else max(0, day - 1)
+        if "ontem" in tokens or period == "night"
+        else day
+    )
+    return DialogueAssessment(
+        kind="alibi",
+        quote=outgoing[:2400],
+        confidence=0.75,
+        own_assertion=True,
+        period=period,
+        day=target_day,
+    )
 
 
 def validate_assessment(proposal, base, incoming, outgoing, day):
+    """Valida referências literais; o classificador decide os demais significados."""
     issues = list(proposal.issues)
-    # Estes dois problemas possuem marcadores textuais verificáveis.
-    # Uma opinião ou um vocativo cortês não pode disparar uma troca de fala.
-    if "wrong_address" in issues and not re.search(
-        r"\b(?:senhor[a]? delegado|delegado[,!]|delegada[,!])",
-        normalize(outgoing.content),
+    text = normalize(outgoing.content)
+    tokens = word_tokens(text)
+    if "wrong_address" in issues and not (
+        has_any_phrase(text, ("senhor delegado", "senhora delegado"))
+        or any(
+            marker in text
+            for marker in ("delegado,", "delegado!", "delegada,", "delegada!")
+        )
     ):
         issues.remove("wrong_address")
-    if "narrator_style" in issues and not re.search(
-        r"\b(?:ele|ela|capitu|bentinho|escobar|rubiao|virgilia|florenca|bacamarte)\s+(?:baixou|olhou|suspirou|ergueu|virou|sorriu|caminhou|disse|pensou)\b|^\s*[*\[]",
-        normalize(outgoing.content),
-    ):
+    actors = {
+        "ele",
+        "ela",
+        "capitu",
+        "bentinho",
+        "escobar",
+        "rubiao",
+        "virgilia",
+        "florenca",
+        "bacamarte",
+    }
+    gestures = {
+        "baixou",
+        "olhou",
+        "suspirou",
+        "ergueu",
+        "virou",
+        "sorriu",
+        "caminhou",
+        "disse",
+        "pensou",
+    }
+    narrator = outgoing.content.lstrip().startswith(("*", "[")) or any(
+        a in actors and b in gestures for a, b in zip(tokens, tokens[1:])
+    )
+    if "narrator_style" in issues and not narrator:
         issues.remove("narrator_style")
-    from memorias_licantropicas.modules.agents.support import is_greeting
+    from memorias_licantropicas.modules.agents.support import (
+        is_greeting,
+        is_alibi_question,
+    )
 
     if (
         "off_topic" in issues
         and is_greeting(incoming.content)
-        and len(outgoing.content.split()) <= 30
-        and re.search(
-            r"\b(?:ola|oi|bom dia|boa tarde|boa noite|saudacoes)\b",
-            normalize(outgoing.content),
+        and len(tokens) <= 30
+        and has_any_phrase(
+            text, ("ola", "oi", "bom dia", "boa tarde", "boa noite", "saudacoes")
         )
-        and not re.search(
-            r"\b(?:bentinho|escobar|florenca|bacamarte|virgilia|lobisomem|lobo|remedio|medicacao)\b",
-            normalize(outgoing.content),
-        )
+        and not set(tokens)
+        & {
+            "bentinho",
+            "escobar",
+            "florenca",
+            "bacamarte",
+            "virgilia",
+            "lobisomem",
+            "lobo",
+            "remedio",
+            "medicacao",
+        }
     ):
         issues.remove("off_topic")
     proposal = proposal.model_copy(update={"issues": tuple(issues)})
-    from memorias_licantropicas.modules.agents.support import is_alibi_question
-
     if proposal.kind == "alibi" and not is_alibi_question(incoming.content):
         proposal = proposal.model_copy(
             update={"kind": "conversation", "period": None, "day": None}
         )
     if proposal.issues:
-        # Review proposes issues; only the graph may regenerate in the persona's voice.
         return proposal
     if proposal.useful and (
         not proposal.useful_quote or proposal.useful_quote not in outgoing.content
