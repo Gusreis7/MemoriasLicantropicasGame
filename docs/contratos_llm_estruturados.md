@@ -1,84 +1,88 @@
-# Contratos estruturados e limites do provedor
+# Contratos nativos de geração
 
-## Interfaces
+A referência de implementação e suporte do provedor está em
+[saída nativa LLM](saida_nativa_llm.md). Esta página descreve as interfaces usadas
+pelos serviços no layout `src/`.
 
-`LLMClient.complete(messages) -> LLMResponse` continua sendo apenas o transporte.
-`generate_structured(client, messages, output_type, max_attempts=2)` usa esse cliente
-sem substituí-lo: as tentativas continuam passando pela medição existente.
+## Transporte e ferramentas
 
-O resultado imutável `StructuredResult[T]` contém:
+`src.contracts.llm.LLMClient.complete(messages, *, tools=(), tool_choice=None)`
+retorna `LLMResponse`. O schema Pydantic é declarado como uma ferramenta DTO no
+parâmetro `tools` do Mantle; não é anexado às instruções da persona.
+
+| Campo de transporte | Significado |
+| --- | --- |
+| `content` | Texto opcional do envelope do provedor; não é fonte de saída estruturada |
+| `tool_calls` | Chamadas nativas com `name`, `args` estruturados, `id` e `type="tool_call"` |
+| `invalid_tool_calls` | Argumentos inválidos no protocolo, com código sanitizado |
+| `model`, `input_tokens`, `output_tokens` | Modelo e consumo retornados pelo provedor |
+
+Conteúdo e argumentos são omitidos de `repr`. Nenhuma dessas ferramentas executa
+shell, alteração de papel, ação do jogador ou efeito do mundo. Elas representam
+propostas; identidade e autorização continuam sendo decisões do servidor.
+
+## LangChain e validação
+
+`src.infrastructure.llm.structured.MantleChatModel` implementa o `BaseChatModel`
+assíncrono. O fluxo chama
+`.with_structured_output(schema, method="function_calling", include_raw=True)`
+e compõe `bind_tools(..., tool_choice="auto")` com `PydanticToolsParser`.
+O parser de protocolo do LangChain decodifica `function.arguments`; o parser
+Pydantic verifica tipos, limites e campos permitidos.
+
+O gerador exige exatamente uma ferramenta do nome esperado, sem chamadas inválidas.
+Ausência de ferramenta, nome inesperado e chamadas adicionais falham. Uma resposta
+que contenha JSON em `content` também falha, mesmo que o texto seja sintaticamente
+válido. Não há pedido de formato no system prompt, extração textual, regex,
+normalização de cercas ou recuperação de documentos truncados.
+
+Os modelos proíbem campos adicionais e mantêm escalares estritos. Contêineres wire
+de tuplas aceitam arrays, e campos UUID aceitam strings, pelas anotações explícitas
+desses campos. Assim o `PydanticToolsParser` padrão recebe dados naturais do
+protocolo, sem hook privado de parser ou conversão JSON de ida e volta.
+Um lote inválido é rejeitado inteiro. Validação semântica posterior verifica
+mensagens de origem, citações literais, fontes, IDs autorizados e estado do mundo.
+
+## Resultado e orçamento
+
+`generate_structured(client, messages, output_type, *, max_attempts=2)` retorna
+`StructuredResult[T]`:
 
 | Campo | Significado |
 | --- | --- |
 | `value` | Modelo Pydantic validado, ou `None` |
-| `response` | Resposta de transporte disponível, inclusive última inválida; não aparece em `repr` |
+| `response` | Última resposta de transporte disponível; não aparece em `repr` |
 | `attempts` | Número de chamadas realizadas |
-| `error_code` | Código estável ou `None`; nunca mensagem bruta do provedor |
+| `error_code` | Código estável ou `None`, sem mensagem bruta do provedor |
 | `ok` | Valor presente e ausência de erro |
 
-Não há fallback implícito para um modelo vazio. Cada domínio decide o comportamento
-quando `ok` for falso: resposta pública segura, avaliação local conservadora ou
-operação adiada. A falha continua distinguível por `error_code`. Problemas de
-configuração do próprio chamador e exceções inesperadas de programação propagam.
+Falhas de protocolo usam `invalid_tool_response`, `invalid_tool_arguments` ou
+`invalid_schema`. Elas admitem nova chamada dentro do orçamento, de uma a três
+tentativas; o padrão é duas. O transporte também distingue resposta truncada ou
+inválida. Auth, credenciais, quota, rede e timeout não recebem retry indiscriminado.
+Os prompts de domínio e o schema permanecem os mesmos; a resposta rejeitada não é
+reenviada ao modelo.
 
-## Parsing e tipos
+O resultado não fabrica um modelo vazio. O domínio decide seu fallback e o registra
+explicitamente. Cancelamento e bugs inesperados propagam. Cada tentativa atravessa
+o cliente medido, incluindo chamadas cujo protocolo foi recebido mas depois
+rejeitado. `completed` no medidor significa transporte concluído, não aprovação da
+fala; o grafo registra a decisão de aceitação ou fallback separadamente.
 
-`StrictPydanticOutputParser` estende o `PydanticOutputParser` do **langchain-core**.
-Uma etapa lexical anterior exige um documento JSON completo e um objeto na raiz.
-Prosa externa, Markdown, documentos concatenados, truncamento, chaves duplicadas
-(inclusive aninhadas), NaN e Infinity são rejeitados. Não se usa regex para procurar
-JSON ou reparar sintaxe.
+## Privacidade e suporte
 
-A validação Pydantic usa `model_validate_json(strict=True, extra="forbid")`, inclusive
-nos modelos aninhados. Isso preserva a representação JSON de arrays para tuplas e
-strings para UUIDs, mas rejeita string numérica em campo inteiro, booleano como
-inteiro, campos adicionais e elementos inválidos. Um lote inválido não é parcialmente
-silenciado pelo parser. Regras de autoria, referências permitidas e verdade do jogo
-continuam sendo validação semântica do domínio após o parsing.
+O Runnable é executado dentro de `tracing_context(enabled=False, parent=False)`.
+Variáveis LangSmith incidentais do host não habilitam exportação de prompts,
+personas ou argumentos. O jogo utiliza traces locais sanitizados e separados da
+memória narrativa.
 
-O hook `_parse_obj` do parser LangChain evita que seu caminho padrão de validação
-Python rejeite arrays válidos em modelos strict com tuplas. O lockfile fixa a versão;
-os testes cobrem essa integração e o comportamento de rejeição.
+O projeto mantém **Qwen3 32B no Bedrock Mantle**. O suporte documentado a ferramentas
+client-side justifica o protocolo escolhido. `tool_choice="auto"` não garante que
+o modelo emitirá uma chamada; a ausência dela é tratada como falha, sem downgrade
+para texto. Opções de forcing não comprovadas para o par modelo/endpoint são
+rejeitadas pelo bridge.
 
-## Tentativas, erros e privacidade
-
-O orçamento aceito é de uma a três tentativas; o padrão é duas. Cada chamada recebe
-instruções geradas pelo parser para o mesmo schema que será validado. A instrução
-entra em uma mensagem system própria antes do último user, sem alterar JSONs de
-persona ou anexar dados depois de suas fichas.
-
-Somente falhas de contrato/formato (`invalid_json`, `invalid_schema`,
-`llm_invalid_response`, `llm_response_truncated`) recebem nova tentativa. Erros de
-autenticação, ausência de credenciais, limite de uso, rede, modelo e timeout retornam
-imediatamente. Cancelamento não é convertido em resposta ou retry. A tentativa de
-reparo não reenvia texto rejeitado, traceback ou mensagens de erro do provedor.
-
-Transportes que retornaram texto inválido ainda podem ter sido cobrados: ambas as
-chamadas permanecem no medidor. `completed` nesse medidor significa transporte
-concluído, não aprovação semântica da fala. Tokens de fixtures offline não são
-consumo AWS.
-
-## Mantle / Qwen3 32B
-
-Consulta à documentação oficial em **2026-11-05**:
-
-- A [ficha AWS do Qwen3 32B](https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-qwen-qwen3-32b.html)
-  distingue `qwen.qwen3-32b` no Mantle de `qwen.qwen3-32b-v1:0` no runtime. Ela lista
-  structured outputs nas capacidades do runtime e client-side tool calling no Mantle.
-- A [documentação de saídas estruturadas do Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/structured-output.html)
-  descreve garantias para APIs/features específicas; isso não comprova suporte de
-  `response_format/json_schema` no par Mantle Chat Completions + Qwen deste projeto.
-- A [referência Chat Completions AWS](https://docs.aws.amazon.com/bedrock/latest/userguide/inference-chat-completions.html)
-  consultada não estabeleceu esse suporte para o par utilizado.
-
-Consequentemente, esta entrega mantém o endpoint/modelo existente, com schema por
-instruções e validação posterior. **Não anuncia constrained decoding ou geração
-nativa garantida**. Ativar um parâmetro não confirmado ou trocar silenciosamente
-para runtime quebraria o contrato de infraestrutura e credenciais do projeto.
-
-Dependências resolvidas: **langchain-core 1.7.6**, **langgraph 1.2.20** (Python 3.13),
-com versões transitivas fixadas em `uv.lock`. O pacote `langchain-core` fornece o
-parser e os componentes de prompts, sem adicionar o pacote agregador `langchain`.
-
-Referências de integração: [PydanticOutputParser](https://reference.langchain.com/python/langchain-core/output_parsers/pydantic/PydanticOutputParser)
-e [Graph API LangGraph](https://docs.langchain.com/oss/python/langgraph/graph-api).
+**O novo caminho nativo ainda não foi validado com Qwen ao vivo.** Os testes de
+protocolo usam HTTP MockTransport e clientes simulados com o Runnable real. Eles
+não comprovam fluência narrativa, taxa real de chamadas nativas, latência ou custo
+AWS. As fontes oficiais e esses limites estão em [saida_nativa_llm.md](saida_nativa_llm.md).
