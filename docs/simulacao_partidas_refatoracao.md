@@ -45,7 +45,12 @@ latência humana nem o comportamento de jogadores reais.
 - `TurnService`: anoitecer, crimes ou noites poupadas, transformação/soltura,
   novas manhãs e vitória/derrota decididas pelas regras reais.
 
-Os mesmos serviços usados pelo servidor são compostos no runner. O único dublê
+Os mesmos serviços usados pelo servidor são compostos no runner. O deslocamento
+consome distância/210 segundos; busca e apresentação consomem um segundo, uma fala
+dois segundos e viagem pelo mapa usa a ação pública sem custo temporal adicional.
+O modelo offline não consome latência virtual de inferência. Essas hipóteses de
+agenda fazem parte do experimento e não representam o tempo de um jogador humano.
+ O único dublê
 narrativo é o provedor offline, que lê exclusivamente o prompt projetado para cada
 papel. Ele responde com citações de fatos já autorizados; não conhece o repository
 de partidas nem consulta a identidade dos demais. As respostas estruturadas passam

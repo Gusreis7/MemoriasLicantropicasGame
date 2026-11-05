@@ -44,33 +44,18 @@ class OfflineSessionModel:
         instructions = "\n".join(
             message.content for message in messages if message.role == "system"
         )
-        if "task:npc_dialogue" in instructions or "Ficha privada:\n" in instructions:
-            task = "npc_dialogue"
-        elif (
-            "task:session_assessment" in instructions
-            or "mestre privado de uma investigação" in instructions
-        ):
-            task = "session_assessment"
-        elif (
-            "task:knowledge_extraction" in instructions
-            or "Extraia alegações" in instructions
-        ):
-            task = "knowledge_extraction"
-        elif (
-            "task:social_speech" in instructions
-            or "Dados autorizados:\n" in instructions
-        ):
-            task = "social_speech"
-        elif (
-            "task:editorial" in instructions
-            or "pequeno artigo de opinião" in instructions
-        ):
-            task = "editorial"
-        elif "assembleia breve" in instructions:
-            task = "assembly_debate"
-        else:
-            raise AssertionError("Simulation received an unidentified LLM task")
-        return task
+        tasks = (
+            "npc_dialogue",
+            "session_assessment",
+            "knowledge_extraction",
+            "social_speech",
+            "editorial",
+            "assembly_debate",
+        )
+        for task in tasks:
+            if f"[task:{task}]" in instructions or f"[task:{task}:" in instructions:
+                return task
+        raise AssertionError("Simulation received an unidentified LLM task")
 
     async def complete(self, messages):
         task = self.task_for(messages)
