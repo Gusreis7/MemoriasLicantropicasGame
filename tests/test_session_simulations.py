@@ -102,8 +102,27 @@ async def test_permanently_invalid_json_uses_a_visible_bounded_fallback():
         ).play("passive")
         assert result["result"] == "lost"
         assert result["graph_fallbacks"] > 0
+        assert result["memory_audit"]["exchange_generation_statuses"]["fallback"] > 0
+        assert result["memory_audit"]["technical_knowledge_entries"] == 0
+        assert result["memory_audit"]["technical_narrative_entries"] == 0
         assert result["graph_statuses"]["fallback"] == result["actions"]["dialogue"]
         assert result["graph_max_attempts"] <= 4
+        assert result["persisted_player_messages"] > 0
+    finally:
+        await redis.aclose()
+
+
+async def test_guarded_exchange_stays_in_history_without_entering_social_memory():
+    redis = fakeredis.FakeAsyncRedis(decode_responses=True)
+    try:
+        result = await SessionSimulation(
+            redis, "test:guarded-session", 20261108, fault="malicious_input_once"
+        ).play("passive")
+        assert result["result"] == "lost"
+        assert result["memory_audit"]["exchange_generation_statuses"]["guarded"] == 1
+        assert result["memory_audit"]["technical_source_messages"] >= 2
+        assert result["memory_audit"]["technical_knowledge_entries"] == 0
+        assert result["memory_audit"]["technical_narrative_entries"] == 0
         assert result["persisted_player_messages"] > 0
     finally:
         await redis.aclose()

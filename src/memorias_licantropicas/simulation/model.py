@@ -7,7 +7,13 @@ from typing import Literal
 from memorias_licantropicas.contracts.errors import LLMUnavailableError
 from memorias_licantropicas.contracts.model import LLMResponse
 
-Fault = Literal["none", "invalid_json_once", "invalid_json_always", "authentication"]
+Fault = Literal[
+    "none",
+    "invalid_json_once",
+    "invalid_json_always",
+    "authentication",
+    "malicious_input_once",
+]
 
 
 class OfflineSessionModel:
