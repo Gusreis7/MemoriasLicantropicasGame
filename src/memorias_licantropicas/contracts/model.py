@@ -1,6 +1,6 @@
 """Modelos internos v1. Nunca retornar estes objetos diretamente pela API."""
 
-from typing import Literal
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
@@ -84,8 +84,27 @@ class ChatMessage(Contract):
     content: str
 
 
+class NativeToolCall(Contract):
+    """Chamada DTO recebida pelo protocolo; nunca executada como ação."""
+    name: str = Field(min_length=1, max_length=80)
+    args: dict[str, Any] = Field(repr=False)
+    id: str | None = None
+    type: Literal["tool_call"] = "tool_call"
+
+
+class InvalidNativeToolCall(Contract):
+    """Falha de argumentos recebidos; dados brutos não aparecem em repr/logs."""
+    name: str | None = None
+    args: str | None = Field(default=None, repr=False)
+    id: str | None = None
+    error: str | None = Field(default="invalid_tool_arguments", repr=False)
+    type: Literal["invalid_tool_call"] = "invalid_tool_call"
+
+
 class LLMResponse(Contract):
-    content: str = Field(min_length=1, max_length=8000)
+    content: str = Field(default="", max_length=8000, repr=False)
+    tool_calls: tuple[NativeToolCall, ...] = Field(default=(), repr=False)
+    invalid_tool_calls: tuple[InvalidNativeToolCall, ...] = Field(default=(), repr=False)
     model: str
     input_tokens: int | None = None
     output_tokens: int | None = None
