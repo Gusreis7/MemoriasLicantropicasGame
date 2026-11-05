@@ -63,6 +63,7 @@ class Accusation(Contract):
     suspect_id: str
     evidence_ids: tuple[UUID, ...]
     testimony_ids: tuple[UUID, ...]
+    report_ids: tuple[UUID, ...] = ()
     accepted: bool
     reason: str
     created_at: AwareDatetime

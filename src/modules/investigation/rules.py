@@ -151,10 +151,10 @@ def inspect_evidence(state, evidence_id, now):
                                        "crime_id": str(evidence.crime_id), "day": state.day}),))
 
 
-def review_accusation(state, suspect_id, evidence_ids, testimony_ids):
+def review_accusation(state, suspect_id, evidence_ids, testimony_ids, report_ids=()):
     """Diagnóstico público sem consumir ação ou ler a identidade do culpado."""
     from src.modules.investigation.scoring import assess_dossier
-    assessment = assess_dossier(state, suspect_id, evidence_ids, testimony_ids)
+    assessment = assess_dossier(state, suspect_id, evidence_ids, testimony_ids, report_ids)
     missing = []
     if len(assessment.linked_item_ids) < 2:
         missing.append("Relacionar pelo menos dois tipos distintos de vestígio à pessoa acusada.")
@@ -166,7 +166,9 @@ def review_accusation(state, suspect_id, evidence_ids, testimony_ids):
     if assessment.total < 5:
         missing.append("Reunir indícios mais específicos; objetos comuns têm peso muito baixo.")
     if assessment.accepted:
-        if assessment.custody_route == 'corroborated_personal_marks':
+        if assessment.custody_route == 'witness_reports':
+            reason = 'Um relato acusatório, a ausência de companhia confirmada e outro elemento do dossiê justificam investigar sob custódia. Suspeita não confirma a identidade da fera.'
+        elif assessment.custody_route == 'corroborated_personal_marks':
             reason = ("Duas peças pessoais diferentes tiveram suas marcas reconhecidas por duas testemunhas externas cada. "
                       "O conjunto justifica a custódia, mesmo sem exame adicional. A noite esclarecerá a hipótese de licantropia.")
         else:
@@ -174,11 +176,13 @@ def review_accusation(state, suspect_id, evidence_ids, testimony_ids):
                       "Isso ainda não confirma que a pessoa seja o lobisomem; a noite esclarecerá a hipótese.")
         missing = []
     else:
-        reason = "Ainda falta: " + " ".join(missing) + " Você pode completar o dossiê e reapresentá-lo hoje."
+        reason = ("Ainda falta: " + " ".join(missing) + " Outra possibilidade é apresentar uma suspeita de testemunha, "
+                  "a falta de companhia confirmada do suspeito e um vestígio ligado a ele, ou duas acusações independentes "
+                  "e essa falta de confirmação. Você pode completar o dossiê e reapresentá-lo hoje.")
     return assessment, tuple(missing), reason
 
 
-def dossier_fingerprint(state, suspect_id, evidence_ids, testimony_ids):
+def dossier_fingerprint(state, suspect_id, evidence_ids, testimony_ids, report_ids=()):
     """Duplicatas de exemplar/relato não fabricam um dossiê novo; um exame novo sim."""
     import json
     from hashlib import sha256
@@ -188,13 +192,13 @@ def dossier_fingerprint(state, suspect_id, evidence_ids, testimony_ids):
     records={t.id:t for t in state.testimonies}
     claims=sorted({(records[identifier].witness_id,find_evidence(state,records[identifier].evidence_id).item_id,
                    records[identifier].recognition,records[identifier].claimed_owner_id or '') for identifier in testimony_ids})
-    payload=('custody-v5',suspect_id,sorted(selected),sorted(exam),claims,public_alibi_conflict(state,suspect_id))
+    payload=('custody-v6',suspect_id,sorted(selected),sorted(exam),claims,public_alibi_conflict(state,suspect_id),sorted(str(item) for item in report_ids))
     return sha256(json.dumps(payload).encode()).hexdigest()
 
 
-def evaluate_accusation(state, suspect_id, evidence_ids, testimony_ids, now) -> Accusation:
-    assessment, _, reason = review_accusation(state,suspect_id,evidence_ids,testimony_ids)
+def evaluate_accusation(state, suspect_id, evidence_ids, testimony_ids, now, report_ids=()) -> Accusation:
+    assessment, _, reason = review_accusation(state,suspect_id,evidence_ids,testimony_ids,report_ids)
     return Accusation(id=uuid4(), day=state.day, suspect_id=suspect_id,
         evidence_ids=tuple(dict.fromkeys(evidence_ids)), testimony_ids=tuple(dict.fromkeys(testimony_ids)),
-        accepted=assessment.accepted, reason=reason, created_at=now,
-        dossier_fingerprint=dossier_fingerprint(state,suspect_id,evidence_ids,testimony_ids))
+        report_ids=tuple(dict.fromkeys(report_ids)), accepted=assessment.accepted, reason=reason, created_at=now,
+        dossier_fingerprint=dossier_fingerprint(state,suspect_id,evidence_ids,testimony_ids,report_ids))

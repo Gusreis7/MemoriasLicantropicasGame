@@ -31,6 +31,24 @@ def record_activities(game, world, day, period, now, *, source="world_snapshot",
     places = {npc.npc_id: npc.location_id for npc in world.npcs if npc.activity != "travelling"}
     positions = {npc.npc_id: npc.x for npc in world.npcs}
     living = {npc.character_id for npc in game.characters if npc.alive and npc.character_id not in excluded_ids}
+    wolf = next((npc.character_id for npc in game.characters if npc.role == "werewolf"), None)
+    partners = {}
+    witness = None
+    if period == "night":
+        civilians = sorted((living & places.keys()) - {wolf})
+        # Cônjuges podem passar a noite juntos; a identidade da fera prevalece.
+        if {"bentinho", "capitu"} <= set(civilians):
+            partners.update({"bentinho": "capitu", "capitu": "bentinho"})
+        remaining = [person for person in civilians if person not in partners]
+        if remaining:
+            offset = (game.id.int + day) % len(remaining)
+            remaining = remaining[offset:] + remaining[:offset]
+        # Alguns civis também ficam sós: ausência de álibi não identifica a fera.
+        for index in range(0, max(0, len(remaining) - 2), 2):
+            a, b = remaining[index:index + 2]
+            partners.update({a: b, b: a})
+        if civilians and wolf in living:
+            witness = civilians[(game.id.int + day) % len(civilians)]
     for event in ((*((crime,) if crime is not None else ()), *crimes)):
         places[event.killer_id] = event.location_id
         positions[event.killer_id] = event.x
@@ -38,14 +56,19 @@ def record_activities(game, world, day, period, now, *, source="world_snapshot",
     for npc_id, location in places.items():
         if npc_id not in living:
             continue
-        companions = tuple(other for other in places if other != npc_id and other in living
+        companions = ((partners[npc_id],) if npc_id in partners else ()) if period == "night" else tuple(other for other in places if other != npc_id and other in living
                            and places[other] == location and abs(positions[other] - positions[npc_id]) <= 64)
         observers = tuple(other for other in places if other != npc_id and other in living
                           and places[other] == location)
+        if period == "night":
+            observers = tuple(dict.fromkeys((*companions, *((witness,) if npc_id == wolf and witness else ()))))
+            if npc_id in partners:
+                location = places[sorted((npc_id, partners[npc_id]))[0]]
         result.append(ActivityRecord(
             id=uuid4(), npc_id=npc_id, day=day, period=period, location_id=location,
             companion_ids=companions, observed_by=observers,
-            activity=("Estava de passagem pelo local no instante registrado." if period == "night"
+            activity=("Passou a noite com a companhia indicada." if period == "night" and companions else
+                      "Passou a noite sem companhia que pudesse confirmar." if period == "night"
                       else "Tratava de seus afazeres no local no instante registrado."),
             source=source, occurred_at=now,
         ))
@@ -67,7 +90,7 @@ def make_interrogation(state, game, npc_id, day, period, names, now):
     companions = own.companion_ids
     activity = own.activity
     memory_lapse = period == "night" and (npc_id == "bacamarte" or
-        (day + sum(ord(character) for character in npc_id)) % 4 == 0)
+        (not own.companion_ids and (day + sum(ord(character) for character in npc_id)) % 4 == 0))
     if memory_lapse:
         return Interrogation(id=uuid4(), npc_id=npc_id, day=day, period=period,
             location_id=None, activity="Não fixa local e companhia com segurança nesse período.",
@@ -83,14 +106,11 @@ def make_interrogation(state, game, npc_id, day, period, names, now):
     # Redação e grau de reserva são conteúdo da persona, não assinatura do papel.
     if period == "night":
         activity = "Tratava de assuntos particulares no instante de que me recordo."
-    if npc_id in {"bentinho", "capitu", "escobar"}:
-        companions = ()  # reserva pessoal também ocorre em civis
     # Limite de conhecimento e disposição: cada um recorda apenas encontros observados.
     limit = 2 if npc_id in {"capitu", "virgilia", "florenca"} else 1
     # Recordações sobre terceiros referem-se a outros instantes do período. A
     # própria companhia não é revelada por via indireta no relato sobre terceiro.
-    observed = tuple(record for record in records if npc_id in record.observed_by
-                     and record.location_id == location)[:limit]
+    observed = tuple(record for record in records if npc_id in record.observed_by)[:limit]
     observations = tuple(ActivityClaim(npc_id=record.npc_id, location_id=record.location_id,
         companion_ids=tuple(other for other in record.companion_ids if other != npc_id),
         activity=record.activity) for record in observed)

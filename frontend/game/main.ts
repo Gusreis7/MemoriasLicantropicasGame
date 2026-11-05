@@ -938,6 +938,7 @@ function renderPresentation() {
 function renderAccusation() {
   const previousEvidence = new Set([...document.querySelectorAll<HTMLInputElement>('#accusation-evidence input:checked')].map(input=>input.value));
   const previousTestimony = new Set([...document.querySelectorAll<HTMLInputElement>('#accusation-testimonies input:checked')].map(input=>input.value));
+  const previousReports = new Set([...document.querySelectorAll<HTMLInputElement>('#accusation-testimonies input[name="report"]:checked')].map(input=>input.value));
   if (!caseState) return;
   const gallery = $('#accused-npc');
   const selected = gallery.querySelector<HTMLInputElement>('input:checked')?.value;
@@ -979,6 +980,12 @@ function renderAccusation() {
   const testimonies = $('#accusation-testimonies'); testimonies.replaceChildren();
   const inventorySnapshot = caseState.inventory;
   stackTestimonies(caseState.testimonies, inventorySnapshot).forEach(item => renderChoice(testimonies, 'testimony', item.id, `${item.witness_name}: ${item.text}`, inventorySnapshot.find(evidence => evidence.id === item.evidence_id), item.witness_id));
+  for (const report of caseState.case_reports ?? []) {
+    const label = document.createElement('label'); label.className = 'proof-choice useful-report';
+    const input = document.createElement('input'); input.type = 'checkbox'; input.name = 'report'; input.value = report.id; input.checked = previousReports.has(report.id);
+    const text = document.createElement('span'); text.textContent = `${report.npc_name} · ${report.kind === 'alibi' ? 'Álibi' : 'Suspeita'}: ${report.text}`;
+    label.append(input, text); testimonies.append(label);
+  }
   if (!caseState.testimonies.length) addText(testimonies, 'p', 'Nenhum depoimento sobre objetos registrado.', 'empty-case');
   const attempted = caseState.accusations.some(accusation => accusation.day === caseState?.day && accusation.accepted);
   updateAccusationSelection();
@@ -1077,10 +1084,11 @@ async function reviewSelectedAccusation() {
   const suspect = $('#accused-npc').querySelector<HTMLInputElement>('input:checked:not(:disabled)')?.value;
   if (!suspect) return;
   const evidence = [...document.querySelectorAll<HTMLInputElement>('#accusation-evidence input:checked')].map(input=>input.value);
-  const testimony = [...document.querySelectorAll<HTMLInputElement>('#accusation-testimonies input:checked')].map(input=>input.value);
+  const testimony = [...document.querySelectorAll<HTMLInputElement>('#accusation-testimonies input[name="testimony"]:checked')].map(input=>input.value);
+  const reports = [...document.querySelectorAll<HTMLInputElement>('#accusation-testimonies input[name="report"]:checked')].map(input=>input.value);
   busy=true; updateAccusationSelection(); status('#accusation-review','O delegado confere seu dossiê…');
   try {
-    const review=await api.reviewAccusation(world.game_id,suspect,evidence,testimony);
+    const review=await api.reviewAccusation(world.game_id,suspect,evidence,testimony,reports);
     $('#accusation-review').dataset.ready=String(review.ready);
     status('#accusation-review',review.reason);
   } catch(error) {status('#accusation-review',explain(error),true);}
@@ -1093,10 +1101,11 @@ async function submitAccusation(event: Event) {
   if (!suspectID) {status('#accusation-status', 'Selecione um suspeito antes de apresentar a acusação.', true); return;}
   const evidence = [...document.querySelectorAll<HTMLInputElement>('#accusation-evidence input:checked')]
     .map(input => input.value);
-  const testimony = [...document.querySelectorAll<HTMLInputElement>('#accusation-testimonies input:checked')].map(input => input.value);
+  const testimony = [...document.querySelectorAll<HTMLInputElement>('#accusation-testimonies input[name="testimony"]:checked')].map(input => input.value);
+  const reports = [...document.querySelectorAll<HTMLInputElement>('#accusation-testimonies input[name="report"]:checked')].map(input => input.value);
   busy = true; $('#submit-accusation').setAttribute('disabled', ''); status('#accusation-status', 'O delegado examina os elementos apresentados…');
   try {
-    const result = await api.accuse(world.game_id, suspectID, evidence, testimony);
+    const result = await api.accuse(world.game_id, suspectID, evidence, testimony, reports);
     await applyCase(result); renderAccusation();
     const decision = result.accusations.at(-1);
     status('#accusation-status', decision?.reason ?? 'Pedido registrado.');

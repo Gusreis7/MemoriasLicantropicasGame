@@ -459,6 +459,21 @@ class DialogueWorkflow:
         )
         if grounding_issues(content, observations, state["names"]):
             issues.append("unsupported_fact")
+        from src.modules.agents.support import is_alibi_question
+        from src.textutils import normalize, word_tokens
+        if state["npc"].role == "civil" and is_alibi_question(state["request"].text):
+            activities = (observations or {}).get("suas_atividades", ())
+            recent_night = next((item for item in reversed(activities) if item.get("periodo") == "night"), None)
+            tokens = set(word_tokens(normalize(content)))
+            if recent_night and recent_night.get("companhias") and tokens & {"sozinho", "sozinha", "desacompanhado", "desacompanhada"}:
+                issues.append("unsupported_fact")
+            if recent_night and recent_night.get("companhias") and tokens & {"ninguem"}:
+                issues.append("unsupported_fact")
+            if recent_night and (tokens & {"comigo", "acompanhou", "acompanhada", "acompanhado"} or "estava com" in normalize(content) or "cuidando de" in normalize(content)):
+                named = {identifier for identifier, name in state["names"].items()
+                         if identifier != state["request"].npc_id and normalize(name.split()[0]) in tokens}
+                if named - set(recent_night.get("companhias", ())):
+                    issues.append("unsupported_fact")
         if unauthorized_personal_disclosure(
             state["request"].npc_id, content, observations
         ):
@@ -560,8 +575,8 @@ class DialogueWorkflow:
             state["content"],
             state["observations"],
             kind=assessment.kind if assessment else "conversation",
-            quote=assessment.useful_quote if assessment else "",
-            suggested=assessment.useful if assessment else False,
+            quote=(assessment.useful_quote or assessment.quote) if assessment else "",
+            suggested=(assessment.useful or (assessment.kind in ("alibi", "suspicion") and bool(assessment.quote))) if assessment else False,
         )
         if assessment is not None:
             allowed = (

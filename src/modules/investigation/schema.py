@@ -26,6 +26,7 @@ class AccuseRequest(Contract):
     suspect_id: str = Field(min_length=1, max_length=40)
     evidence_ids: tuple[UUID, ...] = Field(default=(), max_length=100)
     testimony_ids: tuple[UUID, ...] = Field(default=(), max_length=100)
+    report_ids: tuple[UUID, ...] = Field(default=(), max_length=100)
 
 
 class InterrogateRequest(Contract):
@@ -88,7 +89,7 @@ class TestimonyPublic(Contract):
 
 class AccusationReviewPublic(Contract):
     ready: bool
-    route: Literal["examined_trace", "corroborated_personal_marks"] | None = None
+    route: Literal["examined_trace", "corroborated_personal_marks", "witness_reports"] | None = None
     missing: tuple[str, ...] = ()
     reason: str
 
@@ -100,6 +101,7 @@ class AccusationPublic(Contract):
     suspect_name: str
     evidence_ids: tuple[UUID, ...]
     testimony_ids: tuple[UUID, ...]
+    report_ids: tuple[UUID, ...] = ()
     accepted: bool
     reason: str
 
@@ -175,6 +177,7 @@ class CasePublic(Contract):
     expelled_npc_ids: tuple[str, ...] = ()
     interrogations: tuple[InterrogationPublic, ...] = ()
     confrontations: tuple[ConfrontationPublic, ...] = ()
+    case_reports: tuple[dict, ...] = ()
 
 
 class AssemblyRequest(AccuseRequest):

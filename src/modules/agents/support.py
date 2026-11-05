@@ -108,6 +108,15 @@ def dialogue_focus(question, observations):
         return "A pergunta atual é sobre sua crença em lobisomens. Diga se acredita, duvida ou não sabe, em primeira pessoa. Não invente conversas ou fontes para justificar sua opinião."
     if has_phrase(text, "fale comigo"):
         return "Floriano está pedindo uma conversa direta. Responda à impaciência dele e peça que esclareça o que deseja saber. Não repita seu objetivo pessoal ou pistas anteriores."
+    sightings = (observations or {}).get("suas_suspeitas_pessoais", ())
+    if sightings and (has_phrase(text, "bras cubas") or has_word_start(text, ("suspeit", "lobisome", "crime"))):
+        return ("Floriano pergunta sobre o crime ou suspeitos. Dê prioridade à lembrança em suas_suspeitas_pessoais: "
+                "diga quem você viu e exponha sua forte suspeita como opinião; não invente detalhes do ataque.")
+    if is_alibi_question(question):
+        return ("Responda diretamente onde estava no período perguntado e se alguém pode confirmar sua companhia, "
+                "usando suas_atividades e versões registradas. Se tinha companhia, diga o nome e que passaram a noite juntos, "
+                "e que essa pessoa pode confirmar. Se estava sem companhia, admita que ninguém confirma; "
+                "não invente reuniões nem testemunhas.")
     if not (observations or {}).get("apoios_de_conversa") and has_phrase(
         text, "bras cubas"
     ):
@@ -305,6 +314,7 @@ def compact_observations(profile, observations, question):
             "dia",
             "fase",
             "seu_conflito_privado",
+            "suas_suspeitas_pessoais",
             "ultimo_objeto_apresentado",
             "suas_atividades",
             "seus_depoimentos_registrados",

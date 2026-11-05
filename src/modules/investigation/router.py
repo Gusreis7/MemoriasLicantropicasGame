@@ -40,12 +40,12 @@ async def present(game_id: UUID, evidence_id: UUID, body: PresentRequest, servic
 
 @router.post("/accusations/review", response_model=AccusationReviewPublic)
 async def review(game_id: UUID, body: AccuseRequest, service: Service):
-    return await service.review_accusation(game_id, body.suspect_id, body.evidence_ids, body.testimony_ids)
+    return await service.review_accusation(game_id, body.suspect_id, body.evidence_ids, body.testimony_ids, body.report_ids)
 
 
 @router.post("/accusations", response_model=CasePublic)
 async def accuse(game_id: UUID, body: AccuseRequest, service: Service):
-    return await service.accuse(game_id, body.suspect_id, body.evidence_ids, body.testimony_ids)
+    return await service.accuse(game_id, body.suspect_id, body.evidence_ids, body.testimony_ids, body.report_ids)
 
 
 @router.post("/interrogations", response_model=CasePublic)

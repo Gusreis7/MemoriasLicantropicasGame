@@ -62,7 +62,7 @@ class InvestigationService(AssemblyServiceMixin):
                 for record in state.testimonies),
             accusations=tuple(AccusationPublic(id=record.id, day=record.day, suspect_id=record.suspect_id,
                 suspect_name=names.get(record.suspect_id, record.suspect_id), evidence_ids=record.evidence_ids,
-                testimony_ids=record.testimony_ids, accepted=record.accepted, reason=record.reason)
+                testimony_ids=record.testimony_ids, report_ids=record.report_ids, accepted=record.accepted, reason=record.reason)
                 for record in state.accusations),
             detained_npc_id=state.detained_npc_id, ending=ending,
             assembly_session=({key:value for key,value in state.assembly_session.model_dump(mode="json").items()
@@ -79,6 +79,11 @@ class InvestigationService(AssemblyServiceMixin):
                 evidence_ids=record.evidence_ids, testimony_ids=record.testimony_ids,
                 interrogation_ids=record.interrogation_ids, confessed=record.confessed, text=record.text)
                 for record in state.confrontations),
+            case_reports=tuple({"id": event["outgoing_id"], "npc_id": event["npc_id"],
+                "npc_name": names.get(event["npc_id"], event["npc_id"]), "day": event["day"],
+                "kind": event.get("assessment", {}).get("kind"), "text": event["outgoing"]}
+                for event in state.dialogue_events if event.get("narrative_authorized") and event.get("useful")
+                and event.get("assessment", {}).get("kind") in ("alibi", "suspicion")),
         )
 
     @staticmethod
@@ -227,7 +232,7 @@ class InvestigationService(AssemblyServiceMixin):
                 await self._memory.append_messages(game_id, conversation.id, (action, response))
         return await self.public(state)
 
-    async def review_accusation(self, game_id: UUID, suspect_id: str, evidence_ids, testimony_ids):
+    async def review_accusation(self, game_id: UUID, suspect_id: str, evidence_ids, testimony_ids, report_ids=()):
         from src.modules.investigation.rules import review_accusation
         from src.modules.investigation.schema import AccusationReviewPublic
         state = await self._turns.sync(game_id)
@@ -239,10 +244,10 @@ class InvestigationService(AssemblyServiceMixin):
             raise NotFoundError('Acusado não encontrado nesta partida.')
         if not member.alive or suspect_id in state.expelled_npc_ids:
             raise AccessDeniedError('Escolha um morador vivo e presente na cidade.')
-        assessment, missing, reason = review_accusation(state,suspect_id,evidence_ids,testimony_ids)
+        assessment, missing, reason = review_accusation(state,suspect_id,evidence_ids,testimony_ids,report_ids)
         return AccusationReviewPublic(ready=assessment.accepted,route=assessment.custody_route,missing=missing,reason=reason)
 
-    async def accuse(self, game_id: UUID, suspect_id: str, evidence_ids, testimony_ids) -> CasePublic:
+    async def accuse(self, game_id: UUID, suspect_id: str, evidence_ids, testimony_ids, report_ids=()) -> CasePublic:
         def transition(state, game, world):
             if state.detained_npc_id is not None:
                 raise ConflictError("Já existe uma pessoa sob custódia para esta noite.")
@@ -252,7 +257,7 @@ class InvestigationService(AssemblyServiceMixin):
             if not member.alive or suspect_id in state.expelled_npc_ids:
                 raise AccessDeniedError("Não é possível deter uma pessoa morta.")
             record = evaluate_accusation(state, suspect_id, tuple(dict.fromkeys(evidence_ids)),
-                                         tuple(dict.fromkeys(testimony_ids)), self._turns.now())
+                                         tuple(dict.fromkeys(testimony_ids)), self._turns.now(), tuple(dict.fromkeys(report_ids)))
             previous = state.accusations[-1] if state.accusations else None
             if (not record.accepted and previous and previous.day == state.day and not previous.accepted
                     and previous.dossier_fingerprint == record.dossier_fingerprint):
@@ -293,8 +298,19 @@ class InvestigationService(AssemblyServiceMixin):
                     "nome": ITEMS_BY_ID[focused.item_id].name, "descricao": focused.description,
                     "fala_registrada": testimony.text if testimony else None}
         from src.modules.investigation.night_story import plot_context
+        sightings = []
+        for crime in state.crimes:
+            if crime.cause != "werewolf":
+                continue
+            seen = next((record for record in state.activity_records
+                         if record.day == crime.day and record.period == "night"
+                         and record.npc_id == crime.killer_id and npc_id in record.observed_by), None)
+            if seen:
+                sightings.append({"dia": crime.day, "pessoa": names.get(seen.npc_id, seen.npc_id),
+                    "lembranca": "Você viu essa pessoa perto do local do ataque naquela noite e suspeita fortemente que seja o lobisomem. É sua impressão, não uma prova conclusiva."})
         return {
             "seu_conflito_privado": plot_context(state,npc_id,names),
+            "suas_suspeitas_pessoais": sightings,
             "ultimo_objeto_apresentado": last,
             "suas_atividades": memories,
             "cooperacao_com_investigacao": COOPERATION.get(npc_id, "Ajude a esclarecer o crime com o que sabe."),

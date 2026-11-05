@@ -47,9 +47,9 @@ def useful_report(
         suggested
         and quote
         and quote in content
-        and kind in ("alibi", "admission")
-        and (
-            set(tokens) & {"estava", "estive", "vi", "matei", "ataquei"}
+        and kind in ("alibi", "admission", "suspicion")
+        and (kind == "alibi" or kind == "suspicion" or (
+            set(tokens) & {"estava", "estive", "vi", "matei", "ataquei", "suspeito", "suspeita", "desconfio", "lobisomem"}
             or has_phrase(text, "sou o lobisomem")
-        )
+        ))
     )

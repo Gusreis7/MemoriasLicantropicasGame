@@ -1,0 +1,7 @@
+# Álibis e relatos no dossiê
+
+Em cada noite o motor registra companhias recíprocas de civis, pessoas sem companhia e uma testemunha da presença da fera. A pessoa sorteada como lobisomem não recebe companhia; alguns civis também passam a noite sós. A testemunha recebe apenas sua própria lembrança e uma suspeita, sem acesso ao papel secreto. As noites registradas antes desta implementação não são reconstituídas automaticamente.
+
+As falas ouvidas em conversa e classificadas pelo mestre como álibi ou suspeita útil aparecem no dossiê. O delegado avalia exclusivamente os relatos selecionados: uma suspeita de outra pessoa vale dois pontos por fonte (limitada a três); uma declaração do próprio suspeito de que não tem companhia que confirme vale dois. Fontes repetidas não multiplicam o peso. Uma suspeita e a falta de confirmação, acompanhadas de vestígio ligado ao suspeito, ou duas fontes acusatórias independentes e a falta de confirmação, abrem uma rota de custódia. Essas falas não provam culpa e podem levar à prisão de inocentes.
+
+O LLM pode não recuperar a lembrança ou produzir resposta inválida; a validação rejeita contradições explícitas de companhia para civis e pode gerar resposta de fallback. O teste real de 2026-11-05 registrou separadamente a testemunha apontando o suspeito, o álibi sem companhia e uma pessoa acompanhada indicando quem poderia confirmar. Também houve um fallback de ferramenta em outra rodada; não representa uma taxa de falhas estimada.
