@@ -1,5 +1,5 @@
 {
-  "version": "3",
+  "version": "4",
   "generator": "image_gen built-in",
   "assets": [
     {
@@ -28,6 +28,13 @@
           "width": 2048,
           "height": 768,
           "sha256": "039d6826e4e87a9da8701a4412ee696a1e156dbefa2e7eda6adb3cd387945d34"
+        },
+        "midnight": {
+          "time": "00:00",
+          "path": "/assets/locations/praca_verde-00h.png",
+          "width": 2048,
+          "height": 768,
+          "sha256": "280c44edb30895485c934dedfa475cfb0f258b3ad1518a10b4d593a2f6d11430"
         }
       }
     },
@@ -57,6 +64,13 @@
           "width": 2048,
           "height": 768,
           "sha256": "eae85b865b0a3a112e48153e62b393afb53187917c536c974811848ad49364b2"
+        },
+        "midnight": {
+          "time": "00:00",
+          "path": "/assets/locations/cabana_capitu-00h.png",
+          "width": 2048,
+          "height": 768,
+          "sha256": "4635fc707893ddb9c69a3ea572af4c02b80e5e3b32b3fd803bfcd0754e19962d"
         }
       }
     },
@@ -86,6 +100,13 @@
           "width": 2048,
           "height": 768,
           "sha256": "a6370e375547c6858edf76731ffb5ed1f20dff18fced68bcb93c5ebe1f4e9169"
+        },
+        "midnight": {
+          "time": "00:00",
+          "path": "/assets/locations/casa_verde-00h.png",
+          "width": 2048,
+          "height": 768,
+          "sha256": "299ded82974095a18163d21d82f13da9c87f4bd45f7c478881ecbe8521c88f29"
         }
       }
     },
@@ -115,6 +136,13 @@
           "width": 2048,
           "height": 768,
           "sha256": "bbb103cc299f7912dcac48bb1589ba7791b838a5f9a7525640132ca40fe3ebd1"
+        },
+        "midnight": {
+          "time": "00:00",
+          "path": "/assets/locations/cafe_largo-00h.png",
+          "width": 2048,
+          "height": 768,
+          "sha256": "30fed146e15d501a803cf634da34d6515092bcdfdefbe24c2f77179db7b3900b"
         }
       }
     },
@@ -144,9 +172,17 @@
           "width": 2048,
           "height": 768,
           "sha256": "d7e2a824f96eae2f4213af92749f0b8b330e41da3d1e44d3f6ed05aab8fd32f4"
+        },
+        "midnight": {
+          "time": "00:00",
+          "path": "/assets/locations/cais_lanternas-00h.png",
+          "width": 2048,
+          "height": 768,
+          "sha256": "09e25c0d9e339cbac4da1656818edbdd830594931a4307fe5491b9cb273d63b6"
         }
       }
     }
   ],
-  "lightingMetadataPath": "/assets/locations/lighting-prompts.json"
+  "lightingMetadataPath": "/assets/locations/lighting-prompts.json",
+  "midnightMetadataPath": "/assets/locations/midnight-prompts.json"
 }

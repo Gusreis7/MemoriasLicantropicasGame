@@ -1,0 +1,52 @@
+{
+  "generator": "image_gen built-in",
+  "useCase": "lighting-weather",
+  "prompt": "Use case: lighting-weather. Edit target: supplied existing pixel-art location background for Rio de Janeiro 1890 game. Change ONLY time of day to midnight, 00:00. Preserve EXACT wide 2048x768 composition, camera, every building, landmark, tree, prop, mountain, water, walkway and ground baseline. Deep navy midnight sky with a single clearly visible luminous FULL MOON in existing open sky. Silver blue full moon lighting illuminates roofs, foliage, cobblestones and water where present; restrained warm amber light from existing lamps/windows. Clearly nighttime yet playable and readable, not pitch black. Same simplified crisp stepped pixel art and coarse shading, no new detail. No people, no monsters, no text, no new structures. Keep exact 8:3 landscape aspect ratio and original layout. Opaque background.",
+  "assets": [
+    {
+      "id": "praca_verde",
+      "path": "/assets/locations/praca_verde-00h.png",
+      "reference": "/assets/locations/praca_verde-09h.png",
+      "source": "exec-78c95a22-e4b7-45e3-8e1c-adf7cd10a2dd.png",
+      "width": 2048,
+      "height": 768,
+      "sha256": "280c44edb30895485c934dedfa475cfb0f258b3ad1518a10b4d593a2f6d11430"
+    },
+    {
+      "id": "cabana_capitu",
+      "path": "/assets/locations/cabana_capitu-00h.png",
+      "reference": "/assets/locations/cabana_capitu-09h.png",
+      "source": "exec-eb78751e-fdfc-4a4f-b158-e80cca79883a.png",
+      "width": 2048,
+      "height": 768,
+      "sha256": "4635fc707893ddb9c69a3ea572af4c02b80e5e3b32b3fd803bfcd0754e19962d"
+    },
+    {
+      "id": "casa_verde",
+      "path": "/assets/locations/casa_verde-00h.png",
+      "reference": "/assets/locations/casa_verde-09h.png",
+      "source": "exec-f2fc569c-fe5a-40ec-9d40-f05c723f217d.png",
+      "width": 2048,
+      "height": 768,
+      "sha256": "299ded82974095a18163d21d82f13da9c87f4bd45f7c478881ecbe8521c88f29"
+    },
+    {
+      "id": "cafe_largo",
+      "path": "/assets/locations/cafe_largo-00h.png",
+      "reference": "/assets/locations/cafe_largo-09h.png",
+      "source": "exec-f9aac5db-1253-4727-b5d9-1a5453a9f690.png",
+      "width": 2048,
+      "height": 768,
+      "sha256": "30fed146e15d501a803cf634da34d6515092bcdfdefbe24c2f77179db7b3900b"
+    },
+    {
+      "id": "cais_lanternas",
+      "path": "/assets/locations/cais_lanternas-00h.png",
+      "reference": "/assets/locations/cais_lanternas-09h.png",
+      "source": "exec-93c687e4-1686-46ac-b565-e27d1e11ca7f.png",
+      "width": 2048,
+      "height": 768,
+      "sha256": "09e25c0d9e339cbac4da1656818edbdd830594931a4307fe5491b9cb273d63b6"
+    }
+  ]
+}
