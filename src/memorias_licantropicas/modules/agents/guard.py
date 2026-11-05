@@ -81,6 +81,9 @@ def _refuse(reason):
 
 def _has_structural_role_marker(text):
     # Interpretar somente delimitadores conhecidos, não uma gramática de padrões.
+    _, token_start, remainder = text.partition("<|")
+    if token_start and "|>" in remainder:
+        return True
     protected = {
         "system",
         "developer",

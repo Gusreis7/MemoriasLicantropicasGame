@@ -14,7 +14,7 @@ from uuid import UUID, uuid4
 from pydantic import ValidationError
 from redis.exceptions import RedisError
 
-from memorias_licantropicas.contracts.errors import StorageUnavailableError
+from memorias_licantropicas.contracts.errors import LLM_PUBLIC_DETAILS, StorageUnavailableError
 from memorias_licantropicas.contracts.usage import (
     UsageBreakdown, UsagePricing, UsageRecord, UsageSummary, UsageTotals,
 )
@@ -144,7 +144,7 @@ class MeteredLLMClient:
         except Exception as error:
             # Somente o código estável; mensagens, URLs e credenciais não entram no registro.
             code = getattr(error, "code", None)
-            error_code = code if isinstance(code, str) and len(code) <= 80 else "llm_error"
+            error_code = code if isinstance(code, str) and code in LLM_PUBLIC_DETAILS else "llm_error"
             raise
         finally:
             record = UsageRecord(

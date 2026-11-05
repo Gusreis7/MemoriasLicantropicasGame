@@ -146,6 +146,24 @@ async def test_cancellation_records_uncertain_usage(storage, game):
     assert not totals.cost_complete
 
 
+async def test_unknown_exception_code_is_not_persisted(storage, game):
+    class UntrustedError(Exception):
+        code = "PRIVATE_MODEL_METADATA"
+
+    class BrokenLLM(PaidLLM):
+        async def complete(self, messages, *, tools=(), tool_choice=None):
+            raise UntrustedError("PRIVATE_MODEL_MESSAGE")
+
+    repository = RedisUsageRepository(storage.client, storage.prefix, pricing=PRICING)
+    client = MeteredLLMClient(BrokenLLM(), repository, configured_model=PRICING.model)
+    with pytest.raises(UntrustedError):
+        with usage_scope(game.id, "player_dialogue"):
+            await client.complete(MESSAGES)
+    raw = str(await storage.client.hgetall(repository._key(game.id)))
+    assert "llm_error" in raw
+    assert "PRIVATE_MODEL" not in raw
+
+
 async def test_missing_price_and_tokens_are_explicit(storage, game):
     repository = RedisUsageRepository(storage.client, storage.prefix, pricing=PRICING)
     await repository.record(record(game.id, configured_model="other-model"))
