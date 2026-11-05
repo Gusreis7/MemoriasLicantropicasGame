@@ -80,6 +80,7 @@ class AdminConversation(AdminSchema):
 
 
 class AdminMessage(AdminSchema):
+    generation_status: Literal["accepted", "fallback", "guarded"] = "accepted"
     useful: bool = False
     id: UUID
     sender_id: str
