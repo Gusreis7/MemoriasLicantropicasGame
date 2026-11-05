@@ -1,0 +1,22 @@
+{
+  "generator": "image_gen built-in",
+  "revision": 2,
+  "path": "/assets/custody/delegado-sentado.png",
+  "source": "exec-8f443d91-cf9e-4139-800e-808a0d705e67.png",
+  "initial_source": "exec-39348b80-60ee-4439-a36a-b5d4d242f89e.png",
+  "references": {
+    "edit_target": "/assets/custody/delegado-sentado.png before revision",
+    "primary_style": "/assets/characters/player.png",
+    "supporting_style": "/assets/portraits/bras_cubas.png"
+  },
+  "prompt": "Use case: style-transfer. Asset type: seated supporting character transparent PNG for a 2D pixel art detective game Rio de Janeiro 1890. Image 1 delegado-sentado.png is the EDIT TARGET and identity/pose/chair reference. Image 2 player.png is the PRIMARY STYLE reference: simplified expressive game sprite proportions, slightly enlarged head, clear eyes, bold stepped outlines, broad clean pixel clusters and restrained earthy palette. Image 3 bras_cubas.png is a supporting STYLE reference for expressive simplified facial shading, not identity. Redraw the same mature brown-skinned police delegate sitting upright on the same simple wooden chair, full body from top of hair to soles, turned slightly to viewer right. Preserve short swept graying dark hair, thick dark moustache, serious composed expression, charcoal green frock coat, brown waistcoat, ivory high collar, black cravat, brass watch chain, dark trousers and black shoes. Make his proportions and pixel density fit the player sprite, with a slightly larger expressive head, simpler hands and much simpler clothing folds. Render the chair in the same simple style. Keep centered composition, approximately same silhouette placement and full visible chair and feet, portrait 2:3 canvas with clear margins, suitable to display at 150x225 pixels. Truly transparent background, preserve alpha; remove original ambient brown halo and all backdrop. No ground, no cast glow, no text, no props beyond chair and clothing. No smooth painting, photorealism, intricate fabric texture, dithering, tiny stitch details or ornamental detail. Single seated figure only, no grid, no frame.",
+  "alpha_revision_prompt": "Use case: background-extraction. Edit target: supplied seated pixel art delegate PNG. Preserve the delegate and chair exactly, same pixels and colors of subject, exact 1024x1536 canvas and placement, same style. Remove ONLY ALL the brown/gray ambient halo and glow around the silhouette, between legs and around the chair. Output the fully isolated character plus chair with genuinely transparent alpha outside their hard stepped pixel contours. Absolutely no backdrop, no black or brown area, no shadow, no aura or glow, no fuzzy semi-transparent fringe beyond the silhouette. Keep enclosed chair wood, clothing, hair, face, hands and shoes intact. Do not add anything.",
+  "width": 1024,
+  "height": 1536,
+  "mode": "RGBA",
+  "display": {
+    "width": 150,
+    "height": 225
+  },
+  "note": "Pixels and generated alpha preserved without scripted retouching. A subtle semitransparent ambient fringe remains in the generated output."
+}
