@@ -2,10 +2,10 @@ from datetime import timedelta
 from uuid import uuid4
 import pytest
 from test_interrogations import inquiry, dossier
-from memorias_licantropicas.contracts.errors import ConflictError
-from memorias_licantropicas.infrastructure.social_repository import RedisSocialRepository
-from memorias_licantropicas.contracts.social import SocialState
-from memorias_licantropicas.modules.knowledge.rules import initial_relationships
+from src.contracts.errors import ConflictError
+from src.infrastructure.social_repository import RedisSocialRepository
+from src.contracts.social import SocialState
+from src.modules.knowledge.rules import initial_relationships
 
 pytestmark=pytest.mark.anyio
 

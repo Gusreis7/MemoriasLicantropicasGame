@@ -7,10 +7,10 @@ from uuid import uuid4
 
 import pytest
 
-from memorias_licantropicas.contracts.errors import LLMUnavailableError
-from memorias_licantropicas.contracts.model import LLMResponse
-from memorias_licantropicas.modules.agents.guard import SAFE_DIALOGUE_REPLY
-from memorias_licantropicas.infrastructure.legacy_history import read_persisted_dialogue
+from src.contracts.errors import LLMUnavailableError
+from src.contracts.model import LLMResponse
+from src.modules.agents.guard import SAFE_DIALOGUE_REPLY
+from src.infrastructure.legacy_history import read_persisted_dialogue
 
 
 @pytest.mark.parametrize(
@@ -92,7 +92,7 @@ async def test_response_is_normalized_before_memory_and_reply(
 async def test_invalid_new_envelope_uses_explicit_technical_fallback(
     harness, storage, game, llm, monkeypatch
 ):
-    from memorias_licantropicas.modules.agents.workflow import TECHNICAL_FALLBACK
+    from src.modules.agents.workflow import TECHNICAL_FALLBACK
 
     await storage.games.create(game)
     calls = []

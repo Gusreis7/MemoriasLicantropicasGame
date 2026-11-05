@@ -2,11 +2,11 @@ from datetime import timedelta
 from uuid import uuid4
 import pytest
 from test_interrogations import inquiry, dossier
-from memorias_licantropicas.contracts.errors import ConflictError
-from memorias_licantropicas.infrastructure.social_repository import RedisSocialRepository
-from memorias_licantropicas.modules.investigation.assembly import convene
-from memorias_licantropicas.modules.world.motion import project_npc
-from memorias_licantropicas.modules.world.model import WorldNPC
+from src.contracts.errors import ConflictError
+from src.infrastructure.social_repository import RedisSocialRepository
+from src.modules.investigation.assembly import convene
+from src.modules.world.motion import project_npc
+from src.modules.world.model import WorldNPC
 
 pytestmark = pytest.mark.anyio
 

@@ -8,9 +8,9 @@ from uuid import uuid4
 import pytest
 from native_fixtures import respond_to_tools, invalid_tool_response
 
-from memorias_licantropicas.contracts.errors import StorageUnavailableError
-from memorias_licantropicas.contracts.model import ConversationMessage, LLMResponse
-from memorias_licantropicas.modules.session_master.service import SessionMasterService
+from src.contracts.errors import StorageUnavailableError
+from src.contracts.model import ConversationMessage, LLMResponse
+from src.modules.session_master.service import SessionMasterService
 
 pytestmark = pytest.mark.anyio
 
@@ -108,12 +108,12 @@ async def test_corrupt_session_outbox_is_preserved_for_recovery_without_exposing
 async def test_internal_extraction_bug_does_not_advance_the_durable_cursor(
     storage, catalog, game
 ):
-    from memorias_licantropicas.contracts.social import ExchangeRecord
-    from memorias_licantropicas.infrastructure.social_repository import (
+    from src.contracts.social import ExchangeRecord
+    from src.infrastructure.social_repository import (
         RedisSocialRepository,
     )
-    from memorias_licantropicas.modules.knowledge.service import KnowledgeService
-    from memorias_licantropicas.contracts.model import Conversation
+    from src.modules.knowledge.service import KnowledgeService
+    from src.contracts.model import Conversation
 
     await storage.games.create(game)
     incoming, outgoing = exchange()

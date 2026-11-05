@@ -60,8 +60,8 @@ Os papéis sorteados são controlados pela fixture para cobrir os sete personage
 ## Reproduzir
 
 ```sh
-PYTHONPATH=src:scripts .venv/bin/python scripts/benchmark_accusation_v5.py --phase before --source-root /tmp/checkout-026a3c3 --output /tmp/nova-avaliacao
-PYTHONPATH=src:scripts .venv/bin/python scripts/benchmark_accusation_v5.py --phase after --source-root . --output /tmp/nova-avaliacao
+PYTHONPATH=.:scripts .venv/bin/python scripts/benchmark_accusation_v5.py --phase before --source-root /tmp/checkout-026a3c3 --output /tmp/nova-avaliacao
+PYTHONPATH=.:scripts .venv/bin/python scripts/benchmark_accusation_v5.py --phase after --source-root . --output /tmp/nova-avaliacao
 .venv/bin/python scripts/report_accusation_v5.py
 ```
 

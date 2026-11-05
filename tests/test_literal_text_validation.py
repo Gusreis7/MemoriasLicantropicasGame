@@ -2,10 +2,10 @@
 
 import pytest
 
-from memorias_licantropicas.contracts.assessment import DialogueAssessment
-from memorias_licantropicas.modules.agents.guard import DialogueGuard
-from memorias_licantropicas.modules.agents.grounding import grounding_issues
-from memorias_licantropicas.modules.session_master.validation import (
+from src.contracts.assessment import DialogueAssessment
+from src.modules.agents.guard import DialogueGuard
+from src.modules.agents.grounding import grounding_issues
+from src.modules.session_master.validation import (
     direct_admission,
     admission_evidence,
 )

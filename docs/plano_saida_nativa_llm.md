@@ -1,7 +1,7 @@
 # Correção: saída nativa, layout src e ausência de regex
 
 Decisão do usuário: código diretamente em `src/`, sem o pacote intermediário
-`memorias_licantropicas`; remover `re` do aplicativo e remover pedidos de JSON dos
+`src`; remover `re` do aplicativo e remover pedidos de JSON dos
 prompts. A saída estruturada deve usar o protocolo de ferramentas do provedor,
 LangChain ChatModel/with_structured_output e output parser de ferramentas tipado.
 O grafo LangGraph permanece responsável por sessões, validações e falhas explícitas.

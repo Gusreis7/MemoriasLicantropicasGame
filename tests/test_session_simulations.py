@@ -7,15 +7,15 @@ from uuid import uuid4
 import fakeredis
 import pytest
 
-from memorias_licantropicas.simulation.session import (
+from src.simulation.session import (
     BudgetedSessionModel,
     OfflineSessionModel,
     SessionSimulation,
     public_ranking,
     run_sessions,
 )
-from memorias_licantropicas.contracts.errors import LLMUnavailableError
-from memorias_licantropicas.contracts.model import ChatMessage
+from src.contracts.errors import LLMUnavailableError
+from src.contracts.model import ChatMessage
 
 pytestmark = pytest.mark.anyio
 
@@ -158,7 +158,7 @@ async def test_run_uses_exclusive_redis_prefix_and_never_flushes_local_games(
 
     monkeypatch.setattr(redis, "aclose", record_close)
     monkeypatch.setattr(
-        "memorias_licantropicas.simulation.session.fakeredis.FakeAsyncRedis",
+        "src.simulation.session.fakeredis.FakeAsyncRedis",
         lambda **kwargs: redis,
     )
     try:

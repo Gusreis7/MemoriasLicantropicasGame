@@ -152,7 +152,7 @@ Explorações em `AED/` só seguem para `develop` quando suas alterações forem
 ## Estrutura
 
 ```text
-src/memorias_licantropicas/
+src/
   contracts/               # Modelos internos e portas compartilhadas
   modules/                 # Characters, games, agents, conversations, world e admin
   infrastructure/          # Redis e cliente Mantle

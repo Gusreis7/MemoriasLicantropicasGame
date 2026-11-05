@@ -6,16 +6,16 @@ from datetime import UTC, datetime
 
 import pytest
 
-from memorias_licantropicas.contracts.model import LLMResponse
-from memorias_licantropicas.modules.investigation.rules import (
+from src.contracts.model import LLMResponse
+from src.modules.investigation.rules import (
     make_initial_investigation,
     make_crime,
 )
-from memorias_licantropicas.modules.session_master.editorial import (
+from src.modules.session_master.editorial import (
     final_edition,
     SIGNATURE,
 )
-from memorias_licantropicas.modules.session_master.service import SessionMasterService
+from src.modules.session_master.service import SessionMasterService
 
 pytestmark = pytest.mark.anyio
 NOW = datetime(2026, 11, 4, tzinfo=UTC)
@@ -56,7 +56,7 @@ async def test_signed_editorial_uses_actual_deaths_and_method(
         async def complete(self, prompt, *, tools=(), tool_choice=None):
             calls.append(prompt)
             if unavailable:
-                from memorias_licantropicas.contracts.errors import LLMUnavailableError
+                from src.contracts.errors import LLMUnavailableError
 
                 raise LLMUnavailableError("offline")
             return tool_response(

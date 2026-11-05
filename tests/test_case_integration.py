@@ -6,9 +6,9 @@ from uuid import UUID, uuid4
 
 import pytest
 
-from memorias_licantropicas.contracts.model import GameCharacter, GameState
-from memorias_licantropicas.modules.investigation.catalog import INVENTORIES
-from memorias_licantropicas.modules.world.repository import RedisWorldRepository
+from src.contracts.model import GameCharacter, GameState
+from src.modules.investigation.catalog import INVENTORIES
+from src.modules.world.repository import RedisWorldRepository
 
 pytestmark = pytest.mark.anyio
 

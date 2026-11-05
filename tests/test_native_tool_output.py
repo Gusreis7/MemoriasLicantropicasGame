@@ -10,10 +10,10 @@ import pytest
 from langchain_core.language_models.chat_models import BaseChatModel
 from pydantic import BaseModel, ConfigDict, Field
 
-from memorias_licantropicas.contracts.generation import Extraction, SpeechProposal
-from memorias_licantropicas.contracts.model import ChatMessage, LLMResponse
-from memorias_licantropicas.infrastructure.llm.bedrock_mantle import BedrockMantleClient
-from memorias_licantropicas.infrastructure.llm.structured import (
+from src.contracts.generation import Extraction, SpeechProposal
+from src.contracts.model import ChatMessage, LLMResponse
+from src.infrastructure.llm.bedrock_mantle import BedrockMantleClient
+from src.infrastructure.llm.structured import (
     MantleChatModel,
     generate_structured,
 )

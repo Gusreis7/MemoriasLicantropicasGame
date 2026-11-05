@@ -2,10 +2,10 @@ from uuid import uuid4
 import pytest
 from test_interrogations import inquiry,dossier,near
 from test_session_master_v2 import pair,NOW
-from memorias_licantropicas.modules.session_master.service import local_assessment
-from memorias_licantropicas.modules.session_master.rules import dialogue_transition
-from memorias_licantropicas.modules.agents.support import is_alibi_question
-from memorias_licantropicas.modules.investigation.rules import make_initial_investigation
+from src.modules.session_master.service import local_assessment
+from src.modules.session_master.rules import dialogue_transition
+from src.modules.agents.support import is_alibi_question
+from src.modules.investigation.rules import make_initial_investigation
 
 pytestmark=pytest.mark.anyio
 
@@ -37,7 +37,7 @@ async def test_unspoken_observations_are_not_promoted_to_public_proof(game):
 async def test_inspection_public_projection_awards_once_without_private_truth(inquiry):
     state,game,evidence_ids,_=await dossier(inquiry)
     await inquiry.storage.client.set(inquiry.key+':investigation',state.model_dump_json())
-    from memorias_licantropicas.modules.investigation.catalog import ITEMS_BY_ID
+    from src.modules.investigation.catalog import ITEMS_BY_ID
     item=next(e for c in state.crimes for e in c.evidence if ITEMS_BY_ID[e.item_id].kind=='unique')
     result=await inquiry.service.inspect(game.id,item.id)
     assert [a.id for a in result.achievements]==['personal_trace']

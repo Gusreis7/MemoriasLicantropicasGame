@@ -4,12 +4,12 @@ from uuid import uuid4
 
 import pytest
 
-from memorias_licantropicas.contracts.errors import (
+from src.contracts.errors import (
     AccessDeniedError,
     ConflictError,
     LLMUnavailableError,
 )
-from memorias_licantropicas.contracts.model import GameCharacter, GameState, LLMResponse
+from src.contracts.model import GameCharacter, GameState, LLMResponse
 
 pytestmark = pytest.mark.anyio
 

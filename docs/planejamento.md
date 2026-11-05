@@ -78,7 +78,7 @@ Uma aplicação e um deploy. Redis e Bedrock são dependências externas ao proc
 Estrutura de referência por módulo, criando arquivos apenas quando necessários:
 
 ```text
-src/memorias_licantropicas/
+src/
   main.py
   modules/
     games/

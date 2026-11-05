@@ -4,12 +4,12 @@ from pathlib import Path
 from datetime import datetime,UTC
 from uuid import UUID,uuid5,NAMESPACE_URL
 p=argparse.ArgumentParser();p.add_argument('--source-root',type=Path,required=True);args=p.parse_args()
-sys.path.insert(0,str(args.source_root.resolve()/'src'))
-from memorias_licantropicas.contracts.model import GameState,GameCharacter
-from memorias_licantropicas.contracts.investigation import Evidence
-from memorias_licantropicas.modules.investigation.catalog import INVENTORIES,ITEMS_BY_ID
-from memorias_licantropicas.modules.investigation.rules import make_initial_investigation,make_crime,make_testimony,evaluate_accusation
-from memorias_licantropicas.modules.investigation.scoring import assess_dossier
+sys.path.insert(0,str(args.source_root.resolve()))
+from src.contracts.model import GameState,GameCharacter
+from src.contracts.investigation import Evidence
+from src.modules.investigation.catalog import INVENTORIES,ITEMS_BY_ID
+from src.modules.investigation.rules import make_initial_investigation,make_crime,make_testimony,evaluate_accusation
+from src.modules.investigation.scoring import assess_dossier
 now=datetime(2026,11,4,12,tzinfo=UTC)
 game=GameState(id=UUID(int=55445),created_at=now,content_version='3',characters=tuple(GameCharacter(character_id=k,role='werewolf' if k=='bentinho' else 'civil') for k in INVENTORIES))
 state=make_initial_investigation(game,now)

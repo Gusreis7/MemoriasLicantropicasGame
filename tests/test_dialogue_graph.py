@@ -10,11 +10,11 @@ from uuid import uuid4
 
 import pytest
 
-from memorias_licantropicas.contracts.errors import ConflictError, LLMUnavailableError
-from memorias_licantropicas.contracts.model import LLMResponse
-from memorias_licantropicas.modules.agents.trace import RedisDialogueTraceRecorder
-from memorias_licantropicas.modules.agents.workflow import TECHNICAL_FALLBACK
-from memorias_licantropicas.modules.session_master.service import DialogueAssessment
+from src.contracts.errors import ConflictError, LLMUnavailableError
+from src.contracts.model import LLMResponse
+from src.modules.agents.trace import RedisDialogueTraceRecorder
+from src.modules.agents.workflow import TECHNICAL_FALLBACK
+from src.modules.session_master.service import DialogueAssessment
 
 pytestmark = pytest.mark.anyio
 
@@ -325,7 +325,7 @@ async def test_trace_sink_failure_does_not_mask_authentication_error(
 async def test_trace_sink_has_a_separate_bounded_deadline(
     harness, storage, game, monkeypatch
 ):
-    import memorias_licantropicas.modules.agents.workflow as workflow
+    import src.modules.agents.workflow as workflow
 
     await storage.games.create(game)
     monkeypatch.setattr(workflow, "TRACE_TIMEOUT_SECONDS", 0.02)
@@ -378,7 +378,7 @@ async def test_arbitrary_exception_code_cannot_enter_trace(harness, storage, gam
 
 
 async def test_failed_lookup_cannot_create_orphan_redis_trace(harness, storage):
-    from memorias_licantropicas.contracts.errors import NotFoundError
+    from src.contracts.errors import NotFoundError
 
     missing = uuid4()
     harness._trace_sink = RedisDialogueTraceRecorder(

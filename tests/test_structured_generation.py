@@ -9,9 +9,9 @@ import pytest
 from langchain_core.tracers.langchain import LangChainTracer
 from pydantic import BaseModel, ConfigDict, Field
 
-from memorias_licantropicas.contracts.errors import LLMUnavailableError
-from memorias_licantropicas.contracts.model import ChatMessage, LLMResponse
-from memorias_licantropicas.infrastructure.llm.structured import generate_structured
+from src.contracts.errors import LLMUnavailableError
+from src.contracts.model import ChatMessage, LLMResponse
+from src.infrastructure.llm.structured import generate_structured
 
 
 @pytest.fixture
@@ -147,7 +147,7 @@ async def test_invalid_budget_never_calls_provider(attempts):
 
 @pytest.mark.anyio
 async def test_native_attempts_keep_usage_records_and_forward_tool_kwargs():
-    from memorias_licantropicas.infrastructure.usage import (
+    from src.infrastructure.usage import (
         MeteredLLMClient,
         RedisUsageRepository,
         usage_scope,

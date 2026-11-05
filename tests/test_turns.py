@@ -6,12 +6,12 @@ from uuid import uuid4
 
 import pytest
 
-from memorias_licantropicas.contracts.errors import ConflictError, NotFoundError, StorageUnavailableError
-from memorias_licantropicas.contracts.investigation import CaseEvent, CaseTransition
-from memorias_licantropicas.contracts.model import GameCharacter, GameState
-from memorias_licantropicas.modules.turns.service import TurnService
-from memorias_licantropicas.modules.world.gate import RedisPlayerGate
-from memorias_licantropicas.modules.world.repository import RedisWorldRepository
+from src.contracts.errors import ConflictError, NotFoundError, StorageUnavailableError
+from src.contracts.investigation import CaseEvent, CaseTransition
+from src.contracts.model import GameCharacter, GameState
+from src.modules.turns.service import TurnService
+from src.modules.world.gate import RedisPlayerGate
+from src.modules.world.repository import RedisWorldRepository
 
 pytestmark = pytest.mark.anyio
 
@@ -320,8 +320,8 @@ async def test_terminal_reads_do_not_require_player_gate(cycle):
 
 
 async def test_victory_editorial_is_persisted_once(cycle, storage):
-    from memorias_licantropicas.modules.session_master.service import SessionMasterService
-    from memorias_licantropicas.modules.session_master.editorial import SIGNATURE
+    from src.modules.session_master.service import SessionMasterService
+    from src.modules.session_master.editorial import SIGNATURE
     calls = []
     master = SessionMasterService(cycle.turns, storage.games, None)
     async def editor(state, game):

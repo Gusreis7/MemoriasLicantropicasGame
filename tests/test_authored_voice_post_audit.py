@@ -4,23 +4,23 @@ from native_fixtures import tool_response, respond_to_tools, invalid_tool_respon
 from datetime import UTC, datetime
 from uuid import uuid4
 import pytest
-from memorias_licantropicas.contracts.model import (
+from src.contracts.model import (
     ConversationMessage,
     GameCharacter,
     LLMResponse,
 )
-from memorias_licantropicas.modules.agents.support import dialogue_supports
+from src.modules.agents.support import dialogue_supports
 import json
-from memorias_licantropicas.modules.achievements.rules import (
+from src.modules.achievements.rules import (
     award,
     discoveries_in_reply,
 )
-from memorias_licantropicas.modules.knowledge.seeds import TOPICS
-from memorias_licantropicas.modules.investigation.rules import (
+from src.modules.knowledge.seeds import TOPICS
+from src.modules.investigation.rules import (
     make_initial_investigation,
 )
-from memorias_licantropicas.modules.session_master.rules import dialogue_transition
-from memorias_licantropicas.modules.session_master.service import DialogueAssessment
+from src.modules.session_master.rules import dialogue_transition
+from src.modules.session_master.service import DialogueAssessment
 
 pytestmark = pytest.mark.anyio
 NOW = datetime(2026, 11, 2, 12, tzinfo=UTC)

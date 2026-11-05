@@ -22,7 +22,7 @@ As frentes partem do commit de contratos e trabalham em worktrees isoladas. Cada
 
 ## Modelos e interfaces
 
-Fonte executável: `src/memorias_licantropicas/contracts/`. Os modelos são internos, imutáveis e rejeitam campos extras. Schemas públicos são separados.
+Fonte executável: `src/contracts/`. Os modelos são internos, imutáveis e rejeitam campos extras. Schemas públicos são separados.
 
 - `CharacterProfile`: ID estável, nome, biografia, personalidade, objetivo civil, objetivo lobisomem e consciência do papel (`aware`/`denial`). IDs: `bentinho`, `capitu`, `escobar`, `rubiao`, `virgilia`, `florenca`, `bacamarte`.
 - `GameState`: UUID, data UTC, versão do conteúdo e elenco com exatamente um lobisomem. Só os sete suspeitos são elegíveis; Floriano usa ID reservado `player`; Brás Cubas é referência narrativa.

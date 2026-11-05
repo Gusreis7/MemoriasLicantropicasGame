@@ -1,9 +1,9 @@
 """Teto100 cenários:21 tentativas iniciais+72 jogos seguintes+7 encontros reais.
 A divisão efetiva de calibragem/holdout está documentada no relatório; checkpoints preservam falhas.
 
-PYTHONPATH=src:scripts .venv/bin/python scripts/explore_narrative_balance.py --phase calibration
-PYTHONPATH=src:scripts .venv/bin/python scripts/explore_narrative_balance.py --phase validation
-PYTHONPATH=src:scripts .venv/bin/python scripts/explore_narrative_balance.py --phase live
+PYTHONPATH=.:scripts .venv/bin/python scripts/explore_narrative_balance.py --phase calibration
+PYTHONPATH=.:scripts .venv/bin/python scripts/explore_narrative_balance.py --phase validation
+PYTHONPATH=.:scripts .venv/bin/python scripts/explore_narrative_balance.py --phase live
 Persistência fakeredis isolada; nunca consulta/altera o Redis da aplicação.
 """
 import argparse,asyncio,json,random
@@ -15,16 +15,16 @@ from unittest.mock import patch
 from uuid import NAMESPACE_URL,uuid5
 import fakeredis
 from simulate_gameplay import Simulation,rank_suspects
-from memorias_licantropicas.contracts.errors import ConflictError,AccessDeniedError,LLMUnavailableError
-from memorias_licantropicas.contracts.model import LLMResponse
-from memorias_licantropicas.modules.knowledge.seeds import seed_social_state
-from memorias_licantropicas.modules.knowledge.rules import apply_relationship
-from memorias_licantropicas.modules.knowledge.mechanics import closeness
-from memorias_licantropicas.modules.agents.service import HarnessService
-from memorias_licantropicas.modules.session_master.service import SessionMasterService
-from memorias_licantropicas.modules.conversations.service import ConversationService
-from memorias_licantropicas.infrastructure.conversation_gate import RedisConversationGate
-from memorias_licantropicas.modules.characters.catalog import PUBLIC_BIOS
+from src.contracts.errors import ConflictError,AccessDeniedError,LLMUnavailableError
+from src.contracts.model import LLMResponse
+from src.modules.knowledge.seeds import seed_social_state
+from src.modules.knowledge.rules import apply_relationship
+from src.modules.knowledge.mechanics import closeness
+from src.modules.agents.service import HarnessService
+from src.modules.session_master.service import SessionMasterService
+from src.modules.conversations.service import ConversationService
+from src.infrastructure.conversation_gate import RedisConversationGate
+from src.modules.characters.catalog import PUBLIC_BIOS
 
 OUT=Path('docs/exploracao_narrativa')
 IDS=tuple(PUBLIC_BIOS)
@@ -51,7 +51,7 @@ class NarrativeSimulation(Simulation):
     async def survey(self,case):
         # Same movement/presentation services as production; no formal alibi endpoint.
         living=set()
-        for location in __import__('memorias_licantropicas.modules.world.catalog',fromlist=['LOCATIONS']).LOCATIONS:
+        for location in __import__('src.modules.world.catalog',fromlist=['LOCATIONS']).LOCATIONS:
             snapshot=await self.walk_to(location.id,160)
             for visible in snapshot.visible_npcs:
                 living.add(visible.npc_id)
@@ -72,7 +72,7 @@ class NarrativeSimulation(Simulation):
         assert await self.social_repository.save(social,previous.revision)
         self.actions['scripted_hostile_events']=steps
     async def natural_confess(self,suspect):
-        from memorias_licantropicas.modules.world.catalog import LOCATIONS
+        from src.modules.world.catalog import LOCATIONS
         for location in LOCATIONS:
             snap=await self.walk_to(location.id,160)
             npc=next((n for n in snap.visible_npcs if n.npc_id==suspect),None)
@@ -164,10 +164,10 @@ async def run_games(phase, limit=None):
         if result['result']=='error': raise SystemExit('Unexpected error: checkpoint saved; fix before continuing.')
 
 async def run_live():
-    from memorias_licantropicas.settings import Settings
-    from memorias_licantropicas.infrastructure.llm.bedrock_mantle import BedrockMantleClient
-    from memorias_licantropicas.infrastructure.llm.aws_credentials import ProfileTokenProvider
-    from memorias_licantropicas.infrastructure.usage import MeteredLLMClient,RedisUsageRepository,UsagePricing
+    from src.settings import Settings
+    from src.infrastructure.llm.bedrock_mantle import BedrockMantleClient
+    from src.infrastructure.llm.aws_credentials import ProfileTokenProvider
+    from src.infrastructure.usage import MeteredLLMClient,RedisUsageRepository,UsagePricing
     settings=Settings();OUT.mkdir(parents=True,exist_ok=True)
     path=OUT/'live.jsonl'
     done=len(path.read_text().splitlines()) if path.exists() else 0
@@ -184,12 +184,12 @@ async def run_live():
             model=settings.bedrock_model,timeout_seconds=20,max_tokens=512,
             token_provider=ProfileTokenProvider(settings.aws_profile,settings.aws_region) if settings.aws_profile else None)
         client=MeteredLLMClient(raw,usage,configured_model=settings.bedrock_model)
-        from memorias_licantropicas.modules.knowledge.service import KnowledgeService
+        from src.modules.knowledge.service import KnowledgeService
         knowledge=KnowledgeService(sim.social_repository,sim.catalog,client,clock=sim.clock)
         master=SessionMasterService(sim.turns,sim.games,sim.memory,client,redis,sim.prefix)
         harness=HarnessService(sim.catalog,sim.games,sim.memory,client,day_policy=sim.turns,
             context_provider=sim.investigation.npc_context_locked,knowledge_provider=knowledge.context,session_master=master)
-        from memorias_licantropicas.contracts.model import Conversation
+        from src.contracts.model import Conversation
         conversation=Conversation(id=uuid5(NAMESPACE_URL,f'live:{npc}'),game_id=sim.game_id,
             participant_ids=('player',npc),created_at=sim.clock())
         await sim.memory.create_conversation(conversation)

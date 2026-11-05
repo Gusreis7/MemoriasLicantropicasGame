@@ -9,17 +9,17 @@ import json
 
 import pytest
 
-from memorias_licantropicas.contracts.model import (
+from src.contracts.model import (
     ConversationMessage,
     GameCharacter,
     LLMResponse,
 )
-from memorias_licantropicas.modules.agents.support import (
+from src.modules.agents.support import (
     dialogue_supports,
     historical_dialogue_content,
     is_courtesy_reply,
 )
-from memorias_licantropicas.modules.session_master.service import SessionMasterService
+from src.modules.session_master.service import SessionMasterService
 
 pytestmark = pytest.mark.anyio
 

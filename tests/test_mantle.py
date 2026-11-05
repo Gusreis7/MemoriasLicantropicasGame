@@ -4,9 +4,9 @@ import traceback
 import httpx
 import pytest
 
-from memorias_licantropicas.contracts.errors import LLMUnavailableError
-from memorias_licantropicas.contracts.model import ChatMessage
-from memorias_licantropicas.infrastructure.llm.bedrock_mantle import BedrockMantleClient
+from src.contracts.errors import LLMUnavailableError
+from src.contracts.model import ChatMessage
+from src.infrastructure.llm.bedrock_mantle import BedrockMantleClient
 from unittest.mock import AsyncMock
 
 pytestmark = pytest.mark.anyio

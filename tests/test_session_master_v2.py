@@ -9,27 +9,27 @@ from uuid import uuid4
 
 import pytest
 
-from memorias_licantropicas.contracts.model import (
+from src.contracts.model import (
     Conversation,
     ConversationMessage,
     LLMResponse,
 )
-from memorias_licantropicas.modules.session_master.service import (
+from src.modules.session_master.service import (
     SessionMasterService,
     DialogueAssessment,
     direct_admission,
     local_assessment,
 )
-from memorias_licantropicas.modules.session_master.rules import dialogue_transition
-from memorias_licantropicas.modules.investigation.rules import (
+from src.modules.session_master.rules import dialogue_transition
+from src.modules.investigation.rules import (
     make_initial_investigation,
 )
-from memorias_licantropicas.modules.investigation.service import InvestigationService
-from memorias_licantropicas.modules.world.repository import RedisWorldRepository
-from memorias_licantropicas.modules.world.gate import RedisPlayerGate
-from memorias_licantropicas.modules.turns.service import TurnService
-from memorias_licantropicas.modules.agents.service import HarnessService
-from memorias_licantropicas.modules.agents.guard import DialogueGuard
+from src.modules.investigation.service import InvestigationService
+from src.modules.world.repository import RedisWorldRepository
+from src.modules.world.gate import RedisPlayerGate
+from src.modules.turns.service import TurnService
+from src.modules.agents.service import HarnessService
+from src.modules.agents.guard import DialogueGuard
 
 pytestmark = pytest.mark.anyio
 NOW = datetime(2026, 11, 2, 12, tzinfo=UTC)
@@ -384,7 +384,7 @@ async def test_outbox_recovers_history_after_case_commit(storage, catalog, game)
 
 
 async def test_persisted_authorization_preserves_confidence_but_legacy_is_redacted():
-    from memorias_licantropicas.modules.conversations.service import public_message
+    from src.modules.conversations.service import public_message
 
     secret = "É secretamente apaixonado por Bentinho desde a época do seminário."
     legacy = ConversationMessage(
@@ -610,7 +610,7 @@ async def test_invalid_master_repair_does_not_persist_a_flagged_secret(
     storage, catalog, game
 ):
     import json
-    from memorias_licantropicas.contracts.errors import LLMUnavailableError
+    from src.contracts.errors import LLMUnavailableError
 
     await storage.games.create(game)
     world = RedisWorldRepository(storage.client, storage.prefix)

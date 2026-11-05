@@ -77,10 +77,10 @@ def outcomes(rows):
 
 def algebra(root):
     """Avaliações pontuais das fórmulas, sem partidas ou amostragem aleatória."""
-    sys.path.insert(0, str(root / 'src'))
-    math = importlib.import_module('memorias_licantropicas.modules.knowledge.mechanics')
-    contracts = importlib.import_module('memorias_licantropicas.contracts.social')
-    assembly = importlib.import_module('memorias_licantropicas.modules.investigation.assembly')
+    sys.path.insert(0, str(root))
+    math = importlib.import_module('src.modules.knowledge.mechanics')
+    contracts = importlib.import_module('src.contracts.social')
+    assembly = importlib.import_module('src.modules.investigation.assembly')
     R = contracts.Relationship
     friend = (R(actor_id='capitu', target_id='escobar', affinity=70, trust=60, loyalty=70),)
     enemy = (R(actor_id='capitu', target_id='escobar', affinity=-70, trust=-60, resentment=90, suspicion=90),)

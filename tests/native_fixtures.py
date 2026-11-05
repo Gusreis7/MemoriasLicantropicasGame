@@ -1,6 +1,6 @@
 """Explicit native tool-call fixtures; never recover structured output from text."""
 
-from memorias_licantropicas.contracts.model import LLMResponse
+from src.contracts.model import LLMResponse
 
 
 def requested_schema(tools, tool_choice=None):

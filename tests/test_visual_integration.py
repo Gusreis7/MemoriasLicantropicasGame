@@ -4,7 +4,7 @@ from uuid import UUID
 
 import pytest
 
-from memorias_licantropicas.modules.world.model import WorldState
+from src.modules.world.model import WorldState
 
 pytestmark = pytest.mark.anyio
 

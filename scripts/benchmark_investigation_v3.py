@@ -1,7 +1,7 @@
 """100 cenários pareados antes/depois, cada um com diálogo Qwen e partida programada.
 
-PYTHONPATH=src:scripts .venv/bin/python scripts/benchmark_investigation_v3.py --phase before --source-root /tmp/ml-v3-baseline
-PYTHONPATH=src:scripts .venv/bin/python scripts/benchmark_investigation_v3.py --phase after --source-root .
+PYTHONPATH=.:scripts .venv/bin/python scripts/benchmark_investigation_v3.py --phase before --source-root /tmp/ml-v3-baseline
+PYTHONPATH=.:scripts .venv/bin/python scripts/benchmark_investigation_v3.py --phase after --source-root .
 Checkpoint por case_id; --limit1 permite conferir a inicialização sem repetircenários.
 """
 import argparse,asyncio,json,sys,statistics,re
@@ -15,19 +15,19 @@ parser.add_argument('--source-root',type=Path,required=True);parser.add_argument
 parser.add_argument('--concurrency',type=int,default=3);parser.add_argument('--offline',action='store_true')
 parser.add_argument('--output',type=Path,default=Path('docs/exploracao_investigacao_v3'))
 args=parser.parse_args();source=args.source_root.resolve()
-sys.path.insert(0,str(source/'src'));sys.path.insert(1,str(source/'scripts'))
+sys.path.insert(0,str(source));sys.path.insert(1,str(source/'scripts'))
 import fakeredis
 from explore_narrative_balance import NarrativeSimulation,IDS
 from simulate_gameplay import rank_suspects
-from memorias_licantropicas.contracts.model import Conversation,LLMResponse,GameState,GameCharacter
-from memorias_licantropicas.contracts.errors import ConflictError,AccessDeniedError
-from memorias_licantropicas.modules.agents.service import HarnessService
-from memorias_licantropicas.modules.session_master.service import SessionMasterService
-from memorias_licantropicas.modules.knowledge.service import KnowledgeService
-from memorias_licantropicas.infrastructure.usage import RedisUsageRepository,MeteredLLMClient,UsagePricing
-from memorias_licantropicas.infrastructure.llm.bedrock_mantle import BedrockMantleClient
-from memorias_licantropicas.infrastructure.llm.aws_credentials import ProfileTokenProvider
-from memorias_licantropicas.settings import Settings
+from src.contracts.model import Conversation,LLMResponse,GameState,GameCharacter
+from src.contracts.errors import ConflictError,AccessDeniedError
+from src.modules.agents.service import HarnessService
+from src.modules.session_master.service import SessionMasterService
+from src.modules.knowledge.service import KnowledgeService
+from src.infrastructure.usage import RedisUsageRepository,MeteredLLMClient,UsagePricing
+from src.infrastructure.llm.bedrock_mantle import BedrockMantleClient
+from src.infrastructure.llm.aws_credentials import ProfileTokenProvider
+from src.settings import Settings
 
 POLICIES=('informed','common_rush','unexamined','single_source','informed')
 QUESTIONS=('help','relations','alibi','object','followup')
@@ -76,7 +76,7 @@ class EvaluationSimulation(NarrativeSimulation):
         case=await self.investigation.get(self.game_id)
         if kind in ('object','followup'):
             case=await self.collect(case)
-            from memorias_licantropicas.modules.world.catalog import LOCATIONS
+            from src.modules.world.catalog import LOCATIONS
             for loc in LOCATIONS:
                 snap=await self.walk_to(loc.id,160)
                 npc=next((n for n in snap.visible_npcs if n.npc_id==actor),None)

@@ -5,13 +5,13 @@ from uuid import UUID, uuid4
 import pytest
 import httpx
 
-from memorias_licantropicas.contracts.errors import (
+from src.contracts.errors import (
     LLM_PUBLIC_DETAILS,
     LLMUnavailableError,
     StorageUnavailableError,
 )
-from memorias_licantropicas.contracts.model import Conversation, LLMResponse
-from memorias_licantropicas.infrastructure.llm.bedrock_mantle import BedrockMantleClient
+from src.contracts.model import Conversation, LLMResponse
+from src.infrastructure.llm.bedrock_mantle import BedrockMantleClient
 
 pytestmark = pytest.mark.anyio
 
@@ -19,7 +19,7 @@ pytestmark = pytest.mark.anyio
 async def open_conversation(client, storage, npc_id="capitu"):
     game = (await client.post("/api/v1/games")).json()
     world_key = f"{storage.prefix}:game:{{{game['id']}}}:world"
-    from memorias_licantropicas.modules.world.model import WorldState
+    from src.modules.world.model import WorldState
 
     world = WorldState.model_validate_json(await storage.client.get(world_key))
     target = next(npc for npc in world.npcs if npc.npc_id == npc_id)
@@ -78,7 +78,7 @@ async def test_existing_v2_game_keeps_dialogue_after_catalog_v3_upgrade(
         state_key, state.model_copy(update={"content_version": "2"}).model_dump_json()
     )
     world_key = f"{storage.prefix}:game:{{{game_id}}}:world"
-    from memorias_licantropicas.modules.world.model import WorldState
+    from src.modules.world.model import WorldState
 
     world = WorldState.model_validate_json(await storage.client.get(world_key))
     capitu = next(npc for npc in world.npcs if npc.npc_id == "capitu")
@@ -174,10 +174,10 @@ async def test_http_dialogue_error_exposes_only_whitelisted_diagnostic(
     diagnostic_logs = [
         record.getMessage()
         for record in caplog.records
-        if record.name == "memorias_licantropicas.main"
+        if record.name == "src.main"
     ]
     if expected_code in {"llm_invalid_response", "llm_response_truncated"}:
-        from memorias_licantropicas.modules.agents.workflow import TECHNICAL_FALLBACK
+        from src.modules.agents.workflow import TECHNICAL_FALLBACK
 
         assert response.status_code == 200
         assert response.json()["message"]["content"] == TECHNICAL_FALLBACK
@@ -231,7 +231,7 @@ async def test_missing_or_expired_credentials_do_not_send_http_or_save_half_dial
     with_profile,
     code,
 ):
-    import memorias_licantropicas.infrastructure.llm.aws_credentials as credentials_module
+    import src.infrastructure.llm.aws_credentials as credentials_module
 
     game, conversation = await open_conversation(api_client, storage)
     url = f"/api/v1/games/{game['id']}/conversations/{conversation['id']}/messages"
@@ -297,7 +297,7 @@ async def test_invalid_persona_output_returns_safe_specific_diagnostic(
 
     monkeypatch.setattr(llm, "complete", invalid)
     response = await api_client.post(url, json={"content": "Olá"})
-    from memorias_licantropicas.modules.agents.workflow import TECHNICAL_FALLBACK
+    from src.modules.agents.workflow import TECHNICAL_FALLBACK
 
     assert response.status_code == 200
     assert response.json()["message"]["content"] == TECHNICAL_FALLBACK

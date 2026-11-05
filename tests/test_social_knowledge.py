@@ -8,18 +8,18 @@ from uuid import uuid4
 import pytest
 from native_fixtures import respond_to_tools, requested_schema, invalid_tool_response
 
-from memorias_licantropicas.contracts.errors import (
+from src.contracts.errors import (
     AccessDeniedError,
     LLMUnavailableError,
     StorageUnavailableError,
 )
-from memorias_licantropicas.contracts.model import (
+from src.contracts.model import (
     Conversation,
     ConversationMessage,
     LLMResponse,
 )
-from memorias_licantropicas.contracts.investigation import InvestigationState
-from memorias_licantropicas.contracts.social import (
+from src.contracts.investigation import InvestigationState
+from src.contracts.social import (
     Encounter,
     ExchangeRecord,
     KnowledgeEntry,
@@ -27,18 +27,18 @@ from memorias_licantropicas.contracts.social import (
     SocialMessage,
     SocialState,
 )
-from memorias_licantropicas.infrastructure.social_repository import (
+from src.infrastructure.social_repository import (
     RedisSocialRepository,
 )
-from memorias_licantropicas.modules.agents.guard import SAFE_DIALOGUE_REPLY
-from memorias_licantropicas.modules.knowledge.rules import (
+from src.modules.agents.guard import SAFE_DIALOGUE_REPLY
+from src.modules.knowledge.rules import (
     apply_relationship,
     initial_relationships,
     relationship_for,
     transmit,
 )
-from memorias_licantropicas.modules.knowledge.service import KnowledgeService
-from memorias_licantropicas.modules.world.repository import RedisWorldRepository
+from src.modules.knowledge.service import KnowledgeService
+from src.modules.world.repository import RedisWorldRepository
 
 pytestmark = pytest.mark.anyio
 

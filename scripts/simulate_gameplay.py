@@ -25,27 +25,27 @@ from uuid import UUID, uuid4
 import fakeredis
 from redis.asyncio import Redis
 
-from memorias_licantropicas.contracts.errors import ConflictError, AccessDeniedError, LLMUnavailableError
-from memorias_licantropicas.contracts.model import GameCharacter, GameState
-from memorias_licantropicas.infrastructure.conversation_gate import RedisConversationGate
-from memorias_licantropicas.infrastructure.llm.aws_credentials import ProfileTokenProvider
-from memorias_licantropicas.infrastructure.llm.bedrock_mantle import BedrockMantleClient
-from memorias_licantropicas.infrastructure.redis_repository import RedisGameRepository, RedisMemoryRepository
-from memorias_licantropicas.infrastructure.social_repository import RedisSocialRepository
-from memorias_licantropicas.infrastructure.usage import MeteredLLMClient, RedisUsageRepository, UsagePricing
-from memorias_licantropicas.modules.agents.service import HarnessService
-from memorias_licantropicas.modules.characters.repository import CatalogCharacterRepository
-from memorias_licantropicas.modules.conversations.service import ConversationService
-from memorias_licantropicas.modules.investigation.service import InvestigationService
-from memorias_licantropicas.modules.knowledge.service import KnowledgeService
-from memorias_licantropicas.modules.social.service import SocialService
-from memorias_licantropicas.modules.turns.service import TurnService
-from memorias_licantropicas.modules.world.catalog import LOCATIONS
-from memorias_licantropicas.modules.world.gate import RedisPlayerGate
-from memorias_licantropicas.modules.world.repository import RedisWorldRepository
-from memorias_licantropicas.modules.world.schema import MoveRequest, TravelRequest
-from memorias_licantropicas.modules.world.service import WorldService
-from memorias_licantropicas.settings import Settings
+from src.contracts.errors import ConflictError, AccessDeniedError, LLMUnavailableError
+from src.contracts.model import GameCharacter, GameState
+from src.infrastructure.conversation_gate import RedisConversationGate
+from src.infrastructure.llm.aws_credentials import ProfileTokenProvider
+from src.infrastructure.llm.bedrock_mantle import BedrockMantleClient
+from src.infrastructure.redis_repository import RedisGameRepository, RedisMemoryRepository
+from src.infrastructure.social_repository import RedisSocialRepository
+from src.infrastructure.usage import MeteredLLMClient, RedisUsageRepository, UsagePricing
+from src.modules.agents.service import HarnessService
+from src.modules.characters.repository import CatalogCharacterRepository
+from src.modules.conversations.service import ConversationService
+from src.modules.investigation.service import InvestigationService
+from src.modules.knowledge.service import KnowledgeService
+from src.modules.social.service import SocialService
+from src.modules.turns.service import TurnService
+from src.modules.world.catalog import LOCATIONS
+from src.modules.world.gate import RedisPlayerGate
+from src.modules.world.repository import RedisWorldRepository
+from src.modules.world.schema import MoveRequest, TravelRequest
+from src.modules.world.service import WorldService
+from src.settings import Settings
 
 
 @dataclass
@@ -163,7 +163,7 @@ class Simulation:
     async def next_morning(self):
         # A prisão aceita já inicia a noite. Todas as leituras que podem resolver
         # uma noite usam o mesmo PRNG da simulação, inclusive a sincronização inicial.
-        with patch("memorias_licantropicas.modules.investigation.rules.choice", self.rng.choice):
+        with patch("src.modules.investigation.rules.choice", self.rng.choice):
             case = await self.investigation.get(self.game_id)
             if case.status != "active" or case.phase == "finished":
                 return case

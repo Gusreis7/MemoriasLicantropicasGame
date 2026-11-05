@@ -11,37 +11,37 @@ import pytest
 from native_fixtures import respond_to_tools
 from redis.asyncio import Redis
 
-import memorias_licantropicas.main as main_module
-from memorias_licantropicas.composition import Services
-from memorias_licantropicas.contracts.model import (
+import src.main as main_module
+from src.composition import Services
+from src.contracts.model import (
     Conversation,
     ConversationMessage,
     GameCharacter,
     GameState,
     LLMResponse,
 )
-from memorias_licantropicas.infrastructure.redis_repository import (
+from src.infrastructure.redis_repository import (
     RedisGameRepository,
     RedisMemoryRepository,
 )
-from memorias_licantropicas.modules.agents.service import HarnessService
-from memorias_licantropicas.modules.characters.repository import (
+from src.modules.agents.service import HarnessService
+from src.modules.characters.repository import (
     CatalogCharacterRepository,
 )
-from memorias_licantropicas.modules.characters.service import CharacterService
-from memorias_licantropicas.modules.games.service import GameService
-from memorias_licantropicas.modules.conversations.service import ConversationService
-from memorias_licantropicas.infrastructure.conversation_gate import (
+from src.modules.characters.service import CharacterService
+from src.modules.games.service import GameService
+from src.modules.conversations.service import ConversationService
+from src.infrastructure.conversation_gate import (
     RedisConversationGate,
 )
-from memorias_licantropicas.modules.world.repository import RedisWorldRepository
-from memorias_licantropicas.modules.world.service import WorldService
-from memorias_licantropicas.modules.world.gate import RedisPlayerGate
-from memorias_licantropicas.modules.admin.auth import AdminAuth
-from memorias_licantropicas.modules.admin.service import AdminService
-from memorias_licantropicas.modules.turns.service import TurnService
-from memorias_licantropicas.modules.investigation.service import InvestigationService
-from memorias_licantropicas.settings import Settings
+from src.modules.world.repository import RedisWorldRepository
+from src.modules.world.service import WorldService
+from src.modules.world.gate import RedisPlayerGate
+from src.modules.admin.auth import AdminAuth
+from src.modules.admin.service import AdminService
+from src.modules.turns.service import TurnService
+from src.modules.investigation.service import InvestigationService
+from src.settings import Settings
 
 
 def pytest_addoption(parser):
@@ -253,6 +253,6 @@ async def api_client(monkeypatch, catalog, storage, llm):
 def single_wolf_attack(monkeypatch):
     """Cenário de regressão com um ataque; os testes v4 exercitam as demais noites."""
     monkeypatch.setattr(
-        "memorias_licantropicas.modules.investigation.night_story.roll",
+        "src.modules.investigation.night_story.roll",
         lambda story, night, channel: 0.0 if channel == "werewolf" else 1.0,
     )

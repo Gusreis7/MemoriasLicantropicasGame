@@ -5,13 +5,13 @@ from uuid import uuid4
 
 import pytest
 
-from memorias_licantropicas.contracts.errors import (
+from src.contracts.errors import (
     LLMUnavailableError,
     StorageUnavailableError,
 )
-from memorias_licantropicas.contracts.model import ChatMessage, LLMResponse
-from memorias_licantropicas.contracts.usage import UsagePricing, UsageRecord
-from memorias_licantropicas.infrastructure.usage import (
+from src.contracts.model import ChatMessage, LLMResponse
+from src.contracts.usage import UsagePricing, UsageRecord
+from src.infrastructure.usage import (
     MeteredLLMClient,
     RedisUsageRepository,
     usage_scope,
@@ -218,8 +218,8 @@ async def test_metering_failure_preserves_paid_response(storage, game, caplog):
 async def test_default_rates_apply_only_to_verified_region_and_model(
     region, model, expected
 ):
-    from memorias_licantropicas.composition import build_services
-    from memorias_licantropicas.settings import Settings
+    from src.composition import build_services
+    from src.settings import Settings
 
     services = build_services(
         Settings(_env_file=None, aws_region=region, bedrock_model=model)

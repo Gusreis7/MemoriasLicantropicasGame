@@ -5,25 +5,25 @@ from datetime import UTC, datetime
 from uuid import uuid4
 import json
 import pytest
-from memorias_licantropicas.contracts.model import ConversationMessage, LLMResponse
-from memorias_licantropicas.contracts.social import Relationship, SocialState
-from memorias_licantropicas.modules.agents.support import (
+from src.contracts.model import ConversationMessage, LLMResponse
+from src.contracts.social import Relationship, SocialState
+from src.modules.agents.support import (
     dialogue_supports,
     compact_observations,
 )
-from memorias_licantropicas.modules.knowledge.mechanics import can_confide_personal
-from memorias_licantropicas.modules.knowledge.service import KnowledgeService
-from memorias_licantropicas.modules.knowledge.seeds import seed_social_state
-from memorias_licantropicas.modules.achievements.rules import (
+from src.modules.knowledge.mechanics import can_confide_personal
+from src.modules.knowledge.service import KnowledgeService
+from src.modules.knowledge.seeds import seed_social_state
+from src.modules.achievements.rules import (
     award,
     discoveries_in_reply,
 )
-from memorias_licantropicas.modules.session_master.service import (
+from src.modules.session_master.service import (
     DialogueAssessment,
     local_assessment,
 )
-from memorias_licantropicas.modules.session_master.rules import dialogue_transition
-from memorias_licantropicas.modules.investigation.rules import (
+from src.modules.session_master.rules import dialogue_transition
+from src.modules.investigation.rules import (
     make_initial_investigation,
 )
 
@@ -300,7 +300,7 @@ async def test_personal_trace_award_is_idempotent_and_does_not_change_proofs(gam
 
 
 async def test_local_guard_rejects_paraphrased_early_confidence():
-    from memorias_licantropicas.modules.agents.support import (
+    from src.modules.agents.support import (
         unauthorized_personal_disclosure,
     )
 
@@ -324,7 +324,7 @@ async def test_local_guard_rejects_paraphrased_early_confidence():
 async def test_compact_context_keeps_source_access_without_loading_every_transcript(
     catalog,
 ):
-    from memorias_licantropicas.modules.agents.grounding import grounding_issues
+    from src.modules.agents.grounding import grounding_issues
 
     profile = await catalog.get("virgilia")
     obs = social_observations()

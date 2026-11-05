@@ -7,25 +7,25 @@ from uuid import uuid4
 import pytest
 from native_fixtures import respond_to_tools
 
-from memorias_licantropicas.contracts.model import (
+from src.contracts.model import (
     Conversation,
     ConversationMessage,
     GameCharacter,
     GameState,
     LLMResponse,
 )
-from memorias_licantropicas.infrastructure.social_repository import (
+from src.infrastructure.social_repository import (
     RedisSocialRepository,
 )
-from memorias_licantropicas.modules.agents.service import HarnessService
-from memorias_licantropicas.modules.investigation.service import InvestigationService
-from memorias_licantropicas.modules.knowledge.service import KnowledgeService
-from memorias_licantropicas.modules.social.service import SocialService
-from memorias_licantropicas.modules.social.views import SocialReadService
-from memorias_licantropicas.modules.turns.service import TurnService
-from memorias_licantropicas.modules.world.gate import RedisPlayerGate
-from memorias_licantropicas.modules.world.repository import RedisWorldRepository
-from memorias_licantropicas.modules.world.service import WorldService
+from src.modules.agents.service import HarnessService
+from src.modules.investigation.service import InvestigationService
+from src.modules.knowledge.service import KnowledgeService
+from src.modules.social.service import SocialService
+from src.modules.social.views import SocialReadService
+from src.modules.turns.service import TurnService
+from src.modules.world.gate import RedisPlayerGate
+from src.modules.world.repository import RedisWorldRepository
+from src.modules.world.service import WorldService
 
 
 pytestmark = pytest.mark.anyio

@@ -3,12 +3,12 @@ from uuid import uuid4
 
 import pytest
 
-from memorias_licantropicas.infrastructure.llm.structured import generate_structured
-from memorias_licantropicas.contracts.model import ChatMessage, LLMResponse
+from src.infrastructure.llm.structured import generate_structured
+from src.contracts.model import ChatMessage, LLMResponse
 from native_fixtures import respond_to_tools, invalid_tool_response
-from memorias_licantropicas.contracts.generation import Extraction
-from memorias_licantropicas.modules.knowledge.service import attributed_utterance
-from memorias_licantropicas.modules.agents.grounding import grounding_issues
+from src.contracts.generation import Extraction
+from src.modules.knowledge.service import attributed_utterance
+from src.modules.agents.grounding import grounding_issues
 
 
 @pytest.mark.anyio

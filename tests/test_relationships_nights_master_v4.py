@@ -3,20 +3,20 @@ from uuid import uuid4
 from collections import Counter
 import pytest
 from test_interrogations import inquiry
-from memorias_licantropicas.contracts.model import GameState,GameCharacter,ConversationMessage
-from memorias_licantropicas.contracts.social import SocialState
-from memorias_licantropicas.contracts.investigation import NightStory,MurderPlot
-from memorias_licantropicas.modules.knowledge.affects import IDS,MATRIX,initial_affects
-from memorias_licantropicas.modules.knowledge.rules import legacy_relationships,initial_relationships
-from memorias_licantropicas.modules.knowledge.seeds import seed_social_state
-from memorias_licantropicas.modules.investigation.rules import make_initial_investigation,choose_victim,make_crime
-from memorias_licantropicas.modules.investigation.night_story import resolve_story,civil_probability,plot_context
-from memorias_licantropicas.modules.session_master.service import local_assessment
-from memorias_licantropicas.modules.session_master.rules import dialogue_transition
-from memorias_licantropicas.modules.session_master.reports import useful_report
-from memorias_licantropicas.modules.session_master.editorial import final_edition
-from memorias_licantropicas.modules.agents.support import compact_observations
-from memorias_licantropicas.modules.conversations.service import public_message
+from src.contracts.model import GameState,GameCharacter,ConversationMessage
+from src.contracts.social import SocialState
+from src.contracts.investigation import NightStory,MurderPlot
+from src.modules.knowledge.affects import IDS,MATRIX,initial_affects
+from src.modules.knowledge.rules import legacy_relationships,initial_relationships
+from src.modules.knowledge.seeds import seed_social_state
+from src.modules.investigation.rules import make_initial_investigation,choose_victim,make_crime
+from src.modules.investigation.night_story import resolve_story,civil_probability,plot_context
+from src.modules.session_master.service import local_assessment
+from src.modules.session_master.rules import dialogue_transition
+from src.modules.session_master.reports import useful_report
+from src.modules.session_master.editorial import final_edition
+from src.modules.agents.support import compact_observations
+from src.modules.conversations.service import public_message
 
 NOW=datetime(2026,11,4,12,tzinfo=UTC)
 
@@ -61,7 +61,7 @@ def test_civil_plot_is_a_living_civil_pair_never_wolf_self_or_bras():
 
 def test_wolf_cannot_skip_two_nights_even_when_civil_kills(monkeypatch):
  game,state=scenario()
- monkeypatch.setattr('memorias_licantropicas.modules.investigation.night_story.roll',lambda s,n,c: .99 if c=='werewolf' else 0.)
+ monkeypatch.setattr('src.modules.investigation.night_story.roll',lambda s,n,c: .99 if c=='werewolf' else 0.)
  story,attacks=resolve_story(state,game,choose_victim)
  assert [cause for _,_,cause in attacks]==['civil'] and story.skipped_nights==1
  story,attacks=resolve_story(state.model_copy(update={'day':2,'night_story':story}),game,choose_victim)
@@ -69,7 +69,7 @@ def test_wolf_cannot_skip_two_nights_even_when_civil_kills(monkeypatch):
 
 def test_wolf_killing_target_frustrates_plot_and_no_second_murder(monkeypatch):
  game,state=scenario()
- monkeypatch.setattr('memorias_licantropicas.modules.investigation.night_story.roll',lambda *a:0.)
+ monkeypatch.setattr('src.modules.investigation.night_story.roll',lambda *a:0.)
  story,attacks=resolve_story(state,game,lambda *a,**k:'florenca')
  assert attacks==(('bentinho','florenca','werewolf'),)
  assert story.plot.status=='frustrated' and story.plot.stress==90 and story.plot.attempts==0
@@ -79,14 +79,14 @@ def test_wolf_killing_target_frustrates_plot_and_no_second_murder(monkeypatch):
 
 def test_two_distinct_crime_authors_in_one_night_and_stable_rolls(monkeypatch):
  game,state=scenario()
- monkeypatch.setattr('memorias_licantropicas.modules.investigation.night_story.roll',lambda *a:0.)
+ monkeypatch.setattr('src.modules.investigation.night_story.roll',lambda *a:0.)
  story,attacks=resolve_story(state,game,lambda *a,**k:'capitu')
  assert len(attacks)==2 and len({v for _,v,_ in attacks})==2
  assert resolve_story(state,game,lambda *a,**k:'capitu')==(story,attacks)
  assert story.plot.status=='succeeded'
 
 def test_police_and_deaths_prevent_civil_action(monkeypatch):
- game,state=scenario();monkeypatch.setattr('memorias_licantropicas.modules.investigation.night_story.roll',lambda *a:0.)
+ game,state=scenario();monkeypatch.setattr('src.modules.investigation.night_story.roll',lambda *a:0.)
  story,attacks=resolve_story(state.model_copy(update={'detained_npc_id':'rubiao'}),game,lambda *a,**k:'capitu')
  assert all(cause!='civil' for _,_,cause in attacks) and story.plot.attempts==0
 
@@ -129,7 +129,7 @@ def test_master_final_paper_uses_actual_ending_without_inventing_transformation(
 
 
 def test_only_own_feelings_survive_harness_context_projection():
- from memorias_licantropicas.modules.characters.repository import CatalogCharacterRepository
+ from src.modules.characters.repository import CatalogCharacterRepository
  import asyncio
  profile=asyncio.run(CatalogCharacterRepository().get('capitu'))
  feelings=[{'por':'bentinho','sentimento':'ódio e amor'}]
@@ -142,8 +142,8 @@ async def test_transactional_night_publishes_both_deaths_but_no_private_plot(inq
  state=await inquiry.turns.sync(inquiry.game.id)
  state=state.model_copy(update={'night_story':NightStory(seed='integration',plot=MurderPlot(planner_id='rubiao',target_id='florenca'))})
  await inquiry.storage.client.set(inquiry.key+':investigation',state.model_dump_json())
- monkeypatch.setattr('memorias_licantropicas.modules.investigation.night_story.roll',lambda *a:0.)
- monkeypatch.setattr('memorias_licantropicas.modules.investigation.rules.choose_victim',lambda *a,**k:'bentinho')
+ monkeypatch.setattr('src.modules.investigation.night_story.roll',lambda *a:0.)
+ monkeypatch.setattr('src.modules.investigation.rules.choose_victim',lambda *a,**k:'bentinho')
  inquiry.clock[0]=state.phase_ends_at+timedelta(seconds=8)
  public=await inquiry.service.get(inquiry.game.id)
  assert public.day==2 and len(public.crimes)==3 and public.status=='active'
@@ -164,7 +164,7 @@ async def test_ordinary_detainee_does_not_win_and_paper_does_not_name_wolf(inqui
  state=await inquiry.turns.sync(inquiry.game.id)
  state=state.model_copy(update={'detained_npc_id':'rubiao','night_story':NightStory(seed='detained',plot=MurderPlot(planner_id='rubiao',target_id='florenca'))})
  await inquiry.storage.client.set(inquiry.key+':investigation',state.model_dump_json())
- monkeypatch.setattr('memorias_licantropicas.modules.investigation.night_story.roll',lambda *a: .99)
+ monkeypatch.setattr('src.modules.investigation.night_story.roll',lambda *a: .99)
  inquiry.clock[0]=state.phase_ends_at+timedelta(seconds=8)
  public=await inquiry.service.get(inquiry.game.id)
  assert public.status=='active' and public.ending is None and public.journal[-1].detention_outcome=='released'
@@ -179,7 +179,7 @@ def test_new_matrix_is_not_rebased_twice_before_topics_seeded():
 
 
 def test_protected_last_victim_still_counts_as_a_quiet_wolf_night(monkeypatch):
- game,state=scenario();monkeypatch.setattr('memorias_licantropicas.modules.investigation.night_story.roll',lambda *a:.99)
+ game,state=scenario();monkeypatch.setattr('src.modules.investigation.night_story.roll',lambda *a:.99)
  state=state.model_copy(update={'night_story':state.night_story.model_copy(update={'plot':None})})
  story,attacks=resolve_story(state,game,lambda *a,**k:None)
  assert not attacks and story.skipped_nights==1

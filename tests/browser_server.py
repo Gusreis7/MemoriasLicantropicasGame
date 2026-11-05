@@ -6,15 +6,15 @@ import sys
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import uvicorn
 from native_fixtures import respond_to_tools
-import memorias_licantropicas.main as main_module
-from memorias_licantropicas.composition import build_services
-from memorias_licantropicas.contracts.model import LLMResponse
-from memorias_licantropicas.settings import Settings
-from memorias_licantropicas.simulation.model import OfflineSessionModel
+import src.main as main_module
+from src.composition import build_services
+from src.contracts.model import LLMResponse
+from src.settings import Settings
+from src.simulation.model import OfflineSessionModel
 from pydantic import BaseModel, ConfigDict, Field
 
 clock_offset = [0.0]

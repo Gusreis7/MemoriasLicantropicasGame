@@ -1,7 +1,7 @@
 import httpx
 import pytest
-from memorias_licantropicas.settings import Settings
-from memorias_licantropicas.infrastructure.llm import aws_credentials
+from src.settings import Settings
+from src.infrastructure.llm import aws_credentials
 
 pytestmark = pytest.mark.anyio
 
@@ -36,7 +36,7 @@ async def test_admin_password_comes_from_mounted_secret_not_html_environment(tmp
 
 
 async def test_production_docs_disabled_and_host_header_checked(monkeypatch):
-    import memorias_licantropicas.main as module
+    import src.main as module
 
     monkeypatch.setattr(
         module,

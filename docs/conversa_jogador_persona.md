@@ -74,7 +74,7 @@ As dependências de geração de token e `botocore[crt]` passam a runtime, pois 
 ```sh
 uv sync --locked
 docker compose up -d redis
-AWS_PROFILE=terraform AWS_REGION=us-east-1 uv run uvicorn memorias_licantropicas.main:app --reload
+AWS_PROFILE=terraform AWS_REGION=us-east-1 uv run uvicorn src.main:app --reload
 ```
 
 Para esse caminho, a sessão AWS CLI deve estar válida. O cache do host não é montado automaticamente no container da API; execute a API no host para usar seu perfil. O Compose da aplicação continua aceitando bearer token por ambiente.

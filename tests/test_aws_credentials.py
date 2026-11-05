@@ -4,8 +4,8 @@ import traceback
 import pytest
 from botocore.exceptions import ProfileNotFound
 
-import memorias_licantropicas.infrastructure.llm.aws_credentials as module
-from memorias_licantropicas.contracts.errors import LLMUnavailableError
+import src.infrastructure.llm.aws_credentials as module
+from src.contracts.errors import LLMUnavailableError
 
 pytestmark = pytest.mark.anyio
 
