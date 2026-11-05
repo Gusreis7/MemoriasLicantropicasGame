@@ -8,6 +8,7 @@ from uuid import uuid4
 import fakeredis
 import httpx
 import pytest
+from native_fixtures import respond_to_tools
 from redis.asyncio import Redis
 
 import memorias_licantropicas.main as main_module
@@ -118,11 +119,12 @@ class StubLLM:
         self.error = None
         self.closed = False
 
-    async def complete(self, messages):
+    async def complete(self, messages, *, tools=(), tool_choice=None):
         self.calls.append(messages)
         if self.error:
             raise self.error
-        return LLMResponse(content='{"fala":"Sei apenas o que me contaram."}', model="stub", input_tokens=10, output_tokens=8)
+        return respond_to_tools({"fala": "Sei apenas o que me contaram."}, tools, tool_choice,
+                                model="stub", input_tokens=10, output_tokens=8)
 
     async def aclose(self):
         self.closed = True

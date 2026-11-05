@@ -9,6 +9,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 import uvicorn
+from native_fixtures import respond_to_tools
 import memorias_licantropicas.main as main_module
 from memorias_licantropicas.composition import build_services
 from memorias_licantropicas.contracts.model import LLMResponse
@@ -41,13 +42,13 @@ def test_services(_settings):
 
     provider = OfflineSessionModel()
 
-    async def complete(messages):
+    async def complete(messages, *, tools=(), tool_choice=None):
         task = provider.task_for(messages)
         if task == "npc_dialogue":
-            return LLMResponse(content=json.dumps({
+            return respond_to_tools({
                 "fala": "Ouvi os rumores sobre Brás Cubas, mas não vi o que aconteceu.",
-            }), model="deterministic-browser-test", input_tokens=1, output_tokens=1)
-        return await provider.complete(messages)
+            }, tools, tool_choice, model="deterministic-browser-test", input_tokens=1, output_tokens=1)
+        return await provider.complete(messages, tools=tools, tool_choice=tool_choice)
 
     # Replace every transport, preserving the production meters and graph. The
     # dialogue/master clients are distinct from the base services.llm client.
