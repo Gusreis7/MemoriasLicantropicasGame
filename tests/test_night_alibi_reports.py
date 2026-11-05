@@ -41,5 +41,8 @@ def test_only_selected_useful_reports_affect_dossier(game):
     assert not selected.accepted
     assert assess_dossier(state, "escobar", (), (), (first, second, third)).custody_route == "witness_reports"
     assert assess_dossier(state, "capitu", (), (), (first, second)).total == baseline.total
+    ambiguous = dict(reports[1], outgoing="Estou sozinha nisso, a não ser pela companhia de Bentinho.")
+    state = state.model_copy(update={"dialogue_events": (reports[0], ambiguous, reports[2])})
+    assert assess_dossier(state, "escobar", (), (), (second,)).total == 0
     with pytest.raises(NotFoundError):
         assess_dossier(state, "escobar", (), (), (uuid4(),))

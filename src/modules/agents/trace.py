@@ -23,6 +23,7 @@ class DialogueTrace(BaseModel):
     status: Literal["completed", "fallback", "error", "cancelled"]
     error_code: str | None = None
     fallback: bool = False
+    review_issues: tuple[str, ...] = ()
 
 
 TraceSink = Callable[[DialogueTrace], Awaitable[None]]
@@ -39,6 +40,7 @@ class DialogueAudit:
     status: str = "error"
     error_code: str | None = None
     fallback: bool = False
+    review_issues: list[str] = field(default_factory=list)
 
 
 class RedisDialogueTraceRecorder:

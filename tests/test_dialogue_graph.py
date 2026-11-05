@@ -33,6 +33,28 @@ def speech(text="Bom dia, Floriano."):
     return tool_response({"fala": text}, "NpcSpeech", model="simulated")
 
 
+def test_alibi_validator_does_not_confuse_unrelated_words_or_negation():
+    from src.modules.agents.trace import DialogueAudit
+    from src.modules.agents.workflow import DialogueRequest, DialogueWorkflow
+    from src.contracts.model import GameCharacter
+
+    def validate(content):
+        state = {
+            "audit": DialogueAudit(),
+            "request": DialogueRequest(uuid4(), "capitu", uuid4(), "player", "O que estava fazendo ontem à noite?"),
+            "npc": GameCharacter(character_id="capitu", role="civil"),
+            "observations": {"suas_atividades": [{"dia": 1, "periodo": "night", "companhias": ["bentinho"]}]},
+            "assessment": DialogueAssessment(kind="alibi", day=1, period="night"),
+            "names": {"capitu": "Capitu", "bentinho": "Bentinho", "escobar": "Escobar"},
+            "content": content,
+        }
+        return DialogueWorkflow.semantic_validation(None, state)["issues"]
+
+    assert not validate("Ninguém sabe do crime. Estava com Bentinho; não estava sozinha.")
+    assert "unsupported_fact" in validate("Passei a noite sozinha.")
+    assert "unsupported_fact" in validate("Estava com Escobar.")
+
+
 async def test_graph_has_separate_conditional_stages_and_success_trace(
     harness, storage, game
 ):
@@ -137,6 +159,7 @@ async def test_one_semantic_repair_then_persist_valid_persona_speech(
     reply = await harness.respond(game.id, "bentinho", uuid4(), "player", "Bom dia")
     assert reply.message.content == "Bom dia, Floriano."
     assert traces[0].nodes.count("repair") == 1 and traces[0].attempts == 2
+    assert traces[0].review_issues == ("off_topic",)
     assert len(saved) == 1 and not saved[0].issues
     prompt = llm.complete.await_args_list[-1].args[0]
     assert any("[task:dialogue_repair]" in message.content for message in prompt)

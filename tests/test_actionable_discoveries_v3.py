@@ -92,6 +92,20 @@ async def test_compact_context_excludes_irrelevant_inventory_and_repeated_rules(
     assert "omitir_quando" not in prompt and "Pessoa sem relação" not in prompt
 
 
+async def test_public_death_remains_available_without_keyword_support(catalog):
+    profile = await catalog.get("capitu")
+    obs = social_observations()
+    obs["jornal_publico"] = [{"dia": 2, "manchete": "Rubião faleceu", "noticia": "Rubião foi encontrado morto."}]
+    compact = compact_observations(profile, obs, "Rubião faleceu noite passada, Capitu.")
+    assert compact["jornal_publico"] == obs["jornal_publico"]
+
+
+async def test_alibi_question_takes_precedence_over_witness_suspicion():
+    observations = {"suas_suspeitas_pessoais": [{"pessoa": "Escobar"}]}
+    focus = dialogue_focus("Onde estava na noite em que Brás Cubas morreu?", observations)
+    assert "onde estava" in focus and "suas_atividades" in focus
+
+
 async def test_relational_impulse_survives_compaction_and_allows_subjective_accusation(
     catalog,
 ):

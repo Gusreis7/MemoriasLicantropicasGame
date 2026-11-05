@@ -226,6 +226,7 @@ class DialogueWorkflow:
             status=audit.status,
             error_code=audit.error_code,
             fallback=audit.fallback,
+            review_issues=tuple(audit.review_issues),
         )
         logger.info(
             "dialogue_graph status=%s attempts=%d fallback=%s code=%s invocation=%s",
@@ -460,25 +461,33 @@ class DialogueWorkflow:
         if grounding_issues(content, observations, state["names"]):
             issues.append("unsupported_fact")
         from src.modules.agents.support import is_alibi_question
-        from src.textutils import normalize, word_tokens
+        from src.textutils import normalize, word_tokens, clauses, has_any_phrase
         if state["npc"].role == "civil" and is_alibi_question(state["request"].text):
             activities = (observations or {}).get("suas_atividades", ())
-            recent_night = next((item for item in reversed(activities) if item.get("periodo") == "night"), None)
-            tokens = set(word_tokens(normalize(content)))
-            if recent_night and recent_night.get("companhias") and tokens & {"sozinho", "sozinha", "desacompanhado", "desacompanhada"}:
-                issues.append("unsupported_fact")
-            if recent_night and recent_night.get("companhias") and tokens & {"ninguem"}:
-                issues.append("unsupported_fact")
-            if recent_night and (tokens & {"comigo", "acompanhou", "acompanhada", "acompanhado"} or "estava com" in normalize(content) or "cuidando de" in normalize(content)):
-                named = {identifier for identifier, name in state["names"].items()
-                         if identifier != state["request"].npc_id and normalize(name.split()[0]) in tokens}
-                if named - set(recent_night.get("companhias", ())):
-                    issues.append("unsupported_fact")
+            assessment = state.get("assessment")
+            target_day = assessment.day if assessment and assessment.period == "night" else None
+            nights = [item for item in activities if item.get("periodo") == "night"]
+            recent_night = next((item for item in nights if item.get("dia") == target_day), None) if target_day is not None else (nights[-1] if nights else None)
+            if recent_night:
+                companions = set(recent_night.get("companhias", ()))
+                for clause in clauses(normalize(content)):
+                    tokens = set(word_tokens(clause))
+                    if companions and not tokens & {"nao", "nunca", "jamais"} and has_any_phrase(clause, ("estava sozinho", "estava sozinha", "passei a noite sozinho", "passei a noite sozinha", "ninguem estava comigo")):
+                        issues.append("unsupported_fact")
+                    for identifier, name in state["names"].items():
+                        first = normalize(name.split()[0])
+                        if identifier != state["request"].npc_id and identifier not in companions and (
+                            has_any_phrase(clause, (f"estava com {first}", f"passei a noite com {first}", f"dormi com {first}"))
+                            or (first in tokens and "comigo" in tokens)
+                        ):
+                            issues.append("unsupported_fact")
         if unauthorized_personal_disclosure(
             state["request"].npc_id, content, observations
         ):
             issues.append("unauthorized_confidence")
-        return {"issues": tuple(dict.fromkeys(issues))}
+        unique_issues = tuple(dict.fromkeys(issues))
+        state["audit"].review_issues.extend(code for code in unique_issues if code not in state["audit"].review_issues)
+        return {"issues": unique_issues}
 
     @staticmethod
     def review_route(state):

@@ -19,6 +19,8 @@ MASTER_INSTRUCTIONS = (
     'narrator_style, wrong_address, off_topic, ou vazia. invented_event: inventa encontro, local, fonte '
     'ou acontecimento específico sem apoio nas observações; suspeitas e acusações enviesadas são '
     'permitidas como opiniões, não como fatos presenciados. unauthorized_confidence: revela ou '
+    'Fatos em jornal_publico são conhecidos na cidade e não são invented_event, inclusive mortes anunciadas. '
+    'Uma reação à notícia comunicada por Floriano é pertinente mesmo sem ter presenciado o ocorrido. '
     'PARAFRASEIA segredo pessoal não listado nos segredos_autorizados; amizade conhecida pode ser '
     'comentada, mas amor secreto não autorizado não pode ser admitido nem insinuado como confissão. '
     'narrator_style: apenas narrador externo descrevendo cena/gestos em terceira pessoa. wrong_address: '

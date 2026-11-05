@@ -83,7 +83,8 @@ def assess_dossier(state, suspect_id, evidence_ids, testimony_ids, report_ids=()
         if kind == 'suspicion' and event['npc_id'] != suspect_id and name_tokens & tokens:
             accusing_sources.add(event['npc_id'])
         mentions_other = any(person.id != suspect_id and has_any_phrase(normalize(event.get('outgoing', '')),
-                             (f"com {normalize(person.name.split()[0])}", f"cuidando de {normalize(person.name.split()[0])}"))
+                             (f"com {normalize(person.name.split()[0])}", f"cuidando de {normalize(person.name.split()[0])}",
+                              f"companhia de {normalize(person.name.split()[0])}"))
                              for person in CHARACTERS)
         if kind == 'alibi' and event['npc_id'] == suspect_id and not mentions_other and (tokens & {'sozinho', 'sozinha', 'ninguem', 'desacompanhado', 'desacompanhada'} or has_any_phrase(normalize(event.get('outgoing', '')), ('sem companhia', 'nao tive companhia', 'sem testemunhas', 'nao tenho quem confirme', 'nao me lembro se alguem', 'nao sei se alguem me viu', 'nao me lembro exatamente da hora ou se alguem me viu'))):
             unconfirmed = True
