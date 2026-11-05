@@ -63,7 +63,7 @@ async def test_public_notebook_contains_only_utterances_actually_heard_by_player
     assert not {"knowledge", "relationships", "encounters"} & set(result.model_dump())
 
 
-async def test_social_read_sanitizes_personal_secret_in_legacy_dialogue(
+async def test_social_read_sanitizes_personal_secret_in_unreviewed_dialogue(
     storage, game, conversation, catalog, message_factory,
 ):
     secret = (await catalog.get("bentinho")).protected_secrets[0]

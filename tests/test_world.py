@@ -248,17 +248,15 @@ async def test_same_location_wrap_requires_edge_and_explicit_choice(world_contex
     assert result.revision == snapshot.revision + 1
 
 
-async def test_legacy_long_scene_is_projected_without_writes_or_reroll(world_context, storage):
+async def test_out_of_bounds_saved_world_is_rejected_without_repair(world_context, storage):
+    from src.contracts.errors import StorageUnavailableError
     context = world_context
-    old = context.initial.model_copy(update={"player": context.initial.player.model_copy(update={"x": 1700})})
+    invalid = context.initial.model_copy(update={"player": context.initial.player.model_copy(update={"x": 1700})})
     key = f"{storage.prefix}:game:{{{context.game.id}}}:world"
-    await storage.client.set(key, old.model_dump_json())
-    snapshot = await context.service.get(context.game.id)
-    assert snapshot.player.x == 928 and snapshot.revision == 0
+    await storage.client.set(key, invalid.model_dump_json())
+    with pytest.raises(StorageUnavailableError):
+        await context.service.get(context.game.id)
     assert json.loads(await storage.client.get(key))["player"]["x"] == 1700
-    moved = await context.service.move(context.game.id, command(snapshot, "left"))
-    assert moved.player.x == 928 and moved.revision == 1
-    assert json.loads(await storage.client.get(key))["player"]["x"] == 928
     context.games.create.assert_not_awaited()
 
 

@@ -7,40 +7,6 @@ from src.contracts.errors import AccessDeniedError
 from src.contracts.social import KnowledgeEntry, Relationship
 
 
-def legacy_relationships(character_ids):
-    seeds = {
-        ("bentinho", "capitu"): (15, -15, 25),
-        ("bentinho", "escobar"): (-25, -35, 30),
-        ("capitu", "bentinho"): (-20, -20, 25),
-        ("escobar", "bentinho"): (65, 35, 0),
-        ("virgilia", "florenca"): (55, 40, 0),
-        ("florenca", "rubiao"): (-25, -15, 30),
-        ("rubiao", "florenca"): (60, 25, 0),
-        ("florenca", "bacamarte"): (-45, -35, 45),
-        ("bacamarte", "player"): (-5, -25, 5),
-    }
-    seeds.update({
-        ("capitu", "escobar"): (50, 45, 0),
-        ("escobar", "capitu"): (30, 25, 5),
-        ("capitu", "bacamarte"): (15, 25, 0),
-        ("bacamarte", "bentinho"): (10, 10, 0),
-        ("bentinho", "bacamarte"): (-15, -20, 15),
-        ("florenca", "virgilia"): (55, 45, 0),
-    })
-    loyalties = {("escobar", "bentinho"): 80, ("capitu", "escobar"): 40,
-                 ("virgilia", "florenca"): 65, ("florenca", "virgilia"): 55}
-    suspicions = {("bentinho", "escobar"): 50, ("bentinho", "capitu"): 30,
-                  ("florenca", "bacamarte"): 30}
-    ids = tuple(character_ids)
-    return tuple(Relationship(actor_id=actor, target_id=target,
-                              affinity=seeds.get((actor, target), (0, 0, 0))[0],
-                              trust=seeds.get((actor, target), (0, 0, 0))[1],
-                              resentment=seeds.get((actor, target), (0, 0, 0))[2],
-                              suspicion=suspicions.get((actor,target),0),
-                              loyalty=loyalties.get((actor,target),0))
-                 for actor in ids for target in (*ids, "player") if actor != target)
-
-
 def initial_relationships(character_ids):
     from src.modules.knowledge.affects import initial_affects
     return initial_affects(character_ids)

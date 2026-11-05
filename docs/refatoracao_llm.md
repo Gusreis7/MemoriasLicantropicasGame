@@ -120,8 +120,8 @@ baseado no motor, sem fabricar novos fatos.
 
 Cada tentativa passa pelo medidor. `completed` nele significa transporte concluído;
 a aceitação da fala aparece separadamente no grafo e na mensagem. Tokens de dublês
-não representam uso AWS. O leitor `src/infrastructure/legacy_history.py` existe
-somente para registros antigos, separado da geração nova.
+não representam uso AWS. A persistência guarda apenas a fala canônica. Não há
+leitor de envelopes antigos, importação de históricos ou migração de saves.
 
 Grafos e gerador executam com `tracing_context(enabled=False, parent=False)`.
 Variáveis LangSmith incidentais do host não exportam estado privado. O admin

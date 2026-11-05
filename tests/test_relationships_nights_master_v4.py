@@ -7,7 +7,7 @@ from src.contracts.model import GameState,GameCharacter,ConversationMessage
 from src.contracts.social import SocialState
 from src.contracts.investigation import NightStory,MurderPlot
 from src.modules.knowledge.affects import IDS,MATRIX,initial_affects
-from src.modules.knowledge.rules import legacy_relationships,initial_relationships
+from src.modules.knowledge.rules import initial_relationships
 from src.modules.knowledge.seeds import seed_social_state
 from src.modules.investigation.rules import make_initial_investigation,choose_victim,make_crime
 from src.modules.investigation.night_story import resolve_story,civil_probability,plot_context
@@ -39,16 +39,14 @@ def test_all_64_directional_feelings_and_self_relations_are_present():
  assert relations['escobar','bentinho'].sentiments!=relations['bentinho','escobar'].sentiments
  assert relations['florenca','bacamarte'].sentiment_label=='apatia'
 
-def test_existing_causes_and_social_deltas_survive_affective_migration():
- game=cast();old=legacy_relationships(IDS[:-1]);cause=uuid4()
- old=tuple(r.model_copy(update={'trust':r.trust+3,'causes':(cause,)}) if (r.actor_id,r.target_id)==('bentinho','capitu') else r for r in old)
- state=SocialState(game_id=game.id,relationships=old,seeded_topics_version=2)
- migrated=seed_social_state(state,IDS[:-1],NOW)
- actual=next(r for r in migrated.relationships if (r.actor_id,r.target_id)==('bentinho','capitu'))
- base=next(r for r in initial_relationships(IDS[:-1]) if (r.actor_id,r.target_id)==('bentinho','capitu'))
- assert actual.trust==base.trust+3 and actual.causes==(cause,)
- assert seed_social_state(migrated,IDS[:-1],NOW)==migrated
- assert migrated.seeded_topics_version==3
+def test_topic_initialization_preserves_current_relationship_changes():
+ game=cast();current=initial_relationships(IDS[:-1]);cause=uuid4()
+ current=tuple(r.model_copy(update={'trust':r.trust+3,'causes':(cause,)}) if (r.actor_id,r.target_id)==('bentinho','capitu') else r for r in current)
+ state=SocialState(game_id=game.id,relationships=current)
+ initialized=seed_social_state(state,IDS[:-1],NOW)
+ assert initialized.relationships==current
+ assert initialized.topics_initialized
+ assert seed_social_state(initialized,IDS[:-1],NOW)==initialized
 
 @pytest.mark.parametrize('night,p',[(1,.25),(2,.125),(3,.0625),(4,.03125)])
 def test_plot_chance_halves_by_calendar_night(night,p):assert civil_probability(night)==p
@@ -172,7 +170,7 @@ async def test_ordinary_detainee_does_not_win_and_paper_does_not_name_wolf(inqui
  assert 'lobisomem' not in public.journal[-1].body
 
 
-def test_new_matrix_is_not_rebased_twice_before_topics_seeded():
+def test_current_matrix_is_preserved_when_topics_are_initialized():
  state=SocialState(game_id=uuid4(),relationships=initial_relationships(IDS[:-1]))
  migrated=seed_social_state(state,IDS[:-1],NOW)
  assert {(r.actor_id,r.target_id):r for r in migrated.relationships}=={(r.actor_id,r.target_id):r for r in state.relationships}

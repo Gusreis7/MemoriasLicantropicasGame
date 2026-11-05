@@ -230,6 +230,13 @@ async function launch(resume: boolean) {
     document.body.classList.add('case-active');
     status('#launch-status', '');
   } catch (error) {
+    if (resume && error instanceof ApiError && (error.status === 404 || error.status === 409)) {
+      try {
+        const unavailable = savedGame();
+        if (unavailable) localStorage.removeItem(`memorias-licantropicas:assembly:${unavailable}`);
+        localStorage.removeItem(STORAGE_KEY);
+      } catch { /* O usuário ainda pode iniciar uma nova investigação sem armazenamento local. */ }
+    }
     const message = error instanceof ApiError && (error.status === 404 || error.status === 409)
       ? 'Este caso não está disponível nesta edição. Inicie uma nova investigação para continuar.' : explain(error);
     status('#launch-status', message, true);

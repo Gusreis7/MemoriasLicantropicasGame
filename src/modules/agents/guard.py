@@ -538,6 +538,8 @@ class DialogueGuard:
         return GuardDecision(True)
 
     def inspect_output(self, text, private_markers=(), *, allow_role_disclosure=False):
+        if not text.strip() or len(text) > 8000:
+            return _refuse("invalid_speech")
         reason = _output_reason(_normalize(text), allow_role_disclosure)
         if reason:
             return _refuse(reason)

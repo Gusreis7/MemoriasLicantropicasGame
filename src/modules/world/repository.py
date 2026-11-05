@@ -8,7 +8,6 @@ from redis.asyncio import Redis
 from redis.exceptions import RedisError, WatchError
 
 from src.contracts.errors import ConflictError, StorageUnavailableError
-from src.modules.world.catalog import fit_world_to_locations
 from src.modules.world.model import WorldState
 
 
@@ -46,7 +45,7 @@ class RedisWorldRepository:
         world = _decode(value)
         if world.game_id != game_id:
             raise StorageUnavailableError("Identidade de mundo persistida inválida.")
-        return fit_world_to_locations(world)
+        return world
 
     async def save(self, world: WorldState, expected_revision: int, event: dict | None = None) -> bool:
         """Atualiza revisão e, se houver viagem, acrescenta seu evento na mesma transação."""

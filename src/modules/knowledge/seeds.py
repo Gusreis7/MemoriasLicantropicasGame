@@ -30,12 +30,12 @@ TOPICS = (
 
 
 def seed_social_state(state, character_ids, now):
-    """Migração aditiva e idempotente: não apaga o que uma partida já ouviu."""
-    if state.seeded_topics_version >= 3:
+    """Inicializa os assuntos e afetos atuais uma vez, sem migração de saves."""
+    if state.topics_initialized:
         return state
     ids = set(character_ids)
     entries = list(state.knowledge)
-    known = {e.id for e in entries}
+    known = {entry.id for entry in entries}
     for topic, owners, subjects, text, kind, visibility, threshold in TOPICS:
         root = uuid5(NAMESPACE_URL, f'{state.game_id}:author-topic:{topic}')
         for owner in owners:
@@ -43,29 +43,18 @@ def seed_social_state(state, character_ids, now):
                 continue
             identifier = uuid5(NAMESPACE_URL, f'{root}:{owner}')
             if identifier in known:
-                # Update authored disclosure policy only; retain heard history and old causes.
-                entries=[entry.model_copy(update={'visibility':visibility,'disclosure_threshold':threshold})
-                         if entry.id==identifier and entry.origin=='authored' else entry for entry in entries]
                 continue
-            entries.append(KnowledgeEntry(id=identifier, owner_id=owner, root_id=root,
-                source_message_id=root, speaker_id=owner, source_span=text, proposition=text,
-                subject_ids=tuple(s for s in subjects if s in ids), kind=kind,
-                confidence='medium' if kind == 'report' else 'low', stance='believes',
-                origin='authored', visibility=visibility, disclosure_threshold=threshold, day=1, created_at=now))
-    # Rebase sobre a nova matriz sem apagar os deltas e as causas da partida.
-    from src.modules.knowledge.rules import legacy_relationships
-    legacy={(r.actor_id,r.target_id):r for r in legacy_relationships(tuple(sorted(ids)))}
-    existing={(r.actor_id,r.target_id):r for r in state.relationships}
-    relations=[]
-    matrix_present=any(r.sentiments for r in state.relationships)
-    for base in initial_relationships(tuple(sorted(ids))):
-        pair=(base.actor_id,base.target_id); current=existing.pop(pair,None)
-        if current is None: relations.append(base); continue
-        old=legacy.get(pair)
-        values={key:getattr(current,key) for key in ('affinity','trust','resentment','suspicion','loyalty')} if matrix_present else {key:min(100,max(-100 if key in ('affinity','trust') else 0,
-                    getattr(base,key)+getattr(current,key)-(getattr(old,key) if old else 0)))
-                for key in ('affinity','trust','resentment','suspicion','loyalty')}
-        relations.append(current.model_copy(update={**values,'sentiment_label':base.sentiment_label,'sentiments':base.sentiments}))
-    relations.extend(existing.values())
-    return state.model_copy(update={'knowledge':tuple(entries), 'relationships':tuple(relations),
-                                    'seeded_topics_version':3})
+            entries.append(KnowledgeEntry(
+                id=identifier, owner_id=owner, root_id=root,
+                source_message_id=root, speaker_id=owner, source_span=text,
+                proposition=text, subject_ids=tuple(s for s in subjects if s in ids),
+                kind=kind, confidence='medium' if kind == 'report' else 'low',
+                stance='believes', origin='authored', visibility=visibility,
+                disclosure_threshold=threshold, day=1, created_at=now,
+            ))
+            known.add(identifier)
+    return state.model_copy(update={
+        'knowledge': tuple(entries),
+        'relationships': state.relationships or initial_relationships(tuple(sorted(ids))),
+        'topics_initialized': True,
+    })
