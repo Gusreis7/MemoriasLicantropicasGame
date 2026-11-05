@@ -6,6 +6,7 @@ from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
+from native_fixtures import respond_to_tools, invalid_tool_response
 
 from memorias_licantropicas.contracts.errors import StorageUnavailableError
 from memorias_licantropicas.contracts.model import ConversationMessage, LLMResponse

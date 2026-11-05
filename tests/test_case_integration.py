@@ -241,7 +241,7 @@ async def test_inference_crossing_deadline_cannot_append_a_dialogue(
 
     async def late(messages, *, tools=(), tool_choice=None):
         clock[0] += timedelta(seconds=300)
-        return await complete(messages)
+        return await complete(messages, tools=tools, tool_choice=tool_choice)
 
     monkeypatch.setattr(llm, "complete", late)
     result = await api_client.post(

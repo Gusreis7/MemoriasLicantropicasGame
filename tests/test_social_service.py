@@ -596,7 +596,7 @@ async def test_programming_error_in_social_transport_is_not_silenced_as_invalid_
     case = social_case
     await start_encounter(case)
 
-    async def broken(messages):
+    async def broken(messages, *, tools=(), tool_choice=None):
         raise TypeError("fixture programming error")
 
     case.speaker.complete = broken

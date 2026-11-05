@@ -115,7 +115,7 @@ async def test_player_cannot_travel_during_pending_response(
     async def pending(messages, *, tools=(), tool_choice=None):
         started.set()
         await release.wait()
-        return await complete(messages)
+        return await complete(messages, tools=tools, tool_choice=tool_choice)
 
     monkeypatch.setattr(llm, "complete", pending)
     task = asyncio.create_task(
