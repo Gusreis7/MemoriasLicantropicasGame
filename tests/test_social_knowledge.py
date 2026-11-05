@@ -504,3 +504,18 @@ async def test_player_social_reaction_is_limited_per_day(social, storage, game, 
     relation=relationship_for(await social.get(game.id),'capitu','player')
     assert relation.trust==expected_trust and relation.resentment==expected_resentment
     assert len(relation.causes)==1
+
+
+@pytest.mark.parametrize("generation_status", ["fallback", "guarded"])
+async def test_technical_fallbacks_never_become_claims_or_rumors(social, storage, game, catalog, generation_status):
+    record = await enqueue(storage, game, outgoing="Não consegui organizar minha resposta agora, detetive.")
+    record = record.model_copy(update={"outgoing": record.outgoing.model_copy(update={
+        "generation_status": generation_status,
+        "narrative_authorized": False,
+    })})
+    await storage.client.lset(f"{storage.prefix}:game:{{{game.id}}}:social:exchanges", 0, record.model_dump_json())
+    model = Extractor()
+    assert await KnowledgeService(social, catalog, model).process_pending(game.id, 1)
+    state = await social.get(game.id)
+    assert state.exchange_cursor == 1
+    assert state.knowledge == () and model.calls == []

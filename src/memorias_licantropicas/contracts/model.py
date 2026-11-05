@@ -70,6 +70,7 @@ class Conversation(Contract):
 
 
 class ConversationMessage(Contract):
+    generation_status: Literal["accepted", "fallback", "guarded"] = "accepted"
     useful: bool = False
     narrative_authorized: bool = False
     id: UUID

@@ -83,6 +83,7 @@ class KnowledgeService:
             if profile is not None
             and record.incoming.sender_id == "player"
             and record.outgoing.sender_id == npc_id
+            and record.outgoing.generation_status == "accepted"
             and self._guard.inspect_input(record.incoming.content).allowed
             and record.outgoing.content != SAFE_DIALOGUE_REPLY
             and self._guard.inspect_output(

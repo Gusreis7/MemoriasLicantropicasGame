@@ -584,6 +584,13 @@ class DialogueWorkflow:
             content=state["content"],
             created_at=datetime.now(UTC),
             narrative_authorized=state["allowed"],
+            generation_status=(
+                "accepted"
+                if state["allowed"]
+                else "guarded"
+                if state.get("fallback_reason") in {"input_guard", "output_guard"}
+                else "fallback"
+            ),
             useful=useful,
         )
         await self._assert_day(request)
