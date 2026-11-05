@@ -50,6 +50,7 @@ export class CityScene extends Phaser.Scene {
   private wanderers: Array<{image: Phaser.GameObjects.Image | Phaser.GameObjects.Sprite; placement: AmbientPlacement}> = [];
   private background?: Phaser.GameObjects.Image;
   private sunsetBackground?: Phaser.GameObjects.Image;
+  private midnightBackground?: Phaser.GameObjects.Image;
   private currentLocation = '';
   private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
   private keys?: Record<string, Phaser.Input.Keyboard.Key>;
@@ -79,6 +80,7 @@ export class CityScene extends Phaser.Scene {
     }
     for (const location of this.locations) {
       for (const layer of Object.values(locationLighting(location.id))) this.load.image(layer.key, layer.path);
+      this.load.image(`midnight-${location.id}`, `/assets/locations/${location.id}-00h.png`);
     }
     this.load.atlas('animals-walk','/assets/ambient/animals-walk.png','/assets/ambient/animals-walk.json');
     this.load.atlas('scene-life', '/assets/ambient/scene-life.png', '/assets/ambient/scene-life.json');
@@ -208,12 +210,15 @@ export class CityScene extends Phaser.Scene {
       this.currentLocation = world.location.id; this.npcPositions.clear();
       this.background?.destroy();
       this.sunsetBackground?.destroy();
+      this.midnightBackground?.destroy();
       const lighting = locationLighting(world.location.id);
       this.background = this.add.image(0, 0, lighting.morning.key).setName('background-morning').setOrigin(0)
         .setDisplaySize(world.location.width, world.location.height).setDepth(-10).setScrollFactor(0);
       this.sunsetBackground = this.add.image(0, 0, lighting.sunset.key).setName('background-sunset').setOrigin(0)
         .setDisplaySize(world.location.width, world.location.height).setDepth(-9).setScrollFactor(0)
         .setAlpha(sunsetOpacity(this.hooks.dayProgress?.() ?? 0));
+      this.midnightBackground = this.add.image(0, 0, `midnight-${world.location.id}`).setName('background-midnight').setOrigin(0)
+        .setDisplaySize(world.location.width, world.location.height).setDepth(-8).setScrollFactor(0).setAlpha(this.caseState?.phase === 'night' ? 1 : 0);
       this.dressLocation(world.location.id, world.location.ground_y);
       this.npcSignature = '\0';
       this.drawCaseMarkers();
@@ -278,6 +283,7 @@ export class CityScene extends Phaser.Scene {
   }
 
   update(time: number, delta: number) {
+    this.midnightBackground?.setAlpha(this.caseState?.phase === 'night' ? 1 : 0);
     this.sunsetBackground?.setAlpha(sunsetOpacity(this.hooks.dayProgress?.() ?? 0));
     const blocked = this.hooks.blocked();
     let direction: Direction = 'idle';

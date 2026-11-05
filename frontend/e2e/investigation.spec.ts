@@ -198,6 +198,12 @@ test('amanhecer retorna à banca e publica a morte sem manter o NPC no cenário'
   city.state.journal.push({day: 2, title: 'O Clarim do Rio', headline: 'Rubião é encontrado morto', body: 'A manhã traz uma nova perda à praça.', victim_id: 'rubiao', victim_name: 'Rubião', location_id: 'praca_verde', detention_outcome: 'none'});
   city.world.player.x = 160; city.world.visible_npcs = []; city.world.revision++;
   city.cast.characters.find(member => member.character.id === 'rubiao')!.alive = false;
+  await expect(page.locator('#night-attack-overlay')).toBeVisible({timeout: 5000});
+  await expect(page.locator('#night-attack-overlay')).toHaveAttribute('data-strike', '0');
+  await expect(page.locator('#journal-overlay')).toBeHidden();
+  await page.waitForTimeout(3200);
+  await page.screenshot({path:'../artifacts/night-attack.png',fullPage:true});
+  await expect(page.locator('#night-attack-overlay')).toBeHidden({timeout: 5000});
   await expect(page.locator('#journal-overlay')).toBeVisible({timeout: 5000});
   await expect(page.locator('#journal-headline')).toHaveText('Rubião é encontrado morto');
   await expect(page.locator('#case-day')).toHaveText('DIA 2'); await expect(page.locator('#location-name')).toHaveText('Praça Verde');
