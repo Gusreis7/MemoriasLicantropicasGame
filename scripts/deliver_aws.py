@@ -3,7 +3,6 @@
 import json
 import os
 from pathlib import Path
-import re
 import subprocess
 import tempfile
 import time
@@ -24,7 +23,9 @@ def cli(*args, allow_missing=False):
 
 def main():
     commit = os.environ["GITHUB_SHA"]
-    if not re.fullmatch("[a-f0-9]{40}", commit):
+    if len(commit) != 40 or any(
+        character not in "0123456789abcdef" for character in commit
+    ):
         raise ValueError("Full commit required")
     if (
         os.environ.get("GITHUB_REPOSITORY") != "Gusreis7/MemoriasLicantropicasGame"
@@ -107,7 +108,11 @@ def main():
                     "text",
                 )
             digest = digest.strip()
-            if not re.fullmatch("sha256:[a-f0-9]{64}", digest):
+            if (
+                not digest.startswith("sha256:")
+                or len(digest) != 71
+                or any(character not in "0123456789abcdef" for character in digest[7:])
+            ):
                 raise ValueError("Invalid registry digest")
             # ECR basic scanning is enabled at repository creation. Fail closed.
             cli(

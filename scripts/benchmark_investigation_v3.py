@@ -4,7 +4,7 @@ PYTHONPATH=.:scripts .venv/bin/python scripts/benchmark_investigation_v3.py --ph
 PYTHONPATH=.:scripts .venv/bin/python scripts/benchmark_investigation_v3.py --phase after --source-root .
 Checkpoint por case_id; --limit1 permite conferir a inicialização sem repetircenários.
 """
-import argparse,asyncio,json,sys,statistics,re
+import argparse,asyncio,json,sys,statistics
 from pathlib import Path
 from time import monotonic
 from uuid import UUID,NAMESPACE_URL,uuid5
@@ -36,7 +36,19 @@ STOP={'a','o','as','os','de','da','do','das','dos','em','na','no','que','com','p
 def terms(text):
     import unicodedata
     text=''.join(c for c in unicodedata.normalize('NFKD',text.lower()) if not unicodedata.combining(c))
-    return {w for w in re.findall(r'[a-z]+',text) if len(w)>3 and w not in STOP}
+    return {w for w in ''.join(character if 'a'<=character<='z' else ' ' for character in text).split() if len(w)>3 and w not in STOP}
+
+def named_next_step(text):
+    """Mesma janela lexical histórica: nome inicia até 50 caracteres após a ação."""
+    for line in text.casefold().split('\n'):
+        for action in ('pergunt','procure','converse','fale com'):
+            for start in range(len(line)):
+                if not line.startswith(action,start):continue
+                after=start+len(action)
+                for name in ('capitu','bentinho','escobar','bacamarte','rubião','virgília','florença'):
+                    if name in line[after:after+50+len(name)]:return True
+    return False
+
 
 def quality_metrics(text,authorized):
     lowered=text.casefold();tokens=terms(text)
@@ -44,11 +56,11 @@ def quality_metrics(text,authorized):
     for fact in authorized:
         overlap=tokens & terms(fact)
         if len(overlap)>=2:anchors.update(overlap)
-    evasive=bool(re.search(r'prefiro não|não posso dizer|nada a declarar|não tenho nada|não insista|não me cabe|não posso confirmar',lowered))
-    metaphor=bool(re.search(r'sombra|espelho|labirinto|maré|silêncio|escuridão|coração|romance|capítulo|vento|poesia|enigma',lowered))
-    lead=bool(re.search(r'pergunt|procure|converse|fale com|pode confirmar|confirmar com|vi |ouvi |seminário|medica|tratamento|capitu e escobar são amigos|ciúme',lowered))
+    evasive=any(term in lowered for term in ('prefiro não','não posso dizer','nada a declarar','não tenho nada','não insista','não me cabe','não posso confirmar'))
+    metaphor=any(term in lowered for term in ('sombra','espelho','labirinto','maré','silêncio','escuridão','coração','romance','capítulo','vento','poesia','enigma'))
+    lead=any(term in lowered for term in ('pergunt','procure','converse','fale com','pode confirmar','confirmar com','vi ','ouvi ','seminário','medica','tratamento','capitu e escobar são amigos','ciúme'))
     return {'words':len(text.split()),'authorized_anchor_count':len(anchors),'actionable_proxy':bool(len(anchors)>=2 and (lead or not metaphor) and not evasive),
-        'evasive_proxy':evasive,'metaphor_proxy':metaphor,'named_next_step':bool(re.search(r'(pergunt|procure|converse|fale com).{0,50}(Capitu|Bentinho|Escobar|Bacamarte|Rubião|Virgília|Florença)',text,re.I))}
+        'evasive_proxy':evasive,'metaphor_proxy':metaphor,'named_next_step':named_next_step(text)}
 
 class OfflineLLM:
     async def complete(self,messages,*,tools=(),tool_choice=None):
