@@ -4,17 +4,17 @@ from uuid import uuid4
 import pytest
 from pydantic import ValidationError
 
-from memorias_licantropicas.contracts.errors import ConflictError, NotFoundError
-from memorias_licantropicas.contracts.model import GameCharacter, GameState
-from memorias_licantropicas.modules.games.service import GameService
-from memorias_licantropicas.modules.characters.catalog import supports_content_version
+from src.contracts.errors import ConflictError, NotFoundError
+from src.contracts.model import GameCharacter, GameState
+from src.modules.games.service import GameService
+from src.modules.characters.catalog import supports_content_version
 
 pytestmark = pytest.mark.anyio
 
 
 @pytest.mark.parametrize("winner", ["bentinho", "capitu", "escobar", "rubiao", "virgilia", "florenca", "bacamarte"])
 async def test_every_suspect_can_be_drawn(catalog, storage, monkeypatch, winner):
-    monkeypatch.setattr("memorias_licantropicas.modules.games.service.choice",
+    monkeypatch.setattr("src.modules.games.service.choice",
                         lambda profiles: next(profile for profile in profiles if profile.id == winner))
     public = await GameService(catalog, storage.games).create()
     game = await storage.games.get(public.id)

@@ -10,16 +10,16 @@ import pytest
 from fastapi import FastAPI
 from pydantic import ValidationError
 
-from memorias_licantropicas.contracts.errors import (
+from src.contracts.errors import (
     AccessDeniedError, ConflictError, LLMUnavailableError, NotFoundError, StorageUnavailableError,
 )
-from memorias_licantropicas.contracts.model import GameCharacter, GameState
-from memorias_licantropicas.modules.world.catalog import LOCATIONS, make_initial_world
-from memorias_licantropicas.modules.world.gate import RedisPlayerGate
-from memorias_licantropicas.modules.world.repository import RedisWorldRepository
-from memorias_licantropicas.modules.world.router import get_world_service, router
-from memorias_licantropicas.modules.world.schema import MoveRequest, TravelRequest
-from memorias_licantropicas.modules.world.service import WorldService
+from src.contracts.model import GameCharacter, GameState
+from src.modules.world.catalog import LOCATIONS, make_initial_world
+from src.modules.world.gate import RedisPlayerGate
+from src.modules.world.repository import RedisWorldRepository
+from src.modules.world.router import get_world_service, router
+from src.modules.world.schema import MoveRequest, TravelRequest
+from src.modules.world.service import WorldService
 
 pytestmark = pytest.mark.anyio
 

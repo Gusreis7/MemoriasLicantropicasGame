@@ -3,8 +3,8 @@ from uuid import uuid4
 
 import pytest
 
-from memorias_licantropicas.contracts.investigation import CaseTransition
-from memorias_licantropicas.modules.characters.service import public_character
+from src.contracts.investigation import CaseTransition
+from src.modules.characters.service import public_character
 from test_turns import cycle
 
 pytestmark = pytest.mark.anyio

@@ -1,0 +1,123 @@
+"""Ponto de entrada da API do jogo."""
+from src.contracts.errors import InteractionUnavailableError, INTERACTION_DETAILS
+
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+import logging
+
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+from starlette.middleware.trustedhost import TrustedHostMiddleware
+
+from src.composition import build_services
+from src.contracts.errors import (
+    AccessDeniedError,
+    ConflictError,
+    LLMUnavailableError,
+    NotFoundError,
+    StorageUnavailableError,
+    LLM_PUBLIC_DETAILS,
+)
+from src.modules.characters.router import (
+    get_character_service,
+    router as character_router,
+)
+from src.modules.games.router import (
+    get_game_service,
+    router as game_router,
+)
+from src.modules.characters.service import CharacterService
+from src.modules.games.service import GameService
+from src.modules.conversations.router import router as conversation_router, approach_router
+from src.modules.world.router import router as world_router
+from src.modules.admin.router import router as admin_router
+from src.modules.investigation.router import router as investigation_router
+from src.modules.social.router import router as social_router
+from src.settings import Settings
+
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    services = build_services(Settings())
+    app.state.services = services
+    if services.social_worker is not None:
+        services.social_worker.start()
+    try:
+        yield
+    finally:
+        await services.aclose()
+
+
+def character_service_dependency(request: Request) -> CharacterService:
+    return request.app.state.services.characters
+
+
+def game_service_dependency(request: Request) -> GameService:
+    return request.app.state.services.games
+
+
+def create_app() -> FastAPI:
+    settings = Settings()
+    application = FastAPI(
+        docs_url="/docs" if settings.api_docs_enabled else None,
+        redoc_url="/redoc" if settings.api_docs_enabled else None,
+        openapi_url="/openapi.json" if settings.api_docs_enabled else None,
+        title="Memórias Licantropicas",
+        description="API de um jogo de investigação e dedução social.",
+        version="0.1.0",
+        lifespan=lifespan,
+    )
+    application.add_middleware(
+        TrustedHostMiddleware,
+        allowed_hosts=[host.strip() for host in settings.allowed_hosts.split(",") if host.strip()],
+    )
+    application.dependency_overrides[get_character_service] = character_service_dependency
+    application.dependency_overrides[get_game_service] = game_service_dependency
+    application.include_router(character_router)
+    application.include_router(game_router)
+    application.include_router(conversation_router)
+    application.include_router(approach_router)
+    application.include_router(world_router)
+    application.include_router(admin_router)
+    application.include_router(investigation_router)
+    application.include_router(social_router)
+
+    async def domain_error_handler(request: Request, exc: Exception) -> JSONResponse:
+        errors = {
+            NotFoundError: (404, "Recurso não encontrado."),
+            AccessDeniedError: (403, "Acesso não permitido."),
+            ConflictError: (409, "Conflito com o estado atual."),
+            StorageUnavailableError: (503, "Persistência temporariamente indisponível."),
+            LLMUnavailableError: (503, "Serviço de diálogo temporariamente indisponível."),
+        }
+        if isinstance(exc, InteractionUnavailableError):
+            return JSONResponse(status_code=403, content={"detail": INTERACTION_DETAILS[exc.code], "code": exc.code})
+        status_code, detail = errors[type(exc)]
+        body = {"detail": detail}
+        if isinstance(exc, LLMUnavailableError):
+            body = {"detail": LLM_PUBLIC_DETAILS[exc.code], "code": exc.code}
+            logger.warning("dialogue_unavailable code=%s", exc.code)
+        return JSONResponse(status_code=status_code, content=body)
+
+    for error_type in (
+        NotFoundError, AccessDeniedError, ConflictError,
+        StorageUnavailableError, LLMUnavailableError,
+    ):
+        application.add_exception_handler(error_type, domain_error_handler)
+
+    application.add_api_route("/", index, methods=["GET"])
+    application.add_api_route("/health", health, methods=["GET"])
+    return application
+
+
+def index() -> dict[str, str]:
+    return {"name": "Memórias Licantropicas", "docs": "/docs"}
+
+
+def health() -> dict[str, str]:
+    return {"status": "ok"}
+
+
+app = create_app()

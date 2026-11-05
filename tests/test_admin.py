@@ -11,12 +11,12 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from pydantic import SecretStr
 
-from memorias_licantropicas.contracts.errors import NotFoundError, StorageUnavailableError
-from memorias_licantropicas.modules.admin.auth import AdminAuth, COOKIE_NAME
-from memorias_licantropicas.modules.admin.router import router
-from memorias_licantropicas.modules.admin.service import AdminService
-from memorias_licantropicas.modules.world.catalog import make_initial_world
-from memorias_licantropicas.modules.world.repository import RedisWorldRepository
+from src.contracts.errors import NotFoundError, StorageUnavailableError
+from src.modules.admin.auth import AdminAuth, COOKIE_NAME
+from src.modules.admin.router import router
+from src.modules.admin.service import AdminService
+from src.modules.world.catalog import make_initial_world
+from src.modules.world.repository import RedisWorldRepository
 
 pytestmark = pytest.mark.anyio
 PASSWORD = "only-for-tests-strong-password"

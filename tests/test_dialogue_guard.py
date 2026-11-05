@@ -5,7 +5,7 @@ from dataclasses import FrozenInstanceError
 
 import pytest
 
-from memorias_licantropicas.modules.agents.guard import (
+from src.modules.agents.guard import (
     DialogueGuard,
     GuardDecision,
     SAFE_DIALOGUE_REPLY,

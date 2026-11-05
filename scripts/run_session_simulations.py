@@ -11,7 +11,7 @@ import json
 import sys
 from pathlib import Path
 
-from memorias_licantropicas.simulation.session import BudgetedSessionModel, run_sessions
+from src.simulation.session import BudgetedSessionModel, run_sessions
 
 
 async def execute(args):
@@ -20,14 +20,14 @@ async def execute(args):
         if not args.aws_profile or not args.max_live_calls or args.max_live_calls < 1:
             raise ValueError("--live exige --aws-profile e --max-live-calls positivo")
         # Nothing in this block is imported or initialized by the offline/test path.
-        from memorias_licantropicas.infrastructure.llm.aws_credentials import (
+        from src.infrastructure.llm.aws_credentials import (
             ProfileTokenProvider,
         )
-        from memorias_licantropicas.infrastructure.llm.bedrock_mantle import (
+        from src.infrastructure.llm.bedrock_mantle import (
             BedrockMantleClient,
         )
-        from memorias_licantropicas.infrastructure.usage import UsagePricing
-        from memorias_licantropicas.settings import Settings
+        from src.infrastructure.usage import UsagePricing
+        from src.settings import Settings
 
         settings = Settings()
         model = BudgetedSessionModel(

@@ -3,8 +3,8 @@ from uuid import uuid4
 
 import pytest
 
-from memorias_licantropicas.contracts.errors import ConflictError, LLMUnavailableError
-from memorias_licantropicas.infrastructure.conversation_gate import RedisConversationGate
+from src.contracts.errors import ConflictError, LLMUnavailableError
+from src.infrastructure.conversation_gate import RedisConversationGate
 
 pytestmark = pytest.mark.anyio
 

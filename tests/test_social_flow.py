@@ -5,26 +5,27 @@ from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import pytest
+from native_fixtures import respond_to_tools
 
-from memorias_licantropicas.contracts.model import (
+from src.contracts.model import (
     Conversation,
     ConversationMessage,
     GameCharacter,
     GameState,
     LLMResponse,
 )
-from memorias_licantropicas.infrastructure.social_repository import (
+from src.infrastructure.social_repository import (
     RedisSocialRepository,
 )
-from memorias_licantropicas.modules.agents.service import HarnessService
-from memorias_licantropicas.modules.investigation.service import InvestigationService
-from memorias_licantropicas.modules.knowledge.service import KnowledgeService
-from memorias_licantropicas.modules.social.service import SocialService
-from memorias_licantropicas.modules.social.views import SocialReadService
-from memorias_licantropicas.modules.turns.service import TurnService
-from memorias_licantropicas.modules.world.gate import RedisPlayerGate
-from memorias_licantropicas.modules.world.repository import RedisWorldRepository
-from memorias_licantropicas.modules.world.service import WorldService
+from src.modules.agents.service import HarnessService
+from src.modules.investigation.service import InvestigationService
+from src.modules.knowledge.service import KnowledgeService
+from src.modules.social.service import SocialService
+from src.modules.social.views import SocialReadService
+from src.modules.turns.service import TurnService
+from src.modules.world.gate import RedisPlayerGate
+from src.modules.world.repository import RedisWorldRepository
+from src.modules.world.service import WorldService
 
 
 pytestmark = pytest.mark.anyio
@@ -34,9 +35,11 @@ class RecordingLLM:
     def __init__(self, handler):
         self.handler, self.calls = handler, []
 
-    async def complete(self, messages):
+    async def complete(self, messages, *, tools=(), tool_choice=None):
         self.calls.append(messages)
-        return LLMResponse(content=self.handler(messages), model="social-flow-stub")
+        return respond_to_tools(
+            self.handler(messages), tools, tool_choice, model="social-flow-stub"
+        )
 
 
 async def test_detective_accusation_circulates_with_provenance_and_returns_to_him(
@@ -104,21 +107,19 @@ async def test_detective_accusation_circulates_with_provenance_and_returns_to_hi
             "player",
             "capitu",
         }
-        return json.dumps(
-            {
-                "claims": [
-                    {
-                        "message_id": str(incoming.id),
-                        "source_span": proposition,
-                        "proposition": proposition,
-                        "subject_ids": ["capitu", "virgilia"],
-                        "claimed_source_id": "virgilia",
-                        "kind": "report",
-                        "disposition": "accusation",
-                    }
-                ]
-            }
-        )
+        return {
+            "claims": [
+                {
+                    "message_id": str(incoming.id),
+                    "source_span": proposition,
+                    "proposition": proposition,
+                    "subject_ids": ["capitu", "virgilia"],
+                    "claimed_source_id": "virgilia",
+                    "kind": "report",
+                    "disposition": "accusation",
+                }
+            ]
+        }
 
     extraction_llm = RecordingLLM(extract)
     knowledge = KnowledgeService(repository, catalog, extraction_llm, clock=clock)
@@ -154,10 +155,7 @@ async def test_detective_accusation_circulates_with_provenance_and_returns_to_hi
             speech = f"Capitu me atribui esta história: {quoted} Nego a acusação; não fiz tal denúncia."
             intent = "deny"
         speeches.append(speech)
-        return json.dumps(
-            {"fala": speech, "intent": intent, "claim_ids": [claim["id"]]},
-            ensure_ascii=False,
-        )
+        return {"fala": speech, "intent": intent, "claim_ids": [claim["id"]]}
 
     social_llm = RecordingLLM(speak)
     social = SocialService(
@@ -249,7 +247,7 @@ async def test_detective_accusation_circulates_with_provenance_and_returns_to_hi
     assert len(interrupted.messages) == 2
 
     public_reply = "Capitu me contou sua acusação, Floriano. Quero que esclareça o que disse a ela."
-    detective_llm = RecordingLLM(lambda messages: json.dumps({"fala": public_reply}))
+    detective_llm = RecordingLLM(lambda messages: {"fala": public_reply})
     harness = HarnessService(
         catalog,
         storage.games,

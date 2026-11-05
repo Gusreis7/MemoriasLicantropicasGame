@@ -7,15 +7,15 @@ from uuid import uuid4
 import fakeredis
 import pytest
 
-from memorias_licantropicas.simulation.session import (
+from src.simulation.session import (
     BudgetedSessionModel,
     OfflineSessionModel,
     SessionSimulation,
     public_ranking,
     run_sessions,
 )
-from memorias_licantropicas.contracts.errors import LLMUnavailableError
-from memorias_licantropicas.contracts.model import ChatMessage
+from src.contracts.errors import LLMUnavailableError
+from src.contracts.model import ChatMessage
 
 pytestmark = pytest.mark.anyio
 
@@ -158,7 +158,7 @@ async def test_run_uses_exclusive_redis_prefix_and_never_flushes_local_games(
 
     monkeypatch.setattr(redis, "aclose", record_close)
     monkeypatch.setattr(
-        "memorias_licantropicas.simulation.session.fakeredis.FakeAsyncRedis",
+        "src.simulation.session.fakeredis.FakeAsyncRedis",
         lambda **kwargs: redis,
     )
     try:
@@ -182,9 +182,18 @@ async def test_live_call_budget_is_shared_and_blocks_before_calling_provider():
         ChatMessage(role="system", content="[task:session_assessment]"),
         ChatMessage(role="user", content='{"personagem":"Bom dia"}'),
     )
-    await client.complete(messages)
+    tools = (
+        {
+            "type": "function",
+            "function": {
+                "name": "AssessmentProposal",
+                "parameters": {"type": "object", "properties": {}},
+            },
+        },
+    )
+    await client.complete(messages, tools=tools, tool_choice="auto")
     with pytest.raises(LLMUnavailableError):
-        await client.complete(messages)
+        await client.complete(messages, tools=tools, tool_choice="auto")
     assert sum(provider.calls.values()) == 1
     assert client.exhausted
 

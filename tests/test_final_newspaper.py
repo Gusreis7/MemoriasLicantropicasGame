@@ -26,7 +26,7 @@ async def test_assembly_victory_persists_extraordinary_edition(inquiry):
 
 
 async def test_four_werewolf_cast_deaths_end_case_with_defeat_newspaper(cycle, storage):
-    from memorias_licantropicas.modules.investigation.service import InvestigationService
+    from src.modules.investigation.service import InvestigationService
 
     cycle.clock[0] += timedelta(seconds=3 * 308)
     before = await cycle.turns.sync(cycle.game.id)
@@ -57,7 +57,7 @@ async def test_detaining_wolf_before_fourth_victim_still_wins(cycle):
 
 
 async def test_defeat_count_excludes_human_murders_opening_and_duplicate_victims(cycle):
-    from memorias_licantropicas.modules.investigation.rules import werewolf_cast_victims
+    from src.modules.investigation.rules import werewolf_cast_victims
 
     opening = (await cycle.turns.sync(cycle.game.id)).crimes[0]
     wolf_crime = opening.model_copy(update={'victim_id': 'capitu'})

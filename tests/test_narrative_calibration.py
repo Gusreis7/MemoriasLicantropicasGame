@@ -4,10 +4,10 @@ from uuid import uuid4
 import pytest
 from test_session_master_v2 import pair,NOW
 from test_social_service import social_case,start_encounter
-from memorias_licantropicas.modules.session_master.service import local_assessment
-from memorias_licantropicas.modules.session_master.rules import dialogue_transition
-from memorias_licantropicas.modules.investigation.rules import make_initial_investigation
-from memorias_licantropicas.modules.investigation.service import InvestigationService
+from src.modules.session_master.service import local_assessment
+from src.modules.session_master.rules import dialogue_transition
+from src.modules.investigation.rules import make_initial_investigation
+from src.modules.investigation.service import InvestigationService
 
 pytestmark=pytest.mark.anyio
 

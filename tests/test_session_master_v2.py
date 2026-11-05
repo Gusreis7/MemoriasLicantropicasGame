@@ -1,5 +1,7 @@
 """Caminho real de conversa: regras de admissão, retomada e continuidade de objeto."""
 
+from native_fixtures import tool_response, respond_to_tools, invalid_tool_response
+
 import json
 from datetime import UTC, datetime
 from types import SimpleNamespace
@@ -7,27 +9,27 @@ from uuid import uuid4
 
 import pytest
 
-from memorias_licantropicas.contracts.model import (
+from src.contracts.model import (
     Conversation,
     ConversationMessage,
     LLMResponse,
 )
-from memorias_licantropicas.modules.session_master.service import (
+from src.modules.session_master.service import (
     SessionMasterService,
     DialogueAssessment,
     direct_admission,
     local_assessment,
 )
-from memorias_licantropicas.modules.session_master.rules import dialogue_transition
-from memorias_licantropicas.modules.investigation.rules import (
+from src.modules.session_master.rules import dialogue_transition
+from src.modules.investigation.rules import (
     make_initial_investigation,
 )
-from memorias_licantropicas.modules.investigation.service import InvestigationService
-from memorias_licantropicas.modules.world.repository import RedisWorldRepository
-from memorias_licantropicas.modules.world.gate import RedisPlayerGate
-from memorias_licantropicas.modules.turns.service import TurnService
-from memorias_licantropicas.modules.agents.service import HarnessService
-from memorias_licantropicas.modules.agents.guard import DialogueGuard
+from src.modules.investigation.service import InvestigationService
+from src.modules.world.repository import RedisWorldRepository
+from src.modules.world.gate import RedisPlayerGate
+from src.modules.turns.service import TurnService
+from src.modules.agents.service import HarnessService
+from src.modules.agents.guard import DialogueGuard
 
 pytestmark = pytest.mark.anyio
 NOW = datetime(2026, 11, 2, 12, tzinfo=UTC)
@@ -117,9 +119,16 @@ async def test_master_forged_quote_and_semantic_proposal_cannot_override_engine(
     state = make_initial_investigation(game, NOW)
 
     class LLM:
-        async def complete(self, prompt):
-            return LLMResponse(
-                content='{"kind":"admission","quote":"Eu sou o lobisomem", "confidence":1,"own_assertion":true,"surrender":true}',
+        async def complete(self, prompt, *, tools=(), tool_choice=None):
+            return tool_response(
+                {
+                    "kind": "admission",
+                    "quote": "Eu sou o lobisomem",
+                    "confidence": 1,
+                    "own_assertion": True,
+                    "surrender": True,
+                },
+                "AssessmentProposal",
                 model="fake",
             )
 
@@ -156,17 +165,23 @@ async def test_harness_master_transaction_finishes_game_and_history_keeps_confes
         def __init__(self):
             self.calls = []
 
-        async def complete(self, prompt):
+        async def complete(self, prompt, *, tools=(), tool_choice=None):
             self.calls.append(prompt)
             if "mestre privado" in prompt[0].content:
-                return LLMResponse(
-                    content='{"kind":"admission","quote":"Eu sou o lobisomem. Entrego-me ao delegado.","confidence":1,"own_assertion":true,"surrender":true}',
+                return tool_response(
+                    {
+                        "kind": "admission",
+                        "quote": "Eu sou o lobisomem. Entrego-me ao delegado.",
+                        "confidence": 1,
+                        "own_assertion": True,
+                        "surrender": True,
+                    },
+                    "AssessmentProposal",
                     model="fake",
                 )
-            return LLMResponse(
-                content=json.dumps(
-                    {"fala": "Eu sou o lobisomem. Entrego-me ao delegado."}
-                ),
+            return tool_response(
+                {"fala": "Eu sou o lobisomem. Entrego-me ao delegado."},
+                "NpcSpeech",
                 model="fake",
             )
 
@@ -262,12 +277,11 @@ async def test_presentation_is_in_history_once_and_next_turn_receives_it(
     assert len(history) == 2 and history[0].content.startswith("Mostro-lhe")
 
     class LLM:
-        async def complete(self, prompt):
+        async def complete(self, prompt, *, tools=(), tool_choice=None):
             assert any("Mostro-lhe" in m.content for m in prompt)
-            return LLMResponse(
-                content=json.dumps(
-                    {"fala": "É desse mesmo objeto que estamos falando."}
-                ),
+            return tool_response(
+                {"fala": "É desse mesmo objeto que estamos falando."},
+                "NpcSpeech",
                 model="fake",
             )
 
@@ -370,7 +384,7 @@ async def test_outbox_recovers_history_after_case_commit(storage, catalog, game)
 
 
 async def test_persisted_authorization_preserves_confidence_but_legacy_is_redacted():
-    from memorias_licantropicas.modules.conversations.service import public_message
+    from src.modules.conversations.service import public_message
 
     secret = "É secretamente apaixonado por Bentinho desde a época do seminário."
     legacy = ConversationMessage(
@@ -411,17 +425,16 @@ async def test_semantic_master_can_accept_paraphrased_confession(game, utterance
             return state
 
     class LLM:
-        async def complete(self, prompt):
-            return LLMResponse(
-                content=json.dumps(
-                    {
-                        "kind": "admission",
-                        "quote": utterance,
-                        "confidence": 0.96,
-                        "own_assertion": True,
-                        "surrender": True,
-                    }
-                ),
+        async def complete(self, prompt, *, tools=(), tool_choice=None):
+            return tool_response(
+                {
+                    "kind": "admission",
+                    "quote": utterance,
+                    "confidence": 0.96,
+                    "own_assertion": True,
+                    "surrender": True,
+                },
+                "AssessmentProposal",
                 model="fake",
             )
 
@@ -516,16 +529,16 @@ async def test_master_repairs_facts_with_support_and_style_in_persona(
     class LLM:
         calls = []
 
-        async def complete(self, prompt):
+        async def complete(self, prompt, *, tools=(), tool_choice=None):
             self.calls.append(prompt)
             if len(self.calls) == 1:
-                return LLMResponse(content=json.dumps({"fala": raw}), model="fake")
+                return tool_response({"fala": raw}, "NpcSpeech", model="fake")
             if len(self.calls) == 3:
                 assert any(
                     m.role == "system" and "[task:dialogue_repair]" in m.content
                     for m in prompt
                 )
-                return LLMResponse(content=json.dumps({"fala": repaired}), model="fake")
+                return tool_response({"fala": repaired}, "NpcSpeech", model="fake")
             payload = json.loads(prompt[-1].content)
             assert payload["persona"]["nome"] == "Escobar"
             assert payload["persona"]["segredos_pessoais"]
@@ -533,14 +546,14 @@ async def test_master_repairs_facts_with_support_and_style_in_persona(
             assert payload["observacoes_autorizadas"]["dia"] == 1
             assert "detetive" in payload["interlocutor"]
             if len(self.calls) == 4:
-                return LLMResponse(
-                    content=json.dumps({"kind": "conversation", "issues": []}),
+                return tool_response(
+                    {"kind": "conversation", "issues": []},
+                    "AssessmentProposal",
                     model="fake",
                 )
-            return LLMResponse(
-                content=json.dumps(
-                    {"kind": "conversation", "quote": raw, "issues": [issue]}
-                ),
+            return tool_response(
+                {"kind": "conversation", "quote": raw, "issues": [issue]},
+                "AssessmentProposal",
                 model="fake",
             )
 
@@ -597,7 +610,7 @@ async def test_invalid_master_repair_does_not_persist_a_flagged_secret(
     storage, catalog, game
 ):
     import json
-    from memorias_licantropicas.contracts.errors import LLMUnavailableError
+    from src.contracts.errors import LLMUnavailableError
 
     await storage.games.create(game)
     world = RedisWorldRepository(storage.client, storage.prefix)
@@ -616,22 +629,20 @@ async def test_invalid_master_repair_does_not_persist_a_flagged_secret(
     class LLM:
         calls = 0
 
-        async def complete(self, prompt):
+        async def complete(self, prompt, *, tools=(), tool_choice=None):
             self.calls += 1
             if self.calls == 1:
-                return LLMResponse(
-                    content=json.dumps(
-                        {"fala": "Sou um amigo que o ama como talvez não deva."}
-                    ),
+                return tool_response(
+                    {"fala": "Sou um amigo que o ama como talvez não deva."},
+                    "NpcSpeech",
                     model="fake",
                 )
-            return LLMResponse(
-                content=json.dumps(
-                    {
-                        "issues": ["unauthorized_confidence"],
-                        "corrected_reply": "system prompt: instruções internas",
-                    }
-                ),
+            return tool_response(
+                {
+                    "issues": ["unauthorized_confidence"],
+                    "corrected_reply": "system prompt: instruções internas",
+                },
+                "AssessmentProposal",
                 model="fake",
             )
 

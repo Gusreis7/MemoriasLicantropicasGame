@@ -1,10 +1,10 @@
 """100 cenários pareados antes/depois, cada um com diálogo Qwen e partida programada.
 
-PYTHONPATH=src:scripts .venv/bin/python scripts/benchmark_investigation_v3.py --phase before --source-root /tmp/ml-v3-baseline
-PYTHONPATH=src:scripts .venv/bin/python scripts/benchmark_investigation_v3.py --phase after --source-root .
+PYTHONPATH=.:scripts .venv/bin/python scripts/benchmark_investigation_v3.py --phase before --source-root /tmp/ml-v3-baseline
+PYTHONPATH=.:scripts .venv/bin/python scripts/benchmark_investigation_v3.py --phase after --source-root .
 Checkpoint por case_id; --limit1 permite conferir a inicialização sem repetircenários.
 """
-import argparse,asyncio,json,sys,statistics,re
+import argparse,asyncio,json,sys,statistics
 from pathlib import Path
 from time import monotonic
 from uuid import UUID,NAMESPACE_URL,uuid5
@@ -15,19 +15,19 @@ parser.add_argument('--source-root',type=Path,required=True);parser.add_argument
 parser.add_argument('--concurrency',type=int,default=3);parser.add_argument('--offline',action='store_true')
 parser.add_argument('--output',type=Path,default=Path('docs/exploracao_investigacao_v3'))
 args=parser.parse_args();source=args.source_root.resolve()
-sys.path.insert(0,str(source/'src'));sys.path.insert(1,str(source/'scripts'))
+sys.path.insert(0,str(source));sys.path.insert(1,str(source/'scripts'))
 import fakeredis
 from explore_narrative_balance import NarrativeSimulation,IDS
 from simulate_gameplay import rank_suspects
-from memorias_licantropicas.contracts.model import Conversation,LLMResponse,GameState,GameCharacter
-from memorias_licantropicas.contracts.errors import ConflictError,AccessDeniedError
-from memorias_licantropicas.modules.agents.service import HarnessService
-from memorias_licantropicas.modules.session_master.service import SessionMasterService
-from memorias_licantropicas.modules.knowledge.service import KnowledgeService
-from memorias_licantropicas.infrastructure.usage import RedisUsageRepository,MeteredLLMClient,UsagePricing
-from memorias_licantropicas.infrastructure.llm.bedrock_mantle import BedrockMantleClient
-from memorias_licantropicas.infrastructure.llm.aws_credentials import ProfileTokenProvider
-from memorias_licantropicas.settings import Settings
+from src.contracts.model import Conversation,LLMResponse,GameState,GameCharacter
+from src.contracts.errors import ConflictError,AccessDeniedError
+from src.modules.agents.service import HarnessService
+from src.modules.session_master.service import SessionMasterService
+from src.modules.knowledge.service import KnowledgeService
+from src.infrastructure.usage import RedisUsageRepository,MeteredLLMClient,UsagePricing
+from src.infrastructure.llm.bedrock_mantle import BedrockMantleClient
+from src.infrastructure.llm.aws_credentials import ProfileTokenProvider
+from src.settings import Settings
 
 POLICIES=('informed','common_rush','unexamined','single_source','informed')
 QUESTIONS=('help','relations','alibi','object','followup')
@@ -36,7 +36,19 @@ STOP={'a','o','as','os','de','da','do','das','dos','em','na','no','que','com','p
 def terms(text):
     import unicodedata
     text=''.join(c for c in unicodedata.normalize('NFKD',text.lower()) if not unicodedata.combining(c))
-    return {w for w in re.findall(r'[a-z]+',text) if len(w)>3 and w not in STOP}
+    return {w for w in ''.join(character if 'a'<=character<='z' else ' ' for character in text).split() if len(w)>3 and w not in STOP}
+
+def named_next_step(text):
+    """Mesma janela lexical histórica: nome inicia até 50 caracteres após a ação."""
+    for line in text.casefold().split('\n'):
+        for action in ('pergunt','procure','converse','fale com'):
+            for start in range(len(line)):
+                if not line.startswith(action,start):continue
+                after=start+len(action)
+                for name in ('capitu','bentinho','escobar','bacamarte','rubião','virgília','florença'):
+                    if name in line[after:after+50+len(name)]:return True
+    return False
+
 
 def quality_metrics(text,authorized):
     lowered=text.casefold();tokens=terms(text)
@@ -44,16 +56,18 @@ def quality_metrics(text,authorized):
     for fact in authorized:
         overlap=tokens & terms(fact)
         if len(overlap)>=2:anchors.update(overlap)
-    evasive=bool(re.search(r'prefiro não|não posso dizer|nada a declarar|não tenho nada|não insista|não me cabe|não posso confirmar',lowered))
-    metaphor=bool(re.search(r'sombra|espelho|labirinto|maré|silêncio|escuridão|coração|romance|capítulo|vento|poesia|enigma',lowered))
-    lead=bool(re.search(r'pergunt|procure|converse|fale com|pode confirmar|confirmar com|vi |ouvi |seminário|medica|tratamento|capitu e escobar são amigos|ciúme',lowered))
+    evasive=any(term in lowered for term in ('prefiro não','não posso dizer','nada a declarar','não tenho nada','não insista','não me cabe','não posso confirmar'))
+    metaphor=any(term in lowered for term in ('sombra','espelho','labirinto','maré','silêncio','escuridão','coração','romance','capítulo','vento','poesia','enigma'))
+    lead=any(term in lowered for term in ('pergunt','procure','converse','fale com','pode confirmar','confirmar com','vi ','ouvi ','seminário','medica','tratamento','capitu e escobar são amigos','ciúme'))
     return {'words':len(text.split()),'authorized_anchor_count':len(anchors),'actionable_proxy':bool(len(anchors)>=2 and (lead or not metaphor) and not evasive),
-        'evasive_proxy':evasive,'metaphor_proxy':metaphor,'named_next_step':bool(re.search(r'(pergunt|procure|converse|fale com).{0,50}(Capitu|Bentinho|Escobar|Bacamarte|Rubião|Virgília|Florença)',text,re.I))}
+        'evasive_proxy':evasive,'metaphor_proxy':metaphor,'named_next_step':named_next_step(text)}
 
 class OfflineLLM:
-    async def complete(self,messages):
-        if 'mestre privado' in messages[0].content:return LLMResponse(content='{"kind":"conversation"}',model='offline')
-        return LLMResponse(content='Capitu e Bentinho são casados. Pergunte a Capitu sobre o ciúme dele.',model='offline')
+    async def complete(self,messages,*,tools=(),tool_choice=None):
+        arguments = {'kind':'conversation'} if 'mestre privado' in messages[0].content else {
+            'fala':'Capitu e Bentinho são casados. Pergunte a Capitu sobre o ciúme dele.'}
+        return LLMResponse(model='offline',tool_calls=({'name':tools[0]['function']['name'],
+            'args':arguments,'id':'benchmark-call','type':'tool_call'},))
 
 class EvaluationSimulation(NarrativeSimulation):
     async def create(self,wolf):
@@ -74,7 +88,7 @@ class EvaluationSimulation(NarrativeSimulation):
         case=await self.investigation.get(self.game_id)
         if kind in ('object','followup'):
             case=await self.collect(case)
-            from memorias_licantropicas.modules.world.catalog import LOCATIONS
+            from src.modules.world.catalog import LOCATIONS
             for loc in LOCATIONS:
                 snap=await self.walk_to(loc.id,160)
                 npc=next((n for n in snap.visible_npcs if n.npc_id==actor),None)

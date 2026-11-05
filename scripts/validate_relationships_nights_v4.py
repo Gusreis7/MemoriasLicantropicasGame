@@ -6,7 +6,7 @@ import fakeredis
 
 sys.path.insert(0,str(Path(__file__).resolve().parent))
 from simulate_gameplay import Simulation
-from memorias_licantropicas.contracts.investigation import NightStory,MurderPlot
+from src.contracts.investigation import NightStory,MurderPlot
 
 async def main():
  rows=[]

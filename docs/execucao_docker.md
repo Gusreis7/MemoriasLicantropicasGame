@@ -82,7 +82,7 @@ Para rodar a API no host, instale [uv](https://docs.astral.sh/uv/getting-started
 uv sync --locked
 python3 scripts/configure_local.py
 docker compose -f compose.yaml -f compose.debug.yaml up -d --wait redis
-REDIS_URL=redis://127.0.0.1:7080/0 AWS_PROFILE=terraform uv run uvicorn memorias_licantropicas.main:app --port 7079 --reload
+REDIS_URL=redis://127.0.0.1:7080/0 AWS_PROFILE=terraform uv run uvicorn src.main:app --port 7079 --reload
 ```
 
 Em outro terminal, dentro de `frontend/`, execute `npm ci` e `npm run dev`; o Vite usa a porta 7081. O admin no Vite precisa dessa origem em `ADMIN_ALLOWED_ORIGINS`. O Docker normal já usa as origens locais do painel. O Redis de testes (`compose.test.yaml`, porta 16379) é separado e não compartilha o volume do jogo; a [suíte de testes](testes.md) documenta esse fluxo.

@@ -2,16 +2,15 @@
 import argparse
 import asyncio
 import json
-import re
 import unicodedata
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from memorias_licantropicas.composition import build_services
-from memorias_licantropicas.contracts.model import ConversationMessage
-from memorias_licantropicas.infrastructure.redis_repository import RedisMemoryRepository
-from memorias_licantropicas.modules.world.gate import RedisPlayerGate
-from memorias_licantropicas.settings import Settings
+from src.composition import build_services
+from src.contracts.model import ConversationMessage
+from src.infrastructure.redis_repository import RedisMemoryRepository
+from src.modules.world.gate import RedisPlayerGate
+from src.settings import Settings
 
 
 async def run(rounds):
@@ -22,9 +21,9 @@ async def run(rounds):
         calls=[]
         for label,client in [('persona',services.harness._llm),('master',services.harness._session_master._llm)]:
             original=client.complete
-            async def capture(prompt,original=original,label=label):
-                result=await original(prompt)
-                calls.append({'stage':label,'output':result.content})
+            async def capture(prompt,original=original,label=label,*,tools=(),tool_choice=None):
+                result=await original(prompt,tools=tools,tool_choice=tool_choice)
+                calls.append({'stage':label,'output':result.model_dump(mode='json', include={'tool_calls','invalid_tool_calls'})})
                 return result
             client.complete=capture
         memory=RedisMemoryRepository(services.redis,prefix)
@@ -38,7 +37,7 @@ async def run(rounds):
                 async def seed(question,reply):
                     # O harness cria a conversa no primeiro envio. Para o histórico
                     # legado, inicialize os metadados sem gerar uma resposta.
-                    from memorias_licantropicas.contracts.model import Conversation
+                    from src.contracts.model import Conversation
                     if await memory.get_conversation(game.id,conversation) is None:
                         await memory.create_conversation(Conversation(id=conversation,game_id=game.id,
                             participant_ids=('player',npc),created_at=datetime.now(UTC)))
@@ -63,9 +62,9 @@ async def run(rounds):
                         warnings=[]
                         if text.startswith(('posso lhe ajudar com isso:', 'isso eu posso lhe contar:')):
                             warnings.append('legacy_template')
-                        if 'lobisomens' in question and (not re.search(r'acredit|creio|cre[rm]|lenda|lobisom|duvid|nao sei',text) or re.search(r'lenco|medicacao|consultas',text)):
+                        if 'lobisomens' in question and (not any(term in text for term in ('acredit','creio','crer','crem','lenda','lobisom','duvid','nao sei')) or any(term in text for term in ('lenco','medicacao','consultas'))):
                             warnings.append('belief_not_answered')
-                        if 'bras cubas' in question and re.search(r'medicacao|consultas|lenco',text):
+                        if 'bras cubas' in question and any(term in text for term in ('medicacao','consultas','lenco')):
                             warnings.append('unrelated_clue')
                         record['warnings']=warnings
                     except Exception as exc:

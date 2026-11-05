@@ -3,11 +3,11 @@ from datetime import UTC, datetime
 from uuid import uuid4
 import pytest
 
-from memorias_licantropicas.contracts.errors import AccessDeniedError
-from memorias_licantropicas.contracts.social import Relationship, SocialMessage, SocialState
-from memorias_licantropicas.modules.knowledge.mechanics import can_share, closeness, vote_scores
-from memorias_licantropicas.modules.knowledge.rules import apply_relationship, initial_relationships, relationship_for, transmit
-from memorias_licantropicas.modules.knowledge.seeds import seed_social_state
+from src.contracts.errors import AccessDeniedError
+from src.contracts.social import Relationship, SocialMessage, SocialState
+from src.modules.knowledge.mechanics import can_share, closeness, vote_scores
+from src.modules.knowledge.rules import apply_relationship, initial_relationships, relationship_for, transmit
+from src.modules.knowledge.seeds import seed_social_state
 
 IDS=('bentinho','capitu','escobar','bacamarte','virgilia','florenca','rubiao')
 NOW=datetime(2026,11,2,tzinfo=UTC)
