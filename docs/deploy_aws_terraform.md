@@ -120,7 +120,7 @@ Repository variables (não secrets de access keys):
 | `AWS_INFRASTRUCTURE_ROLE_ARN` | output `infrastructure_role_arn` |
 | `AWS_DELIVERY_ROLE_ARN` | output `delivery_role_arn` |
 
-Não cadastre `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` ou `AWS_BEARER_TOKEN_BEDROCK` no GitHub. `id-token:write` existe somente nos jobs protegidos de infraestrutura/entrega. PRs só executam testes e validação sem credenciais AWS. As Actions estão fixadas por SHA e checkout não persiste credenciais Git.
+Não cadastre `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` ou `AWS_BEARER_TOKEN_BEDROCK` no GitHub. `id-token:write` existe somente nos jobs protegidos de infraestrutura/entrega. O workflow `Validate` foi removido para evitar a execução automática da suíte em pushes e pull requests. Os testes continuam disponíveis para execução local sob demanda; a entrega não os invoca. As Actions estão fixadas por SHA e checkout não persiste credenciais Git.
 
 ### 7. Subir, publicar, derrubar
 
@@ -129,7 +129,7 @@ Depois de revisar/mergiar a branch e deixar o Gitea espelhar os arquivos:
 1. Execute **AWS infrastructure**, operation `plan`; revise os recursos.
 2. Execute operation `apply` no mesmo workflow. A base persistente não é aplicada pelo CI.
 3. Execute **AWS delivery** em main. Pushes seguintes em main também iniciam entrega, conforme as proteções do environment.
-4. O workflow valida a aplicação/Terraform, constrói as imagens se o commit ainda não estiver na ECR imutável, bloqueia findings HIGH/CRITICAL do scan ECR, publica o manifesto e invoca o documento SSM. A EC2 verifica repositórios e digests vinculados às tags do commit antes de carregar. Arquivos Compose/scripts host não vêm do manifesto enviado pelo CI.
+4. O workflow de entrega verifica a configuração da conta e a compilação Python, constrói as imagens se o commit ainda não estiver na ECR imutável, bloqueia findings HIGH/CRITICAL do scan ECR, publica o manifesto e invoca o documento SSM. Ele não executa a suíte de testes nem os testes Terraform simulados. A EC2 verifica repositórios e digests vinculados às tags do commit antes de carregar. Arquivos Compose/scripts host não vêm do manifesto enviado pelo CI.
 5. Para derrubar: **AWS infrastructure**, operation `destroy`, confirmação exata `memoriaslicantropicasgame.gustavodreis.dev.br`, environment `destruction`. Isso apaga o root app; não apaga partidas ou a base persistente.
 6. Para subir de novo: `apply`, seguido de `AWS delivery`. O volume existente é remontado e os dados reaparecem.
 

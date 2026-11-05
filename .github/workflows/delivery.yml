@@ -8,10 +8,7 @@ concurrency:
   group: aws-production
   cancel-in-progress: false
 jobs:
-  validate:
-    uses: ./.github/workflows/ci.yml
   release:
-    needs: validate
     if: github.ref == 'refs/heads/main' && github.repository == 'Gusreis7/MemoriasLicantropicasGame'
     environment: production
     runs-on: ubuntu-24.04
