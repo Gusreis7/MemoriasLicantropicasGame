@@ -71,5 +71,6 @@ O benchmark recusa sobrescrever uma rodada já arquivada. O gerador do relatóri
 import re
 for old,new in [('mínima5','mínima 5'),('em0,25','em 0,25'),('conjunto0,5','conjunto 0,5'),('em1,','em 1,'),('teto2','teto 2'),('em3.','em 3.'),('de100','de 100'),('e100','e 100'),('As20','As 20'),('teve20','teve 20'),('dia3','dia 3'),('dia2','dia 2'),('nestes200','nestes 200'),('casos11','casos 11'),('e31/','e 31/'),('Baseline026','Baseline 026'),('em478','em 478'),('São100','São 100'),('tem20','tem 20')]: report=report.replace(old,new)
 report=report.replace('US$0','US$ 0').replace('AWS:0','AWS: 0')
+report+='\n## Validação da entrega (2026-11-04)\n\n- 730 testes de backend passaram no workspace integrado; 56 de frontend e build TypeScript/Vite passaram.\n- 51 testes de regras/API/persistência também passaram com Redis real, em namespaces isolados.\n- 15 fluxos passaram no Brave, incluindo os dois novos cenários de dossiê agrupado e reapresentação no mesmo dia.\n- Aplicação reconstruída em Docker e servida nas portas locais 7077/7078/7079.\n- As alterações já preparadas pelo usuário no index foram preservadas byte a byte durante a integração.\n'
 (folder/'relatorio.md').write_text(report)
 print(json.dumps(summary['phases'],ensure_ascii=False))

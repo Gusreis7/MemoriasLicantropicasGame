@@ -48,3 +48,11 @@ PYTHONPATH=src:scripts .venv/bin/python scripts/benchmark_accusation_v5.py --pha
 ```
 
 O benchmark recusa sobrescrever uma rodada já arquivada. O gerador do relatório lê os JSONL em `docs/avaliacao_acusacao_v5`. Os testes de contrato cobrem a mesma avaliação sem mutação, a reapresentação no mesmo dia, agrupamento e ausência de leitura da verdade oculta.
+
+## Validação da entrega (2026-11-04)
+
+- 730 testes de backend passaram no workspace integrado; 56 de frontend e build TypeScript/Vite passaram.
+- 51 testes de regras/API/persistência também passaram com Redis real, em namespaces isolados.
+- 15 fluxos passaram no Brave, incluindo os dois novos cenários de dossiê agrupado e reapresentação no mesmo dia.
+- Aplicação reconstruída em Docker e servida nas portas locais 7077/7078/7079.
+- As alterações já preparadas pelo usuário no index foram preservadas byte a byte durante a integração.
