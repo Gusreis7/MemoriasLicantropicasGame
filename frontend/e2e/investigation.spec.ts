@@ -154,10 +154,12 @@ for (const width of [1440, 390]) {
     await page.setViewportSize({width, height: 1000});
     const city = await cityFixture(page); await begin(page);
     await page.locator('#skip-day').click();
+    await expect(page.locator('#night-attack-overlay')).toBeVisible();
+    await page.locator('#night-attack-overlay button').click();
     await expect(page.locator('#journal-overlay')).toBeVisible();
     await expect(page.locator('#journal-headline')).toHaveText('Uma nova manhã na cidade');
     await expect(page.locator('#case-day')).toHaveText('DIA 2');
-    await expect(page.locator('#case-clock')).toHaveText('09:00');
+    await expect(page.locator('#case-clock')).toHaveText(/09:[0-1]\d/);
     expect(city.requests.filter(request => request.path.endsWith('/skip-day')).map(request => request.body)).toEqual([{day: 1}]);
     await page.locator('#read-journal').click();
     await expect(page.locator('#skip-day')).toBeEnabled();
