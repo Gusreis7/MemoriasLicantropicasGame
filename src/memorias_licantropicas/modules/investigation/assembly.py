@@ -2,7 +2,7 @@
 
 from datetime import timedelta
 import json
-import re
+from memorias_licantropicas.textutils import word_tokens, has_word_start
 from uuid import uuid4
 
 from memorias_licantropicas.contracts.investigation import (
@@ -51,7 +51,7 @@ def eligible_voters(state, game):
 
 def argument_quality(text):
     """Fallback bounded; verbosity/repeating a slogan cannot accumulate influence."""
-    words = set(re.findall(r"\w+", text.casefold()))
+    words = set(word_tokens(text))
     if len(words) < 5:
         return 0.0
     links = len(
