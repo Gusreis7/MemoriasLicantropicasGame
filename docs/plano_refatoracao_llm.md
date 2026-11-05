@@ -47,3 +47,11 @@ Cada frente trabalha em worktree/branch própria, registra decisões e entrega c
 Integrar em develop, verificar a suíte e partidas completas, depois promover a main,
 remover branches concluídas e manter push manual. Remover somente código/artefatos sem
 consumidores comprovados; relatórios históricos não são código morto.
+
+## Decisões consolidadas
+
+As quatro frentes foram integradas. A geração não usa o parser legado de histórico.
+O mestre propõe classificação/problemas; o grafo pede à própria persona que refaça
+a fala. O ciclo social usa leases por nó e revalidação CAS. Fallbacks têm metadados
+explícitos e são excluídos da rede de relatos, com auditoria em partidas completas.
+A documentação final está em [refatoracao_llm.md](refatoracao_llm.md).

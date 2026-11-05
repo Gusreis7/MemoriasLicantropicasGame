@@ -18,6 +18,14 @@ A [correção de relevância dos diálogos](docs/correcao_relevancia_dialogos.md
 
 Para instalação, escolha de credencial, comandos de parada e solução de problemas, veja o [guia de execução com Docker](docs/execucao_docker.md). Se o Redis não iniciar, siga a seção de recuperação do guia antes de tentar outra subida.
 
+## Agentes, grafos e simulações
+
+A [arquitetura LLM atual](docs/refatoracao_llm.md) separa transporte Mantle, prompts de persona, contratos Pydantic, output parser do langchain-core e grafos LangGraph de diálogo/convivência. A [simulação de partidas completas](docs/simulacao_partidas_refatoracao.md) executa os serviços e termina partidas pelo motor; o modo padrão é offline e não faz chamadas AWS.
+
+```sh
+uv run python scripts/run_session_simulations.py --games 100 --seed 20261105
+```
+
 ## Deploy AWS
 
 A [base de deploy com Terraform e GitHub Actions](docs/deploy_aws_terraform.md) prepara EC2, HTTPS/DNS, Redis persistente e autenticação OIDC. O guia contém as etapas manuais no Registro.br, AWS e GitHub, incluindo acesso privado ao admin e workflows de subida/destruição.

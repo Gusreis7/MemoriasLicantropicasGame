@@ -1,5 +1,7 @@
 # Contratos v1 e divisão de trabalho
 
+> Registro histórico. Para os contratos, grafos e tratamento de saídas atuais, consulte [arquitetura LLM](refatoracao_llm.md).
+
 Este documento registra a divisão original. A extensão atual acrescenta `CharacterRepository.content_version`, `DialogueStrategy`, `TokenProvider`, `ConversationGate` e o módulo `conversations`, detalhados em [conversa_jogador_persona.md](conversa_jogador_persona.md). O contrato HTTP agora fixa o interlocutor como jogador, sem expor `speaker_id` do harness interno.
 
 ## Escopo desta entrega
