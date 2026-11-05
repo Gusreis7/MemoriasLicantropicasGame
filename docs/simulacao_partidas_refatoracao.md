@@ -72,6 +72,12 @@ partida e sementes das noites. Nenhuma regra de vitória, pista, voto ou condena
 é substituída. Como esses pontos de entropia usam patches de fixture, as execuções
 são serializadas para impedir mistura de sementes entre partidas concorrentes.
 
+O runner audita o campo persistido `generation_status` em todos os pares de
+conversa. Mensagens `fallback`/`guarded` ficam no histórico, mas não podem gerar
+KnowledgeEntry, nem uma cadeia de descendentes via parent_ids/root_id. Uma
+contaminação aborta a partida de teste com AssertionError. Um teste adicional
+injeta uma tentativa de revelar o prompt para verificar o caminho `guarded`.
+
 A bateria intercala JSON inválido uma vez, JSON sempre inválido e falha de
 autenticação, além de partidas sem injeção de falhas. São testadas recuperação
 limitada, preservação de rascunho/histórico e continuidade das mecânicas. Uma partida
