@@ -59,7 +59,11 @@ from memorias_licantropicas.modules.world.repository import RedisWorldRepository
 from memorias_licantropicas.modules.world.schema import MoveRequest, TravelRequest
 from memorias_licantropicas.modules.world.service import WorldService
 
-from memorias_licantropicas.simulation.model import BudgetedSessionModel, Fault, OfflineSessionModel
+from memorias_licantropicas.simulation.model import (
+    BudgetedSessionModel,
+    Fault,
+    OfflineSessionModel,
+)
 
 Policy = Literal["investigator", "assembly", "rash", "passive"]
 POLICIES: tuple[Policy, ...] = ("investigator", "assembly", "rash", "passive")
@@ -76,7 +80,6 @@ class Clock:
 
     def advance(self, seconds: float):
         self.value += timedelta(seconds=seconds)
-
 
 
 def public_ranking(case, living_ids):
@@ -321,7 +324,7 @@ class SessionSimulation:
                 await self.walk_to(location.id, visible.x)
                 await self.speak(
                     visible.npc_id,
-                    "Bom dia. O que sabe sobre o que aconteceu ontem à noite?",
+                    "Onde estava ontem à noite, com quem e o que fazia?",
                 )
                 if passive:
                     return await self.investigation.get(self.game_id), living
@@ -341,10 +344,16 @@ class SessionSimulation:
                     visible.npc_id,
                     "Sobre o último objeto que mostrei, o que você reconhece?",
                 )
-                case = await self.investigation.interrogate(
-                    self.game_id, visible.npc_id, case.day - 1, "night"
-                )
-                self._record("interrogate", npc_id=visible.npc_id)
+                case = await self.investigation.get(self.game_id)
+                if any(
+                    record.npc_id == visible.npc_id
+                    and record.day == case.day - 1
+                    and record.period == "night"
+                    for record in case.interrogations
+                ):
+                    self._record(
+                        "interrogate", npc_id=visible.npc_id, source="dialogue"
+                    )
                 await self.knowledge.process_pending(self.game_id, case.day)
         return await self.investigation.get(self.game_id), living
 

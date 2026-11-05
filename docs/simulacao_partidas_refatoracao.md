@@ -39,7 +39,9 @@ latência humana nem o comportamento de jogadores reais.
 - `KnowledgeService` e `SocialService`: extração de alegações, proveniência,
   agendamento, caminhada dos moradores, falas entre NPCs e memória social.
 - `InvestigationService`: busca, exame, apresentação de objetos, depoimentos,
-  interrogatórios, revisão do dossiê, prisão ou assembleia curta com réplica.
+  revisão do dossiê, prisão ou assembleia curta com réplica. Álibis são perguntados
+  em linguagem natural e registrados pelo mestre durante o diálogo; o runner não
+  chama o endpoint separado de interrogatório para fabricar esse registro.
 - `TurnService`: anoitecer, crimes ou noites poupadas, transformação/soltura,
   novas manhãs e vitória/derrota decididas pelas regras reais.
 

@@ -98,7 +98,14 @@ class OfflineSessionModel:
             observations = private.get("observacoes_autorizadas", {})
             focused = observations.get("ultimo_objeto_apresentado") or {}
             supports = observations.get("apoios_de_conversa", ())
-            speech = focused.get("fala_registrada")
+            question = str(payload.get("fala", "")).casefold()
+            activities = observations.get("suas_atividades", ())
+            asks_alibi = "onde estava" in question or "com quem" in question
+            speech = (
+                activities[-1].get("lembranca") if asks_alibi and activities else None
+            )
+            if not speech and not asks_alibi:
+                speech = focused.get("fala_registrada")
             if not speech and supports:
                 speech = (
                     supports[0].get("texto")
@@ -119,9 +126,16 @@ class OfflineSessionModel:
                 word in speech.casefold()
                 for word in ("reconheço", "já vi", "estava", "contas", "selo")
             )
+            question = str(payload.get("jogador", "")).casefold()
+            alibi = "onde estava" in question or "com quem" in question
             content = json.dumps(
                 {
-                    "kind": "conversation",
+                    "kind": "alibi" if alibi else "conversation",
+                    "quote": speech if alibi else "",
+                    "confidence": 1.0 if alibi else 0.0,
+                    "own_assertion": alibi,
+                    "period": "night" if alibi else None,
+                    "day": max(0, int(payload.get("dia", 1)) - 1) if alibi else None,
                     "issues": [],
                     "useful": useful,
                     "useful_quote": speech if useful else "",
@@ -208,4 +222,3 @@ class BudgetedSessionModel:
 
     async def aclose(self):
         await self.client.aclose()
-
