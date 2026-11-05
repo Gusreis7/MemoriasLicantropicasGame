@@ -182,9 +182,18 @@ async def test_live_call_budget_is_shared_and_blocks_before_calling_provider():
         ChatMessage(role="system", content="[task:session_assessment]"),
         ChatMessage(role="user", content='{"personagem":"Bom dia"}'),
     )
-    await client.complete(messages)
+    tools = (
+        {
+            "type": "function",
+            "function": {
+                "name": "AssessmentProposal",
+                "parameters": {"type": "object", "properties": {}},
+            },
+        },
+    )
+    await client.complete(messages, tools=tools, tool_choice="auto")
     with pytest.raises(LLMUnavailableError):
-        await client.complete(messages)
+        await client.complete(messages, tools=tools, tool_choice="auto")
     assert sum(provider.calls.values()) == 1
     assert client.exhausted
 

@@ -25,11 +25,15 @@ class ClockAdvance(BaseModel):
     seconds: float = Field(default=0, ge=0, le=10000)
     reset: bool = False
 
+
 settings = Settings(
-    _env_file=None, redis_url=os.environ.get("TEST_REDIS_URL", "redis://127.0.0.1:16379/0"),
-    redis_prefix="ml:browser-test", admin_password="browser-test-password",
+    _env_file=None,
+    redis_url=os.environ.get("TEST_REDIS_URL", "redis://127.0.0.1:16379/0"),
+    redis_prefix="ml:browser-test",
+    admin_password="browser-test-password",
     admin_allowed_origins="http://127.0.0.1:7081,http://localhost:7081",
-    aws_profile=None, bedrock_api_key=None,
+    aws_profile=None,
+    bedrock_api_key=None,
     social_enabled=False,
 )
 
@@ -45,9 +49,16 @@ def test_services(_settings):
     async def complete(messages, *, tools=(), tool_choice=None):
         task = provider.task_for(messages)
         if task == "npc_dialogue":
-            return respond_to_tools({
-                "fala": "Ouvi os rumores sobre Brás Cubas, mas não vi o que aconteceu.",
-            }, tools, tool_choice, model="deterministic-browser-test", input_tokens=1, output_tokens=1)
+            return respond_to_tools(
+                {
+                    "fala": "Ouvi os rumores sobre Brás Cubas, mas não vi o que aconteceu.",
+                },
+                tools,
+                tool_choice,
+                model="deterministic-browser-test",
+                input_tokens=1,
+                output_tokens=1,
+            )
         return await provider.complete(messages, tools=tools, tool_choice=tool_choice)
 
     # Replace every transport, preserving the production meters and graph. The

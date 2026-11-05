@@ -1,5 +1,7 @@
 """Execução real do StateGraph com modelos simulados e persistência Redis isolada."""
 
+from native_fixtures import tool_response, respond_to_tools, invalid_tool_response
+
 import asyncio
 import json
 from types import SimpleNamespace
@@ -28,7 +30,7 @@ async def capture_traces(harness):
 
 
 def speech(text="Bom dia, Floriano."):
-    return LLMResponse(content=json.dumps({"fala": text}), model="simulated")
+    return tool_response({"fala": text}, "NpcSpeech", model="simulated")
 
 
 async def test_graph_has_separate_conditional_stages_and_success_trace(
@@ -68,7 +70,7 @@ async def test_parse_failure_has_two_attempts_and_noninvestigative_fallback(
     await storage.games.create(game)
     traces = await capture_traces(harness)
     llm.complete = AsyncMock(
-        return_value=LLMResponse(content='{"fala":7}', model="simulated")
+        return_value=tool_response({"fala": 7}, "NpcSpeech", model="simulated")
     )
     conversation_id = uuid4()
     reply = await harness.respond(
@@ -377,8 +379,13 @@ async def test_arbitrary_exception_code_cannot_enter_trace(harness, storage, gam
 
 async def test_failed_lookup_cannot_create_orphan_redis_trace(harness, storage):
     from memorias_licantropicas.contracts.errors import NotFoundError
+
     missing = uuid4()
-    harness._trace_sink = RedisDialogueTraceRecorder(storage.client, storage.prefix).record
+    harness._trace_sink = RedisDialogueTraceRecorder(
+        storage.client, storage.prefix
+    ).record
     with pytest.raises(NotFoundError):
         await harness.respond(missing, "bentinho", uuid4(), "player", "Bom dia")
-    assert not await storage.client.exists(f"{storage.prefix}:game:{{{missing}}}:events")
+    assert not await storage.client.exists(
+        f"{storage.prefix}:game:{{{missing}}}:events"
+    )

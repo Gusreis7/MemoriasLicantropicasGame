@@ -32,12 +32,12 @@ POLICIES=('assembly_informed','detention_informed','hostile_rash','passive','ras
 
 class ScriptedPersona:
     def __init__(self,games,game_id,npc_id): self.games,self.game_id,self.npc_id=games,game_id,npc_id
-    async def complete(self,messages):
+    async def complete(self,messages,*,tools=(),tool_choice=None):
         game=await self.games.get(self.game_id)
         member=next(m for m in game.characters if m.character_id==self.npc_id)
         # Test generator knows role exactly as the persona would; detector policy never sees it.
         text='Fui eu quem matou Brás Cubas. Entrego-me ao delegado.' if member.role=='werewolf' else 'Não cometi esses ataques, Floriano. Quero esclarecer minha versão.'
-        return LLMResponse(content=text,model='scripted-persona',input_tokens=None,output_tokens=None)
+        return LLMResponse(model='scripted-persona', tool_calls=({'name':tools[0]['function']['name'],'args':{'fala':text},'id':'scripted-call','type':'tool_call'},))
 
 class NarrativeSimulation(Simulation):
     def __init__(self,*args,**kwargs):

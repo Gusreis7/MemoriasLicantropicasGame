@@ -18,15 +18,31 @@ def requested_schema(tools, tool_choice=None):
 
 def tool_response(payload, name="NpcSpeech", *, model="native-test-double", **usage):
     assert isinstance(payload, dict), "Fixtures supply typed arguments, not JSON text"
-    return LLMResponse(model=model, tool_calls=({"name": name, "args": payload,
-        "id": "fixture-call", "type": "tool_call"},), **usage)
+    return LLMResponse(
+        model=model,
+        tool_calls=(
+            {"name": name, "args": payload, "id": "fixture-call", "type": "tool_call"},
+        ),
+        **usage,
+    )
 
 
 def respond_to_tools(payload, tools, tool_choice=None, **metadata):
     return tool_response(payload, requested_schema(tools, tool_choice), **metadata)
 
 
-def invalid_tool_response(arguments, name="NpcSpeech", *, model="invalid-native-test-double"):
-    return LLMResponse(model=model, invalid_tool_calls=({"name": name, "args": arguments,
-        "id": "invalid-fixture-call", "type": "invalid_tool_call",
-        "error": "invalid_tool_arguments"},))
+def invalid_tool_response(
+    arguments, name="NpcSpeech", *, model="invalid-native-test-double"
+):
+    return LLMResponse(
+        model=model,
+        invalid_tool_calls=(
+            {
+                "name": name,
+                "args": arguments,
+                "id": "invalid-fixture-call",
+                "type": "invalid_tool_call",
+                "error": "invalid_tool_arguments",
+            },
+        ),
+    )

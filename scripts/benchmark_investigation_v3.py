@@ -51,9 +51,11 @@ def quality_metrics(text,authorized):
         'evasive_proxy':evasive,'metaphor_proxy':metaphor,'named_next_step':bool(re.search(r'(pergunt|procure|converse|fale com).{0,50}(Capitu|Bentinho|Escobar|Bacamarte|Rubião|Virgília|Florença)',text,re.I))}
 
 class OfflineLLM:
-    async def complete(self,messages):
-        if 'mestre privado' in messages[0].content:return LLMResponse(content='{"kind":"conversation"}',model='offline')
-        return LLMResponse(content='Capitu e Bentinho são casados. Pergunte a Capitu sobre o ciúme dele.',model='offline')
+    async def complete(self,messages,*,tools=(),tool_choice=None):
+        arguments = {'kind':'conversation'} if 'mestre privado' in messages[0].content else {
+            'fala':'Capitu e Bentinho são casados. Pergunte a Capitu sobre o ciúme dele.'}
+        return LLMResponse(model='offline',tool_calls=({'name':tools[0]['function']['name'],
+            'args':arguments,'id':'benchmark-call','type':'tool_call'},))
 
 class EvaluationSimulation(NarrativeSimulation):
     async def create(self,wolf):

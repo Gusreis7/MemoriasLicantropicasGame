@@ -68,8 +68,13 @@ class OfflineSessionModel:
             raise AssertionError("Simulation requires a declared native output tool")
         output_name = tools[0]["function"]["name"]
         if tool_choice == "none":
-            raise AssertionError("Native output tools cannot be disabled in simulations")
-        if isinstance(tool_choice, dict) and tool_choice["function"]["name"] != output_name:
+            raise AssertionError(
+                "Native output tools cannot be disabled in simulations"
+            )
+        if (
+            isinstance(tool_choice, dict)
+            and tool_choice["function"]["name"] != output_name
+        ):
             raise AssertionError("Requested output tool name mismatch")
         task = self.task_for(messages)
         self.calls[task] += 1
@@ -85,9 +90,15 @@ class OfflineSessionModel:
         ):
             self.injected_faults += 1
             return LLMResponse(
-                invalid_tool_calls=({"name": output_name, "args": '{"fala":',
-                    "id": "invalid-simulation-call", "type": "invalid_tool_call",
-                    "error": "invalid_tool_arguments"},),
+                invalid_tool_calls=(
+                    {
+                        "name": output_name,
+                        "args": '{"fala":',
+                        "id": "invalid-simulation-call",
+                        "type": "invalid_tool_call",
+                        "error": "invalid_tool_arguments",
+                    },
+                ),
                 model="offline-session-double",
                 input_tokens=0,
                 output_tokens=0,
@@ -129,16 +140,16 @@ class OfflineSessionModel:
             question = str(payload.get("jogador", "")).casefold()
             alibi = "onde estava" in question or "com quem" in question
             arguments = {
-                    "kind": "alibi" if alibi else "conversation",
-                    "quote": speech if alibi else "",
-                    "confidence": 1.0 if alibi else 0.0,
-                    "own_assertion": alibi,
-                    "period": "night" if alibi else None,
-                    "day": max(0, int(payload.get("dia", 1)) - 1) if alibi else None,
-                    "issues": [],
-                    "useful": useful,
-                    "useful_quote": speech if useful else "",
-                }
+                "kind": "alibi" if alibi else "conversation",
+                "quote": speech if alibi else "",
+                "confidence": 1.0 if alibi else 0.0,
+                "own_assertion": alibi,
+                "period": "night" if alibi else None,
+                "day": max(0, int(payload.get("dia", 1)) - 1) if alibi else None,
+                "issues": [],
+                "useful": useful,
+                "useful_quote": speech if useful else "",
+            }
         elif task == "knowledge_extraction":
             claims = [
                 {
@@ -165,12 +176,15 @@ class OfflineSessionModel:
                 else "Ainda tenho dúvidas sobre o que aconteceu; prefiro ouvir as pessoas."
             )
             arguments = {
-                    "fala": speech,
-                    "intent": "repeat" if claim else "ask",
-                    "claim_ids": [claim["id"]] if claim else [],
-                }
+                "fala": speech,
+                "intent": "repeat" if claim else "ask",
+                "claim_ids": [claim["id"]] if claim else [],
+            }
         elif task == "assembly_debate":
-            arguments = {"messages": payload["falas_publicas"], "argument_strength": 0.5}
+            arguments = {
+                "messages": payload["falas_publicas"],
+                "argument_strength": 0.5,
+            }
         else:
             speech = (
                 "A cidade deve a Floriano o alívio de ver encerrada esta ameaça. "
@@ -181,8 +195,14 @@ class OfflineSessionModel:
         # Explicit character-count approximation, not tokenizer/provider measurements.
         input_tokens = sum(len(message.content) for message in messages) // 4
         return LLMResponse(
-            tool_calls=({"name": output_name, "args": arguments, "id": "simulation-call",
-                         "type": "tool_call"},),
+            tool_calls=(
+                {
+                    "name": output_name,
+                    "args": arguments,
+                    "id": "simulation-call",
+                    "type": "tool_call",
+                },
+            ),
             model="offline-session-double",
             input_tokens=input_tokens,
             output_tokens=max(1, len(json.dumps(arguments, ensure_ascii=False)) // 4),
@@ -210,7 +230,9 @@ class BudgetedSessionModel:
                 "Simulation provider-call budget exhausted", code="llm_unavailable"
             )
         self.calls[OfflineSessionModel.task_for(messages)] += 1
-        return await self.client.complete(messages, tools=tools, tool_choice=tool_choice)
+        return await self.client.complete(
+            messages, tools=tools, tool_choice=tool_choice
+        )
 
     async def aclose(self):
         await self.client.aclose()
