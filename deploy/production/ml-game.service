@@ -1,0 +1,20 @@
+[Unit]
+Description=Memorias Licantropicas containers
+After=network-online.target docker.service ml-imds-firewall.service
+Requires=docker.service ml-imds-firewall.service
+Wants=network-online.target
+RequiresMountsFor=/srv/ml-data
+ConditionPathExists=/etc/ml-game/config.json
+ConditionPathExists=|/srv/ml-data/current-release
+ConditionPathExists=|/run/ml-game/requested-release
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+Environment=DOCKER_CONFIG=/run/ml-game/docker
+ExecStart=/usr/local/sbin/ml-deploy
+ExecReload=/usr/local/sbin/ml-deploy
+ExecStop=/bin/sh -c '/usr/bin/docker compose --env-file /run/ml-game/images.env -f /etc/ml-game/compose.yaml stop --timeout 60'
+TimeoutStartSec=600
+TimeoutStopSec=90
+[Install]
+WantedBy=multi-user.target

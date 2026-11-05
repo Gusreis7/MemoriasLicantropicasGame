@@ -19,3 +19,14 @@ frontend/dist/
 frontend/test-results/
 frontend/playwright-report/
 artifacts/
+
+# Terraform: commit lock files, never credentials, plans or state.
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfvars
+*.tfvars.json
+backend.s3.hcl
+infra/terraform/bootstrap/backend.tf
+crash.log

@@ -1,0 +1,48 @@
+name: AWS delivery
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions: {contents: read}
+concurrency:
+  group: aws-production
+  cancel-in-progress: false
+jobs:
+  validate:
+    uses: ./.github/workflows/ci.yml
+  release:
+    needs: validate
+    if: github.ref == 'refs/heads/main' && github.repository == 'Gusreis7/MemoriasLicantropicasGame'
+    environment: production
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    permissions: {contents: read, id-token: write}
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+      STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with: {persist-credentials: false}
+      - name: Validar configuração da conta
+        env:
+          ACCOUNT: ${{ vars.AWS_ACCOUNT_ID }}
+          ROLE: ${{ vars.AWS_DELIVERY_ROLE_ARN }}
+        run: |
+          set -euo pipefail
+          test -n "$STATE_BUCKET"
+          [[ "$ACCOUNT" =~ ^[0-9]{12}$ ]]
+          [[ "$ROLE" == "arn:aws:iam::$ACCOUNT:role/"* ]]
+      - uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708 # v5
+        with:
+          role-to-assume: ${{ vars.AWS_DELIVERY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: ml-release-${{ github.run_id }}
+          allowed-account-ids: ${{ vars.AWS_ACCOUNT_ID }}
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - uses: aws-actions/amazon-ecr-login@03f1aad4c6c7ffd436567f42f9384779290529bd # v2
+      - name: Testar aplicação antes de publicar
+        run: |
+          docker build -t ml-ci-api .
+          docker run --rm --entrypoint python ml-ci-api -m compileall -q /app/src
+      - name: Build, verificação e implantação
+        run: python3 scripts/deliver_aws.py

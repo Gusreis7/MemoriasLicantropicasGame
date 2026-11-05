@@ -18,6 +18,10 @@ A [correção de relevância dos diálogos](docs/correcao_relevancia_dialogos.md
 
 Para instalação, escolha de credencial, comandos de parada e solução de problemas, veja o [guia de execução com Docker](docs/execucao_docker.md). Se o Redis não iniciar, siga a seção de recuperação do guia antes de tentar outra subida.
 
+## Deploy AWS
+
+A [base de deploy com Terraform e GitHub Actions](docs/deploy_aws_terraform.md) prepara EC2, HTTPS/DNS, Redis persistente e autenticação OIDC. O guia contém as etapas manuais no Registro.br, AWS e GitHub, incluindo acesso privado ao admin e workflows de subida/destruição.
+
 ## Motivação
 
 Este projeto nasce como um laboratório de aprendizado. O jogo oferece um cenário para explorar decisões sob informação incompleta e construir sistemas de agentes cujo comportamento possa ser observado e avaliado.

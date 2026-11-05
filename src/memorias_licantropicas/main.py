@@ -7,6 +7,7 @@ import logging
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from memorias_licantropicas.composition import build_services
 from memorias_licantropicas.contracts.errors import (
@@ -58,11 +59,19 @@ def game_service_dependency(request: Request) -> GameService:
 
 
 def create_app() -> FastAPI:
+    settings = Settings()
     application = FastAPI(
+        docs_url="/docs" if settings.api_docs_enabled else None,
+        redoc_url="/redoc" if settings.api_docs_enabled else None,
+        openapi_url="/openapi.json" if settings.api_docs_enabled else None,
         title="Memórias Licantropicas",
         description="API de um jogo de investigação e dedução social.",
         version="0.1.0",
         lifespan=lifespan,
+    )
+    application.add_middleware(
+        TrustedHostMiddleware,
+        allowed_hosts=[host.strip() for host in settings.allowed_hosts.split(",") if host.strip()],
     )
     application.dependency_overrides[get_character_service] = character_service_dependency
     application.dependency_overrides[get_game_service] = game_service_dependency

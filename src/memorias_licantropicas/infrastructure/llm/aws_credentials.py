@@ -26,7 +26,7 @@ class _ProfileCredentials(CredentialProvider):
 class ProfileTokenProvider:
     _refresh_lock = threading.Lock()
 
-    def __init__(self, profile: str, region: str, *,
+    def __init__(self, profile: str | None, region: str, *,
                  refresh_source_dir: str | Path | None = None,
                  config_dir: str | Path | None = None):
         self._profile = profile
@@ -36,9 +36,11 @@ class ProfileTokenProvider:
         self._config_dir = Path(config_dir) if config_dir else Path.home() / ".aws"
 
     def _provide_token(self) -> str:
-        return provide_token(region=self._region,
-                             aws_credentials_provider=_ProfileCredentials(self._profile),
-                             expiry=timedelta(minutes=15))
+        return provide_token(
+            region=self._region,
+            aws_credentials_provider=_ProfileCredentials(self._profile) if self._profile else None,
+            expiry=timedelta(minutes=15),
+        )
 
     def _refresh_profile_cache(self) -> bool:
         source = self._refresh_source_dir
