@@ -31,8 +31,9 @@ async def test_signed_editorial_uses_actual_deaths_and_method(game, method, unav
         async def complete(self, prompt):
             calls.append(prompt)
             if unavailable:
-                raise RuntimeError('offline')
-            return LLMResponse(content='A persistência de Floriano merece o reconhecimento desta cidade. Que o alívio de hoje nos ensine a preservar a memória das vítimas e a exigir justiça.', model='fake')
+                from memorias_licantropicas.contracts.errors import LLMUnavailableError
+                raise LLMUnavailableError('offline')
+            return LLMResponse(content=json.dumps({'opinion': 'A persistência de Floriano merece o reconhecimento desta cidade. Que o alívio de hoje nos ensine a preservar a memória das vítimas e a exigir justiça.'}), model='fake')
     master = SessionMasterService(None, None, None, LLM())
     result = await master.publish_victory(state, game)
     body = result.journal[-1].body
@@ -42,7 +43,7 @@ async def test_signed_editorial_uses_actual_deaths_and_method(game, method, unav
     assert body.endswith(SIGNATURE)
     assert len(result.journal) == len(state.journal)
     assert result.status == 'won'
-    payload = json.loads(calls[0][1].content)
+    payload = json.loads(calls[0][-1].content)
     assert 'Capitu' in payload['fatos_confirmados']
     assert 'Escobar' not in payload['fatos_confirmados']
     assert ('persistência de Floriano' in body) != unavailable

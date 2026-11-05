@@ -1,5 +1,7 @@
 """Cinco minutos de dia, noite não jogável e acontecimentos autoritativos."""
 
+import json
+
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
@@ -352,7 +354,7 @@ class TurnService:
                 outgoing = ConversationMessage(id=record['outgoing_id'], sender_id=record['npc_id'], content=record['outgoing'], created_at=instant,
                     narrative_authorized=bool(record.get('narrative_authorized', False)), useful=bool(record.get('useful',False)))
                 expected = dialogue_transition(state, game, record['npc_id'], UUID(record['conversation_id']), incoming, outgoing,
-                    DialogueAssessment.model_validate(record['assessment']), instant)
+                    DialogueAssessment.model_validate_json(json.dumps(record['assessment'])), instant)
                 return expected.state == candidate and any(e.type == 'werewolf.confessed' for e in expected.events)
             except (KeyError, ValueError, TypeError):
                 return False

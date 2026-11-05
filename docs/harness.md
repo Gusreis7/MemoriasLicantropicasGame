@@ -1,5 +1,7 @@
 # Harness individual e Bedrock Mantle
 
+> Registro histórico. Para os contratos, grafos e tratamento de saídas atuais, consulte [arquitetura LLM](refatoracao_llm.md).
+
 Registro da primeira entrega. Para o novo fluxo HTTP, projeções estratégicas e tokens de perfil AWS, consulte [conversa_jogador_persona.md](conversa_jogador_persona.md). Os limites descritos abaixo se referem ao harness interno original.
 
 Branch: `feat/harness_mantle`. Contratos compartilhados em [contratos_agentes.md](contratos_agentes.md).

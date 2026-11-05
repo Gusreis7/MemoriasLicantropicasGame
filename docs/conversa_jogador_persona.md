@@ -1,5 +1,7 @@
 # Conversa jogador–persona
 
+> Registro histórico. Para os contratos, grafos e tratamento de saídas atuais, consulte [arquitetura LLM](refatoracao_llm.md).
+
 Implementação em `feat/conversa_jogador_persona`, partindo de `develop`. Ao concluir, o checkout retorna a `develop`; esta entrega não faz merge ou push automático. O `smoketest.py` é removido na branch da funcionalidade, substituído pelo fluxo real da API.
 
 ## Escopo e decisões
