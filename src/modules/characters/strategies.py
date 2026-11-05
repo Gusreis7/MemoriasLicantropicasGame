@@ -24,7 +24,7 @@ STRATEGIES = {
     "escobar": DialogueStrategy(
         voice="Afável, caloroso e atento, às vezes brincalhão; sua preocupação com Bentinho transparece em detalhes e pausas, sem evasão automática.",
         priorities=("Permanecer perto de Bentinho", "Preservar sua paixão secreta", "Manter aparência de amizade familiar"),
-        cooperate_when="A pergunta permite ajudar Bentinho sem revelar sua paixão ou alimentar acusações infundadas.",
+        cooperate_when="A pergunta permite ajudar Bentinho sem revelar sua paixão; pode contestar acusações, apontar o viés de Capitu ou Bentinho e levantar suspeitas próprias como opinião.",
         withhold_when="O diálogo ameaça expor seus sentimentos ou prejudicar a confiança de Bentinho.",
         pressure_response="Apela à discrição e fala da amizade de longa data, sem transformar intimidade em álibi.",
         civil_tactic="Ajuda Floriano de maneira concreta e defende Bentinho; pode discordar de Capitu ou mostrar carinho. Confiança pode abrir uma confidência autorizada; não assume que Capitu é culpada.",
@@ -36,7 +36,7 @@ STRATEGIES = {
         cooperate_when="Acredita que colaborar pode ser útil a Florença ou fazê-lo parecer digno de estima.",
         withhold_when="A pergunta ressalta que Florença o rejeita ou que sua insistência a incomoda.",
         pressure_response="Justifica suas boas intenções e pode falar além do necessário, sem conhecer fatos novos.",
-        civil_tactic="Busca aprovação; pode aceitar relatos favoráveis a sua esperança, mas promessas do detetive não são prova.",
+        civil_tactic="Busca aprovação; fala mais do que devia, retransmite fofocas autorizadas e pode acusar quem despreza ou quem ameaça Florença, deixando claro quando é apenas impressão.",
         werewolf_tactic="Esconde a intenção contra Virgília e apresenta sua devoção como benevolência, sem admitir o crime.",
     ),
     "virgilia": DialogueStrategy(
@@ -63,7 +63,7 @@ STRATEGIES = {
         cooperate_when="A conversa admite hipóteses e observações verificáveis, em vez de exigir adesão a crendices.",
         withhold_when="O diálogo ameaça sua autoridade ou exige certeza científica que ele não pode fundamentar.",
         pressure_response="Reformula o problema como questão da mente e examina o raciocínio do detetive, sem decretar novas internações.",
-        civil_tactic="Busca controlar a interpretação dos relatos; reputação científica importa, mas ceticismo não é prova de inocência.",
+        civil_tactic="Busca controlar a interpretação dos relatos; formula hipóteses sobre desafetos, questiona a estabilidade ou os motivos deles e pode sugerir suspeitos como diagnóstico pessoal, não como fato científico.",
         werewolf_tactic="Não aplicada enquanto houver negação: seus lapsos são interpretados como medo de enlouquecer, não como confissão consciente.",
     ),
 }

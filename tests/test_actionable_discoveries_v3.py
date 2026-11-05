@@ -10,6 +10,7 @@ from src.contracts.social import Relationship, SocialState
 from src.modules.agents.support import (
     dialogue_supports,
     compact_observations,
+    dialogue_focus,
 )
 from src.modules.knowledge.mechanics import can_confide_personal
 from src.modules.knowledge.service import KnowledgeService
@@ -89,6 +90,29 @@ async def test_compact_context_excludes_irrelevant_inventory_and_repeated_rules(
     )[0].content
     assert len(prompt.split("Ficha privada:")[0].split()) < 330
     assert "omitir_quando" not in prompt and "Pessoa sem relação" not in prompt
+
+
+async def test_relational_impulse_survives_compaction_and_allows_subjective_accusation(
+    catalog,
+):
+    profile = await catalog.get("bentinho")
+    observations = {
+        "memoria_social": {
+            "impulsos_relacionais": [
+                {
+                    "alvo_id": "escobar",
+                    "alvo": "Escobar",
+                    "tipo": "suspeitar_e_acusar",
+                    "motivo_emocional": "ódio e ciúme",
+                }
+            ]
+        }
+    }
+    compact = compact_observations(profile, observations, "Quem matou Brás Cubas?")
+    assert compact["memoria_social"]["impulsos_relacionais"][0]["alvo_id"] == "escobar"
+    focus = dialogue_focus("Quem matou Brás Cubas?", compact)
+    assert "não precisa ser neutro" in focus
+    assert "opinião" in focus
 
 
 async def test_enigmatic_generation_is_repaired_by_persona_without_template_replacement(

@@ -434,10 +434,14 @@ class KnowledgeService:
             allowed.discard("escobar_affection")
         from src.modules.knowledge.affects import (
             private_affect_context,
+            relational_impulses,
         )
+
+        names = {item.id: item.name for item in profiles}
 
         return {
             "sentimentos_proprios": private_affect_context(state, npc_id, confidences),
+            "impulsos_relacionais": relational_impulses(state, npc_id, names),
             "confidencias_autorizadas": confidences,
             "descobertas_autorizadas": sorted(allowed),
             "vinculos_conhecidos": [
@@ -486,5 +490,5 @@ class KnowledgeService:
                 }
                 for encounter in encounters[:3]
             ],
-            "regra": "Relatos e interpretações não confirmam fatos do mundo. Não invente fontes nem consulte conversas alheias.",
+            "regra": "Relatos e interpretações não confirmam fatos do mundo. Suspeitas motivadas pelas relações são permitidas como opinião. Não invente fontes nem consulte conversas alheias.",
         }

@@ -111,7 +111,18 @@ def dialogue_focus(question, observations):
     if not (observations or {}).get("apoios_de_conversa") and has_phrase(
         text, "bras cubas"
     ):
-        return "A pergunta atual é sobre Brás Cubas. Você não tem fatos autorizados sobre inimigos ou motivos contra ele. Diga francamente que não sabe apontar alguém; não invente dívidas, brigas ou suspeitos."
+        impulses = (
+            (observations or {})
+            .get("memoria_social", {})
+            .get("impulsos_relacionais", ())
+        )
+        if impulses:
+            return (
+                "A pergunta atual é sobre Brás Cubas. Você não tem fatos autorizados sobre quem o matou, mas não precisa ser neutro: "
+                "pode apontar uma pessoa dos impulsos_relacionais como suspeita pessoal, explicar seu ciúme, ressentimento ou desconfiança "
+                "e pedir que Floriano a investigue. Marque claramente que é opinião; não invente encontro, fonte, motivo criminal ou prova."
+            )
+        return "A pergunta atual é sobre Brás Cubas. Você não sabe quem o matou. Admita esse limite, mas pode oferecer uma opinião ou perguntar pelo rumo da investigação sem inventar fatos, fontes ou provas."
     return "Responda à última mensagem de Floriano. Seus objetivos influenciam seu tom, mas não substituem o assunto da pergunta. Não apresente as palavras dele como uma descoberta sua."
 
 
@@ -312,6 +323,7 @@ def compact_observations(profile, observations, question):
             "descobertas_autorizadas",
             "relacao_com_interlocutor",
             "sentimentos_proprios",
+            "impulsos_relacionais",
         )
     }
     result["apoios_de_conversa"] = supports

@@ -55,3 +55,37 @@ def private_affect_context(state,npc_id,authorized_secrets=()):
                    if (npc_id,r.target_id)==('escobar','bentinho') and not authorized_secrets else
                    'sentimento é sua perspectiva, não prova de culpa')}
          for r in state.relationships if r.actor_id==npc_id]
+
+
+def relational_impulses(state, npc_id, names):
+ """Traduz afetos privados em iniciativas de fala, sem criar fatos do caso."""
+ relations = [r for r in state.relationships if r.actor_id == npc_id and r.target_id not in (npc_id, 'player', 'bras_cubas')]
+ relations.sort(key=lambda r: (max(r.suspicion, r.resentment), -r.trust, -r.affinity), reverse=True)
+ impulses = []
+ for relation in relations:
+  hostility = max(relation.suspicion, relation.resentment, -relation.trust, -relation.affinity)
+  if hostility >= 25:
+   impulses.append({
+    'alvo_id': relation.target_id,
+    'alvo': names.get(relation.target_id, relation.target_id),
+    'tipo': 'suspeitar_e_acusar',
+    'motivo_emocional': relation.sentiment_label,
+    'orientacao': (
+     'Pode apontar esta pessoa espontaneamente, interpretar relatos ou objetos contra ela e pedir que Floriano a investigue. '
+     'Declare ciúme, antipatia, desconfiança ou ressentimento como motivo pessoal; use talvez, desconfio ou acredito. '
+     'Não alegue ter visto um crime nem invente a origem de um objeto.'
+    ),
+   })
+  elif relation.loyalty >= 40 or relation.affinity >= 35:
+   impulses.append({
+    'alvo_id': relation.target_id,
+    'alvo': names.get(relation.target_id, relation.target_id),
+    'tipo': 'defender_e_confidenciar',
+    'orientacao': (
+     'Tende a defender esta pessoa, relativizar acusações contra ela e compartilhar rumores úteis que possam protegê-la, '
+     'sem inventar fatos ou revelar intimidades não autorizadas.'
+    ),
+   })
+  if len(impulses) == 4:
+   break
+ return impulses

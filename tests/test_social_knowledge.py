@@ -429,6 +429,22 @@ async def test_context_seeds_initial_relationship_without_writing_state(
     )
 
 
+async def test_bentinho_receives_actionable_suspicion_from_relationship_matrix(
+    social, game, catalog
+):
+    context = await KnowledgeService(social, catalog, Extractor()).context(
+        game.id, "bentinho", "player"
+    )
+    escobar = next(
+        impulse
+        for impulse in context["impulsos_relacionais"]
+        if impulse["alvo_id"] == "escobar"
+    )
+    assert escobar["tipo"] == "suspeitar_e_acusar"
+    assert escobar["motivo_emocional"] == "ódio e ciúme"
+    assert "nem invente" in escobar["orientacao"].lower()
+
+
 async def test_worker_discovers_finished_game_only_while_encounter_needs_cleanup(
     social, storage, game
 ):
