@@ -587,6 +587,7 @@ async def run_sessions(
     faults=True,
     live_model=None,
     pricing=None,
+    progress=None,
 ):
     if not 1 <= count <= 1000:
         raise ValueError("Choose between one and 1000 sessions")
@@ -624,6 +625,8 @@ async def run_sessions(
             )
             result = await simulation.play(POLICIES[index % len(POLICIES)])
             results.append(result)
+            if progress is not None:
+                progress(index + 1, count, result)
         return {
             "mode": "live" if live_model else "offline",
             "seed": seed,

@@ -8,6 +8,7 @@ O modo real pode gerar cobrança; exige --live, perfil explícito e cota positiv
 import argparse
 import asyncio
 import json
+import sys
 from pathlib import Path
 
 from memorias_licantropicas.simulation.session import BudgetedSessionModel, run_sessions
@@ -65,6 +66,12 @@ async def execute(args):
             faults=not args.no_faults and not args.live,
             live_model=model,
             pricing=pricing,
+            progress=lambda completed, total, result: print(
+                f"{completed}/{total}: {result['policy']} seed={result['seed']} "
+                f"result={result['result']} day={result['day']}",
+                file=sys.stderr,
+                flush=True,
+            ),
         )
     finally:
         if model is not None:
