@@ -1,4 +1,5 @@
 import type {CharacterManifest, JournalEdition, WorldSnapshot} from '../shared/api';
+import {wolfWalkFrame} from './wolf-walk';
 
 export const STRIKES = ['garra lateral', 'golpe descendente', 'bote rasteiro', 'salto de emboscada'] as const;
 export function strikeVariant(day: number) {return Math.max(0, Math.trunc(day) - 2) % STRIKES.length;}
@@ -31,9 +32,10 @@ export async function playNightAttack(edition:JournalEdition, manifest:Character
   root.innerHTML='<section class="night-attack-dialog" role="dialog" aria-modal="true" aria-label="Acontecimentos da noite"><p class="eyebrow">MEIA-NOITE · A CIDADE ADORMECE</p><canvas width="960" height="360" aria-label="Um lobisomem espreita uma pessoa e desfere um golpe; a vítima cai nas sombras."></canvas><p role="status">Passos sorrateiros atravessam a noite…</p><button class="button secondary" type="button">Pular animação</button></section>';
   try {
     const bystanders=witnesses.filter(n=>n.npc_id!==edition.victim_id).slice(0,3);
-    const [bg,wolf,victim,pedestrians,...extras]=await Promise.all([
+    const [bg,wolf,wolfWalking,victim,pedestrians,...extras]=await Promise.all([
       image(`/assets/locations/${edition.location_id}-00h.png`,abort.signal),
       actor('/assets/cinematics/werewolf.png','/assets/cinematics/werewolf.json',abort.signal),
+      actor('/assets/cinematics/werewolf-walk.png','/assets/cinematics/werewolf-walk.json',abort.signal),
       actor(victimAsset.path,victimAsset.atlasPath,abort.signal),
       actor('/assets/ambient/citizens.png','/assets/ambient/citizens.json',abort.signal),
       ...bystanders.map(n=>{const a=manifest.characters.find(a=>a.id===n.npc_id)!;return actor(a.path,a.atlasPath!,abort.signal);}),
@@ -66,7 +68,11 @@ export async function playNightAttack(edition:JournalEdition, manifest:Character
         const wx=140+approach*378+(lunging?Math.sin((t-2900)/600*Math.PI)*(variant===2?52:35):0);
         const lift=lunging?(variant===3?-Math.sin((t-2900)/600*Math.PI)*62:variant===2?16:-8):0;
         drawActor(victim,'0',620+impact*22,307,72,101,impact*1.35,1-impact*.9);
-        drawActor(wolf,t<2900?'0':variant===1?'2':variant===2?'0':variant===3?'3':'1',wx,314+lift,125,145,lunging?(variant-1.5)*.12:0);
+        if(t<2900) {
+          const walkFrame=wolfWalkFrame(approach*378);
+          root.dataset.wolfWalkFrame=walkFrame;
+          drawActor(wolfWalking,walkFrame,wx,307,125,130);
+        } else drawActor(wolf,variant===1?'2':variant===2?'0':variant===3?'3':'1',wx,314+lift,125,145,lunging?(variant-1.5)*.12:0);
         if(lunging&&!reduced){ctx.strokeStyle='rgba(218,235,245,.7)';ctx.lineWidth=3;for(let i=0;i<3;i++){ctx.beginPath();const x=580+i*8;ctx.moveTo(x,variant===1?205:250);ctx.lineTo(x+(variant===0?42:18),variant===1?278:277+i*5);ctx.stroke();}}
         if(t>3550)root.querySelector('[role=status]')!.textContent='Um golpe rompe o silêncio. O Clarim trará a notícia ao amanhecer.';
         if(t>= (reduced?3900:4900)){finish();return;}raf=requestAnimationFrame(render);

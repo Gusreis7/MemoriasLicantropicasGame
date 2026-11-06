@@ -1,0 +1,11 @@
+{
+  "generator": "image_gen built-in",
+  "prompt": "Use case: stylized-concept. Production pixel-art animation atlas on TRUE TRANSPARENT background. Reference image is IDENTITY reference for the exact dark brown feral werewolf, amber eyes, pointed ears, long muzzle, shaggy hunched body, long clawed arms, digitigrade feet, no clothes. Generate exactly EIGHT sequential full-body frames in TWO ROWS of FOUR equal cells. Side view facing RIGHT, stalking low with bent knees. The SAME character takes a genuine alternating-leg WALK CYCLE: row1 left foot forward contact, left foot support with right heel lifting, right leg passes left, right leg swings ahead; row2 right foot forward contact, right foot support with left heel lifting, left leg passes right, left leg swings ahead. Both arms swing opposite the legs. Each pose must clearly show different limb positions and alternate support foot. Head and torso consistent scale and crouch height, identical foot ground baseline in every cell, full body and claws fully visible, generous transparent margins, no overlap between cells, no text no numbers no grid lines no scenery no shadows baked outside body. Match dark brown warm pixel-art shading and visible crisp square pixel clusters of reference; restrained detail, readable at 125x145 in game. Do not make eight copies of one pose, no skating, no jumping, no transformation, no attack poses. Output landscape atlas 1536x1024.",
+  "source": "/home/gustavoreis/.codex/generated_images/01a1ae1d-d0c8-7f33-bdf4-e344a5c620ba/exec-9f2e92dd-e34a-4043-bc59-f2f3336c4a65.png",
+  "reference": "/assets/cinematics/werewolf.png",
+  "frames": 8,
+  "layout": "4 columns x 2 rows",
+  "pixelsEdited": false,
+  "validation": "RGBA 1536x1024; 967942 fully transparent pixels; 8 atlas rectangles inside image; baseline normalized to virtual y454; no raster manipulation",
+  "runtime": "8 phases per 84 world pixels; pose driven by actual approach distance, not free-running time"
+}
