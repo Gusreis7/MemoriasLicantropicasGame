@@ -179,14 +179,31 @@ test('falha ao pular o dia permite tentar novamente sem avançar localmente', as
 });
 
 test('quarta vítima encerra o caso com a edição de derrota do Clarim', async ({page}) => {
+  await page.addInitScript(() => {
+    const play=HTMLMediaElement.prototype.play;
+    HTMLMediaElement.prototype.play=function() {
+      const photo=document.querySelector<HTMLImageElement>('#defeat-photo');
+      if(this.src.includes('/werewolf/howl-long.ogg') && photo && !photo.hidden) document.documentElement.dataset.defeatHowls=String(Number(document.documentElement.dataset.defeatHowls ?? 0)+1);
+      return play.call(this);
+    };
+  });
   const city = await cityFixture(page); await begin(page);
   city.state.day = 5; city.state.phase = 'finished'; city.state.status = 'lost'; city.state.revision++;
   city.state.ending = {result: 'lost', method: 'survival', werewolf_id: 'bentinho', message: 'Floriano não conseguiu deter o lobisomem a tempo. A besta-fera venceu.'};
   city.state.journal.push({day: 5, title: 'O Clarim do Rio', headline: 'Floriano não chegou a tempo: a besta-fera venceu', body: 'Quatro dos sete moradores foram mortos pelo lobisomem. Floriano não conseguiu deter a fera a tempo.', victim_id: 'rubiao', victim_name: 'Rubião', location_id: 'praca_verde', detention_outcome: 'none', illustration: 'crime_street'});
+  await expect(page.locator('#night-attack-overlay')).toBeVisible();
+  await page.locator('#night-attack-overlay button').click();
   await expect(page.locator('#victory-paper')).toBeVisible({timeout: 10000});
   await expect(page.locator('#victory-headline')).toHaveText('Floriano não chegou a tempo: a besta-fera venceu');
   await expect(page.locator('#victory-body')).toContainText('Quatro dos sete moradores');
   await expect(page.locator('#victory-paper .press-picture')).toBeHidden();
+  await expect(page.locator('#defeat-photo')).toBeVisible();
+  await expect(page.locator('#defeat-photo')).toHaveAttribute('data-loaded','true');
+  await expect(page.locator('html')).toHaveAttribute('data-defeat-howls','1');
+  await page.screenshot({path:'../artifacts/clarim-defeat.png',fullPage:true});
+  await page.setViewportSize({width:390,height:844});
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  await page.screenshot({path:'../artifacts/clarim-defeat-mobile.png',fullPage:true});
   await expect(page.locator('#ending-new-case')).toBeVisible();
   await expect(page.locator('#open-map')).toBeDisabled();
   await expect(page.locator('#skip-day')).toBeDisabled();

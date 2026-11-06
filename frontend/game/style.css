@@ -1,4 +1,5 @@
 :root{font-family:Georgia,'Times New Roman',serif;color:#e9e8d2;background:#102c27;font-synthesis:none;--ink:#173a31;--muted:#9aab99;--paper:#f2ead5;--gold:#d9ba79;--copper:#b77b4d;--line:#3c5845}
+.victory-paper .press-defeat{float:left;width:44%;height:auto;aspect-ratio:1.5;margin:0 18px 8px 0;border:1px solid #807e71;background:#080e16;image-rendering:pixelated}
 .audio-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.audio-controls label{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}.audio-controls input{width:80px;accent-color:var(--gold)}.masthead{flex-wrap:wrap}@media(max-width:700px){.audio-controls{width:100%;justify-content:flex-end;gap:8px}.audio-controls input{width:90px}}
 *{box-sizing:border-box}
 body{margin:0;min-width:360px;background:radial-gradient(ellipse at 50% 0,#254439 0,#15342d 42%,#0d2522 100%);min-height:100vh}

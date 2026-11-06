@@ -10,6 +10,7 @@ import {POPULATION} from './population';
 import './style.css';
 import {cancelNightAttack, newNightVictim, playNightAttack} from './night-attack';
 import {gameAudio} from './audio';
+import {renderDefeatPhoto} from './defeat-photo';
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
 app.innerHTML = `
@@ -70,6 +71,12 @@ app.innerHTML = `
 `;
 
 const $ = <T extends HTMLElement = HTMLElement>(selector: string) => document.querySelector<T>(selector)!;
+const defeatPhoto=document.createElement('img');
+defeatPhoto.id='defeat-photo';defeatPhoto.className='press-defeat';defeatPhoto.width=600;defeatPhoto.height=400;defeatPhoto.hidden=true;
+defeatPhoto.alt='Lobisomem nas sombras da cidade à meia-noite, em fotografia escurecida de jornal';
+$('#victory-paper .press-picture').after(defeatPhoto);
+let defeatEditionID:string|null=null;
+let defeatPhotoAbort:AbortController|null=null;
 const STORAGE_KEY = 'memorias-licantropicas:game';
 const PERSONAL_ITEM_ICONS = new Set<string>([
   'rosario_seminario', 'carta_santiago', 'pente_olho_cobre', 'sinete_lua', 'caderneta_seminario',
@@ -145,6 +152,7 @@ function toast(message: string) {
 }
 
 function setModal(next: typeof modal) {
+  if(next!=='phase') {defeatPhotoAbort?.abort();defeatPhotoAbort=null;if(modal==='phase')gameAudio.stopCinematicEffects();}
   if (next !== modal && (next === 'journal' || next === 'notebook')) gameAudio.effect('paper');
   else if (next === null && (modal === 'journal' || modal === 'notebook')) gameAudio.effect('close');
   if (modal === 'dialogue' && next !== 'dialogue' && world && conversation) {
@@ -725,6 +733,13 @@ function showPhase() {
   $('#victory-paper').hidden = !ending;
   $('#phase-overlay .phase-modal').classList.toggle('is-victory',!!ending);
   $('#victory-paper .press-picture').hidden = !victorious;
+  defeatPhoto.hidden=!ending || victorious;
+  if(ending && !victorious && defeatEditionID!==caseState.game_id) {
+    defeatEditionID=caseState.game_id;defeatPhotoAbort?.abort();defeatPhotoAbort=new AbortController();
+    delete defeatPhoto.dataset.loaded;
+    void renderDefeatPhoto(defeatPhoto,caseState.journal.at(-1)?.location_id ?? world!.location.id,defeatPhotoAbort.signal);
+    gameAudio.effect('howl');
+  }
   $('#victory-paper .newspaper-edition span').textContent = expelled ? 'FLORIANO EXPULSO DA CIDADE' : victorious ? 'A VITÓRIA DE FLORIANO' : 'A BESTA-FERA VENCEU';
   $('#victory-paper .victory-ending').textContent = expelled ? 'A cidade afastou o detetive. A investigação está encerrada.' : victorious ? 'O caso está encerrado. A cidade volta a respirar.' : 'Floriano não chegou a tempo. A cidade está de luto.';
   if(ending) {
