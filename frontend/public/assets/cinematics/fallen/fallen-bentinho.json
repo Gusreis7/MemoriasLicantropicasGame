@@ -1,5 +1,7 @@
 {
   "id": "bentinho",
+  "renderBbox": [128,192,2020,634],
+  "renderBboxNote": "Visible alpha >128 bounds, PNG pixels unmodified.",
   "path": "/assets/cinematics/fallen/bentinho.png",
   "generator": "image_gen built-in",
   "prompt": "Use case: identity-preserve. Production pixel-art game sprite, ONE single full-body fallen pose of Bentinho from reference character sheet (IDENTITY AND COSTUME REFERENCE). Preserve middle-aged light skin, messy dark curly hair, clean-shaven face, charcoal long frock coat, dark green waistcoat and gold watch chain, ivory shirt and black bow tie, dark trousers and brown boots. He lies completely motionless after an attack, eyes CLOSED, body fully horizontal on ground seen from side, head on LEFT feet on RIGHT, limp relaxed arms, legs resting slightly bent. Anatomically natural collapsed side-lying body: head and shoulder and hip rest near same ground plane. Do NOT rotate a standing pose. Entire body fully visible with generous transparent margin; low horizontal silhouette, one pose only. Match the reference expressive chunky pixel art, crisp square pixel clusters, dark stepped outlines, simple shapes, restrained warm earthy palette, readable at width112px and height30px. TRANSPARENT background, no floor no cast shadow no scenery no letters. NO blood, wounds, gore, weapons, other people. Landscape canvas, body occupies central horizontal band.",

@@ -1,5 +1,7 @@
 {
   "id": "capitu",
+  "renderBbox": [88,155,2109,670],
+  "renderBboxNote": "Visible alpha >128 bounds, PNG pixels unmodified.",
   "path": "/assets/cinematics/fallen/capitu.png",
   "generator": "image_gen built-in",
   "reference": "/assets/characters/capitu.png",

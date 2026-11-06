@@ -1,0 +1,14 @@
+{
+  "id": "bacamarte",
+  "bbox": [
+    166,
+    173,
+    2055,
+    663
+  ],
+  "bboxNote": "Visible alpha >128 bounding box; excludes barely transparent fringe without editing PNG pixels",
+  "generator": "image_gen built-in",
+  "prompt": "Use case: identity-preserve. Asset type: single transparent pixel-art fallen character sprite for Memórias Licantropicas Rio1890. Image1 reference is Bacamarte character sheet identity. Generate ONE full body drawing of exactly this adult Brazilian doctor lying lifeless on his side on the ground after a fantasy werewolf attack, eyes closed, limp arms and legs, no smile. Whole body horizontally composed head at LEFT feet at RIGHT, grounded natural folded limbs not rotated standing pose. Preserve dark short hair, medium brown skin, thin mustache, round gold glasses, ivory lab coat, teal dark waistcoat, brown tie and trousers and dark shoes. Match original handcrafted pixel clusters and dark stepped outlines and earthy shading, readable in game at width110px. Entire body and glasses visible, generous transparent padding, genuine transparent background, no floor/scenery/shadow halo, no blood wounds gore, no text, only one character one pose.",
+  "source": "Generated images are saved to /home/gustavoreis/.codex/generated_images/01a19e8c-42af-7f30-a960-5398dbd93c27 as /home/gustavoreis/.codex/generated_images/01a19e8c-42af-7f30-a960-5398dbd93c27/exec-4ac66e62-b4d6-4e58-9bdc-a62f329c24e0.png by default.\nIf you need to use a generated image at another path, copy it and leave the original in place unless the user explicitly asks you to delete it.\nThe generated image is already displayed to the user. There is no need to render it in the final response as a Markdown image or file link.",
+  "sha256": "1206a53951e6820c6e3502dd25783cf09fd3c791e3bb002ff9327d3654571443"
+}

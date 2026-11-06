@@ -1,0 +1,14 @@
+{
+  "id": "player",
+  "bbox": [
+    270,
+    280,
+    1737,
+    712
+  ],
+  "bboxNote": "Visible alpha >128 bounding box; excludes barely transparent fringe without editing PNG pixels",
+  "generator": "image_gen built-in",
+  "prompt": "Use case: identity-preserve. Asset type: single transparent pixel-art fallen sprite for Rio1890 mystery game. Image1 reference character sheet is Floriano, identity reference only. Generate ONE full body drawing of this same adult Brazilian detective lying lifeless on his side horizontally on ground, eyes closed, limp relaxed limbs, no smile. Head LEFT, feet RIGHT. Natural prone body weight with folded arm and slightly bent knees, not a standing sprite rotated. Preserve medium brown skin, short dark hair, small mustache, chestnut coat dark waistcoat ivory shirt brown shoes and notebook pocket. Match simplified visible crisp stepped pixel clusters original style, readable width110 pixels. Transparent background only, no scenery floor shadow glow blood wounds gore text or other characters. Whole body with generous transparent padding.",
+  "source": "Generated images are saved to /home/gustavoreis/.codex/generated_images/01a19e8c-42af-7f30-a960-5398dbd93c27 as /home/gustavoreis/.codex/generated_images/01a19e8c-42af-7f30-a960-5398dbd93c27/exec-3a81acae-a477-4657-a719-e912fe3778cb.png by default.\nIf you need to use a generated image at another path, copy it and leave the original in place unless the user explicitly asks you to delete it.\nThe generated image is already displayed to the user. There is no need to render it in the final response as a Markdown image or file link.",
+  "sha256": "2a415f1ccdcff6fad474af80b51b201b22b3c89581e2845187b161599eb048b3"
+}

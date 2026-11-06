@@ -1,5 +1,7 @@
 {
   "id": "florenca",
+  "renderBbox": [97,127,2065,642],
+  "renderBboxNote": "Visible alpha >128 bounds, PNG pixels unmodified.",
   "source": "exec-5079e933-3578-439c-9023-479df9bf584a.png",
   "bbox": [
     25,

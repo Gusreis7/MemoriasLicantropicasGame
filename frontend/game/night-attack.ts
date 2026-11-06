@@ -33,17 +33,22 @@ export async function playNightAttack(edition:JournalEdition, manifest:Character
   root.innerHTML='<section class="night-attack-dialog" role="dialog" aria-modal="true" aria-label="Acontecimentos da noite"><p class="eyebrow">MEIA-NOITE · A CIDADE ADORMECE</p><canvas width="960" height="360" aria-label="Um lobisomem espreita uma pessoa e desfere um golpe; a vítima cai nas sombras."></canvas><p role="status">Passos sorrateiros atravessam a noite…</p><button class="button secondary" type="button">Pular animação</button></section>';
   try {
     const bystanders=witnesses.filter(n=>n.npc_id!==edition.victim_id).slice(0,3);
-    const [bg,wolf,wolfWalking,victim,pedestrians,...extras]=await Promise.all([
+    const [bg,wolf,wolfWalking,victim,fallen,pedestrians,...extras]=await Promise.all([
       image(`/assets/locations/${edition.location_id}-00h.png`,abort.signal),
       actor('/assets/cinematics/werewolf.png','/assets/cinematics/werewolf.json',abort.signal),
       actor('/assets/cinematics/werewolf-walk.png','/assets/cinematics/werewolf-walk.json',abort.signal),
       actor(victimAsset.path,victimAsset.atlasPath,abort.signal),
+      Promise.all([
+        image(`/assets/cinematics/fallen/${edition.victim_id}.png`,abort.signal),
+        fetch(`/assets/cinematics/fallen/fallen-${edition.victim_id}.json`,{signal:abort.signal}).then(r=>{if(!r.ok)throw new Error('Pose indisponível');return r.json();}),
+      ]).then(([image,data])=>({image,bbox:(data.renderBbox ?? data.bbox) as number[]})).catch(()=>null),
       actor('/assets/ambient/citizens.png','/assets/ambient/citizens.json',abort.signal),
       ...bystanders.map(n=>{const a=manifest.characters.find(a=>a.id===n.npc_id)!;return actor(a.path,a.atlasPath!,abort.signal);}),
     ]);
     clearTimeout(loadTimeout);
     if(abort.signal.aborted)return;
     document.body.append(root);
+    if(fallen) root.dataset.fallenVictim=edition.victim_id ?? '';
     gameAudio.setNight(true);
     if (!reduced) gameAudio.effect('sneak');
     const canvas=root.querySelector('canvas')!; const ctx=canvas.getContext('2d')!;
@@ -55,18 +60,23 @@ export async function playNightAttack(edition:JournalEdition, manifest:Character
     };
     root.dataset.strike=String(strikeVariant(edition.day));
     await new Promise<void>(resolve=>{
-      let raf=0; let ended=false; let lastFootfall=-1; let slashed=false; let hit=false; const start=performance.now();
+      let raf=0; let ended=false; let lastFootfall=-1; let lastEscapeFootfall=-1; let slashed=false; let hit=false; let howled=false; const start=performance.now();
       const finish=()=>{if(ended)return;ended=true;cancelAnimationFrame(raf);document.removeEventListener('keydown',key);root.remove();previousFocus?.focus({preventScroll:true});resolve();};
       const key=(e:KeyboardEvent)=>{if(e.key==='Escape'){e.preventDefault();finish();}};
       stop=()=>{abort.abort();finish();};button.onclick=finish;document.addEventListener('keydown',key);
       const render=(now:number)=>{
-        const t=reduced?3900:now-start;const approach=Math.min(1,t/2900);const impact=Math.max(0,Math.min(1,(t-3100)/700));
+        const elapsed=now-start;const t=reduced?3900:elapsed;const approach=Math.min(1,t/2900);const impact=Math.max(0,Math.min(1,(t-3100)/700));
+        const escape=Math.max(0,Math.min(1,(t-5100)/1800));
+        root.dataset.beat=t>=5100?'escape':t>=3800?'fallen':t>=2900?'strike':'approach';
         const variant=strikeVariant(edition.day); const lunging=t>2900&&t<3500;
         if (!reduced) {
           const footfall=Math.floor(approach*378/42);
           if(t<2900 && footfall>lastFootfall){gameAudio.effect('step');lastFootfall=footfall;}
           if(t>=2900&&!slashed){gameAudio.effect('slash',variant);slashed=true;}
           if(t>=3100&&!hit){gameAudio.effect('impact',variant);hit=true;}
+          if(t>=3900&&!howled){gameAudio.effect('howl');howled=true;}
+          const escapeFootfall=Math.floor(escape*600/42);
+          if(escape>0 && escapeFootfall>lastEscapeFootfall){gameAudio.effect('step');lastEscapeFootfall=escapeFootfall;}
         }
         ctx.clearRect(0,0,960,360);ctx.imageSmoothingEnabled=false;
         ctx.save();ctx.filter=reduced?'none':`blur(${approach*2}px)`;ctx.drawImage(bg,0,0,960,360);
@@ -76,16 +86,22 @@ export async function playNightAttack(edition:JournalEdition, manifest:Character
         const light=ctx.createRadialGradient(590,245,12,590,245,190);light.addColorStop(0,'rgba(196,215,240,.20)');light.addColorStop(1,'rgba(196,215,240,0)');ctx.fillStyle=light;ctx.fillRect(0,0,960,360);
         const wx=140+approach*378+(lunging?Math.sin((t-2900)/600*Math.PI)*(variant===2?52:35):0);
         const lift=lunging?(variant===3?-Math.sin((t-2900)/600*Math.PI)*62:variant===2?16:-8):0;
-        drawActor(victim,'0',620+impact*22,307,72,101,impact*1.35,1-impact*.9);
+        if(t<3800 || !fallen) drawActor(victim,'0',620+impact*22,307,72,101,impact*1.35,1-impact*.9);
+        else {
+          const [x,y,right,bottom]=fallen.bbox;const width=right-x;const height=bottom-y;
+          ctx.drawImage(fallen.image,x,y,width,height,590,310-112*height/width,112,112*height/width);
+        }
         if(t<2900) {
           const walkFrame=wolfWalkFrame(approach*378);
           root.dataset.wolfWalkFrame=walkFrame;
           drawActor(wolfWalking,walkFrame,wx,307,125,130);
-        } else drawActor(wolf,variant===1?'2':variant===2?'0':variant===3?'3':'1',wx,314+lift,125,145,lunging?(variant-1.5)*.12:0);
+        } else if(escape>0) drawActor(wolfWalking,wolfWalkFrame(escape*600),518+escape*600,307,125,130);
+        else drawActor(wolf,t>=3900?'3':variant===1?'2':variant===2?'0':variant===3?'3':'1',wx,314+lift,125,145,lunging?(variant-1.5)*.12:0);
         if(lunging&&!reduced){ctx.strokeStyle='rgba(218,235,245,.7)';ctx.lineWidth=3;for(let i=0;i<3;i++){ctx.beginPath();const x=580+i*8;ctx.moveTo(x,variant===1?205:250);ctx.lineTo(x+(variant===0?42:18),variant===1?278:277+i*5);ctx.stroke();}}
-        if(t>3550)root.querySelector('[role=status]')!.textContent='Um golpe rompe o silêncio. O Clarim trará a notícia ao amanhecer.';
-        if(t>= (reduced?3900:4900)){finish();return;}raf=requestAnimationFrame(render);
+        if(t>5100)root.querySelector('[role=status]')!.textContent='O lobisomem foge pelas sombras. A vítima permanece imóvel.';
+        else if(t>3800)root.querySelector('[role=status]')!.textContent='Um uivo atravessa a cidade. O Clarim trará a notícia ao amanhecer.';
+        if(reduced?elapsed>=1200:t>=7300){finish();return;}raf=requestAnimationFrame(render);
       };render(start);
     });
-  } catch {root.remove();} finally {gameAudio.setNight(false);clearTimeout(loadTimeout);if(cancel)cancel=undefined;abort.abort();}
+  } catch {root.remove();} finally {gameAudio.stopCinematicEffects();gameAudio.setNight(false);clearTimeout(loadTimeout);if(cancel)cancel=undefined;abort.abort();}
 }

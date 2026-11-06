@@ -1,5 +1,7 @@
 {
   "id": "virgilia",
+  "renderBbox": [84,153,2081,651],
+  "renderBboxNote": "Visible alpha >128 bounds, PNG pixels unmodified.",
   "source": "exec-805a26b0-1bbe-420e-954b-09ef20ec04c6.png",
   "bbox": [
     0,
