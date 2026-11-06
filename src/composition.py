@@ -118,13 +118,13 @@ def build_services(settings: Settings) -> Services:
                             if settings.aws_profile or settings.aws_use_default_credentials else None),
         )
         return MeteredLLMClient(raw, usage, configured_model=settings.bedrock_model)
-    speech_llm, extraction_llm = social_client(400), social_client(800)
+    speech_llm = social_client(400)
     assembly_llm = social_client(900)
     dialogue_llm = social_client(min(240, settings.llm_max_tokens), settings.llm_timeout_seconds)
-    social_clients = (speech_llm, extraction_llm, assembly_llm, dialogue_llm)
+    social_clients = (speech_llm, assembly_llm, dialogue_llm)
     investigation._social_repository = social_repository
     investigation._assembly_llm = assembly_llm
-    knowledge = KnowledgeService(social_repository, characters, extraction_llm)
+    knowledge = KnowledgeService(social_repository, characters)
     investigation._knowledge = knowledge
     social = SocialService(social_repository, knowledge, games, characters, world_repository,
                            turns, speech_llm, player_gate, enabled=settings.social_enabled)

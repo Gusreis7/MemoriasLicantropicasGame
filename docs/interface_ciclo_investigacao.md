@@ -1,6 +1,6 @@
 # Interface do ciclo de investigação
 
-A branch `feat/interface_investigacao` apresenta o ciclo definido em [contratos_ciclo_investigacao.md](contratos_ciclo_investigacao.md). O navegador recebe somente `CasePublic`: não contém inventários particulares, donos reais dos vestígios, veracidade dos depoimentos ou papel secreto antes do desfecho.
+A interface apresenta o ciclo da investigação e os relatos da [mesa determinística](mesa_deterministica.md). O navegador recebe somente `CasePublic`: não contém inventários particulares, donos reais dos vestígios, veracidade dos depoimentos ou papel secreto antes do desfecho.
 
 ## Relógio, noite e manhã
 

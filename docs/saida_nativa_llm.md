@@ -65,7 +65,7 @@ Em 05/11/2026, chamadas reais confirmaram `required` com ferramentas em Qwen/Man
 A opção nomeada retornou HTTP 200 mas texto livre; por isso ela permanece rejeitada.
 A validação do DTO e o limite de tentativas continuam necessários: isso não demonstra
 constrained decoding ou confiabilidade de 100% do modelo. Veja a
-[correção das conversas](correcao_ferramenta_dialogo.md).
+[orquestração dos agentes](orquestracao_agentes.md).
 
 As fontes de integração são a [referência BaseChatModel](https://reference.langchain.com/python/langchain-core/language_models/chat_models/BaseChatModel),
 [o parser de ferramentas Pydantic](https://reference.langchain.com/python/langchain-core/output_parsers/openai_tools/PydanticToolsParser)

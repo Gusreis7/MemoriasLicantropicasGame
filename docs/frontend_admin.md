@@ -31,7 +31,7 @@ Tema de arquivo investigativo com papel, tinta verde e cobre. Layout responsivo;
 
 ## Contratos e validação
 
-`api.ts` define os tipos e caminhos do contrato em `docs/contratos_visual.md`. Todos os requests admin usam prefixo `/admin/api/v1`, mesma origem e `cache: no-store`. Mensagens brutas do backend não são renderizadas em erros.
+`api.ts` define os tipos e caminhos consumidos pela interface. As rotas estão descritas em [backend admin](admin.md). Todos os requests admin usam prefixo `/admin/api/v1`, mesma origem e `cache: no-store`. Mensagens brutas do backend não são renderizadas em erros.
 
 - TypeScript: `tsc --noEmit` aprovado.
 - Nove testes unitários aprovados: transporte/login sem cache, sanitização 401/rede, 429 sem retry, logout 204, autoria desconhecida, autoria confirmada, evento inicial e data inválida.

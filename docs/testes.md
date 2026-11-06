@@ -1,38 +1,17 @@
-# Suíte de testes da base
+# Testes e simulações
 
-Implementada em `feat/test_suits`, criada a partir de `develop` após a integração da base. A branch de testes segue para `develop` após a execução bem-sucedida e é removida depois do merge, conforme solicitado. As branches anteriores e suas worktrees limpas já foram removidas após integração. Não houve alteração em `main` nem push.
+A suíte comum usa clientes de modelo controlados e não exige saldo AWS. Os testes de API exercitam a aplicação por ASGI; os testes Redis usam fakeredis por padrão. Isso verifica as regras e a integração, mas não mede sozinho o comportamento de um modelo real.
 
-## Cobertura
-
-| Arquivo | Comportamentos verificados |
-| --- | --- |
-| `test_games.py` | Todos os sete suspeitos podem ser sorteados; exatamente um lobisomem; elenco inválido, vazio ou duplicado; conflito na criação; partida ausente |
-| `test_api.py` | Criação e leitura pública de partida; catálogo; sorteio não exposto; cliente não pode enviar seed ou papel; isolamento entre partidas; respostas 404/422/503; saúde e OpenAPI |
-| `test_redis.py` | Insert/roundtrip; proibição de sobrescrita; inserts concorrentes; nova conexão; namespaces; dados corrompidos; falha de conexão; participantes elegíveis; append e deduplicação; rejeição atômica de lote conflitante; histórico limitado e privado |
-| `test_harness.py` | Par pergunta/resposta; contexto do encontro anterior; atribuição de alegações não verificadas; segredos pessoais limitados à persona; sigilo dos objetivos alheios; negação de Bacamarte; validação do interlocutor; NPC–NPC; falha sem mensagens parciais; texto inválido |
-| `test_mantle.py` | URL, bearer token, modelo e payload Chat Completions; texto e consumo retornados; status 401/429/500; saída inválida/truncada; ausência de credencial sem enviar HTTP |
-| `test_conversations.py` | Fluxo HTTP com os sete NPCs, continuidade do histórico, bloqueio de spoofing, falhas, simultaneidade e versão do catálogo |
-| `test_conversation_gate.py` | Reserva compartilhada, liberação, expiração e proteção contra liberação por proprietário antigo |
-| `test_aws_credentials.py` | Perfil e região enviados ao gerador de token; falhas sanitizadas, sem AWS real |
-| `test_social_knowledge.py` | Extração privada, origens e versões, crenças, relações, migração de transcrições antigas, cotas, CAS e fencing |
-| `test_social_service.py` | Agenda, recusa, viagem/caminhada, uma fala por turno, interrupção, noite, budgets e recuperação do worker |
-| `test_social_integration.py` | Outbox atômico e idempotente, privacidade do caderno e autenticação da visão administrativa |
-| `test_social_flow.py` | Fluxo Floriano → Capitu → Virgília → retorno ao detetive, preservando fontes e fatos do caso |
-
-O sorteio é controlado somente em testes parametrizados para verificar cada resultado possível de forma determinística. Não se faz uma asserção estatística sujeita a flutuações aleatórias. Na aplicação a fonte continua sendo `secrets.choice`.
-
-Os cenários narrativos usam respostas simuladas: verificam que alegações anteriores chegam identificadas como fala do jogador, que a instrução de sistema mantém alegações como não verificadas, que a resposta anterior do NPC permanece no contexto e que segredos pessoais protegidos são filtrados antes de salvar o diálogo. Isso verifica a montagem e os limites do contexto; não mede se um modelo real seguirá as instruções em todas as respostas.
-
-## Execução rápida
+## Backend
 
 ```sh
 uv sync --locked
 uv run pytest -q
 ```
 
-Usa `fakeredis` em memória e os repositories reais da aplicação. Não exige Docker, Redis externo ou credenciais AWS. Async tests usam o backend asyncio do plugin AnyIO; as chamadas à API usam transporte ASGI e o lifespan da aplicação com dependências de teste.
+A cobertura inclui sorteio e sigilo de papéis, reserva de ações, persistência e conflitos, mesa e confirmação recíproca de álibis, isolamento de conhecimento, proveniência social, admissão de relatos, autenticação administrativa e falhas de inferência. Os cenários atuais estão em `tests/`; não se fixa aqui uma contagem de testes que envelheceria a cada mudança.
 
-## Integração com Redis real
+Para repetir a suíte com Redis real e descartável:
 
 ```sh
 docker compose -p ml-test-suits -f compose.test.yaml up -d --wait
@@ -40,25 +19,48 @@ uv run pytest -q --redis-url redis://127.0.0.1:16379/0
 docker compose -p ml-test-suits -f compose.test.yaml down
 ```
 
-O Compose de teste é independente do Compose da aplicação, usa a porta local 16379 e não monta volumes. O servidor é descartável e não testa AOF/recuperação de disco. A opção `--redis-url` (ou variável `TEST_REDIS_URL`) substitui apenas o backend de armazenamento: executa os mesmos testes de API, repositories e harness sobre o Redis real.
+Os testes usam prefixos exclusivos e removem somente suas chaves. Não aponte essa execução para produção. Esse Compose não testa recuperação AOF ou persistência em disco.
 
-Cada teste cria um prefixo exclusivo `ml:test:<uuid>`. O teardown remove somente chaves desse prefixo e fecha conexões; não usa `FLUSHDB` ou `FLUSHALL`. Não apontar os testes para um servidor de produção. Uma URL explícita inválida falha a execução, sem fallback silencioso para memória.
+## Frontend
 
-## Ausência de chamadas AWS
+Na pasta `frontend`:
 
-O LLM do harness é um substituto determinístico. O cliente Mantle é exercitado com `httpx.MockTransport`, incluindo inspeção de requisições e respostas simuladas. Uma fixture automática bloqueia HTTP assíncrono externo: só permite transportes ASGI e MockTransport. Nenhuma credencial real ou saldo da conta é necessário.
+```sh
+npm ci
+npm test
+npm run build
+npm run test:e2e
+```
 
-## Resultados desta entrega
+O E2E usa Brave em `/usr/bin/brave-browser`; ajuste `BRAVE_PATH` se necessário. Confira a configuração Playwright para portas e inicialização do servidor. O build verifica TypeScript e gera os recursos servidos pelas imagens.
 
-- Backend em memória: **124 passed**, incluindo mundo, eventos, integração e autenticação admin.
-- Redis real 7.4 em Docker: **124 passed**.
-- Frontend: **16 testes TypeScript**, typecheck, build e fluxo de ponta a ponta no Brave.
-- Nenhuma chamada AWS realizada.
-- Build da imagem da API aprovado com as dependências de runtime, sem grupo dev.
-- O enriquecimento de personas, as rotas de conversa, a reserva Redis e os tokens por perfil estão descritos em [conversa_jogador_persona.md](conversa_jogador_persona.md).
+## Infraestrutura e entrega
 
-O encerramento do container de teste preserva os serviços e volumes da aplicação. A validação não cobre distribuição estatística do sorteio, reinício do servidor, persistência em disco, carga/contenda prolongada nem comportamento real do modelo.
+```sh
+python3 -m unittest discover -s tests/deployment -p 'test_*.py'
+terraform fmt -check -recursive infra/terraform
+```
 
-Referências: [fakeredis](https://fakeredis.readthedocs.io/en/latest/) e [plugin de testes AnyIO](https://anyio.readthedocs.io/en/stable/testing.html).
+Nas raízes Terraform, execute `terraform init -backend=false`, `terraform validate` e `terraform test` conforme a configuração local. Os testes de Terraform usam providers simulados; não aplicam recursos na AWS. Os testes de entrega verificam políticas, manifesto, instalador e isolamento dos containers. A arquitetura e a reprodução em uma conta real estão em [solução AWS](solucao_aws.md) e [reprodução na AWS](reproducao_aws.md).
 
-A validação visual e do build servido, incluindo uma chamada real separada ao Qwen, está descrita em [entrega_visual.md](entrega_visual.md). A suíte comum usa apenas inferência simulada.
+## Smoke pela API real
+
+Inicie a aplicação e configure as credenciais do modelo conforme o [guia local](deploy_local.md). Na raiz:
+
+```sh
+uv run python scripts/smoke_table_api.py --api-url http://127.0.0.1:7079 --games 2 --output artifacts/simulations/table-live.json
+```
+
+Esse script cria partidas reais e verifica invariantes da mesa pela API. Ele usa as credenciais administrativas configuradas para observar o estado; consulte `--help` para opções. O ambiente recebe partidas e chamadas reais, portanto use uma instalação de avaliação.
+
+## Floriano controlado por LLM
+
+```sh
+uv run python scripts/run_session_simulations.py --api-url http://127.0.0.1:7079 --games 10 --max-live-calls 200
+```
+
+O agente decide ações e interage com a API do jogo. As sessões e os relatórios salvam resultados, ações, interrupções e uso; veja `--help` para controlar saída e limites. Não há provedor offline nesse loop.
+
+`--max-live-calls` limita somente as chamadas do agente Floriano. As inferências de NPCs, mestre e convivência feitas no servidor são adicionais. Uma simulação interrompida não conta como vitória ou derrota concluída. Antes de aumentar N, confira uma execução curta e seus relatórios.
+
+Os arquivos datados em `docs/reports/` são evidências históricas, com seus próprios cenários e versões. Eles não substituem executar os testes no checkout atual.

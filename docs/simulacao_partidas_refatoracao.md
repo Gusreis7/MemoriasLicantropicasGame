@@ -4,7 +4,8 @@
 pública da aplicação em execução. Um agente LLM interpreta Floriano: escolhe onde
 andar, quem abordar, o que perguntar, quais provas examinar e apresentar, quando
 acusar, convocar assembleia ou pular o dia. As respostas dos NPCs, do mestre e da
-convivência usam os clientes LLM reais configurados no servidor.
+convivência seguem os fluxos reais do servidor, com inferência quando prevista e
+fallback canônico de tom no diálogo da mesa.
 
 O runner não contém provedor offline, decisões por ranking estático, relógio
 controlado, sorteio substituído nem resultados injetados. Dublês continuam restritos
@@ -14,7 +15,7 @@ a testes unitários e ao servidor de testes do navegador. Esse teste de contrato
 ## Preparar e executar
 
 Configure as credenciais Bedrock da aplicação e de Floriano por perfil AWS ou
-token de ambiente, conforme o [guia local](execucao_docker.md). Suba a aplicação:
+token de ambiente, conforme o [guia local](deploy_local.md). Suba a aplicação:
 
 ```sh
 make setup
@@ -47,7 +48,7 @@ ao agente para ele decidir o próximo passo.
 ## Limites e consumo
 
 `--max-live-calls` é obrigatório e limita **somente Floriano**, somando todas as
-partidas e tentativas de geração. NPCs, mestre, extração, convivência, assembleia e
+partidas e tentativas de geração. NPCs, mestre, convivência, assembleia e
 editorial são executados pela aplicação e têm consumo separado. O limite do agente
 não é um teto de chamadas ou de cobrança de todo o servidor. Encerrar o runner
 não remove partidas nem apaga dados da aplicação.

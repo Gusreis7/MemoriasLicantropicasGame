@@ -1,52 +1,35 @@
-# Persistência Redis — contratos v1
+# Persistência Redis
 
-Branch da frente: `feat/redis_memorias`. Implementação em `infrastructure/redis_repository.py`, seguindo as portas de `contracts/repository.py`.
+A composição cria um cliente `redis.asyncio.Redis` compartilhado com respostas decodificadas e o encerra no lifespan. Repositories guardam estado validado; o modelo não recebe acesso direto ao banco.
 
-## Plano executado
+## Organização
 
-1. Representar a partida sorteada como registro imutável insert-only.
-2. Criar conversas com participantes fixos e namespace da partida.
-3. Persistir lotes de mensagens sem gravação parcial e com deduplicação por ID.
-4. Restringir leitura de histórico aos participantes e encapsular erros de Redis.
+O prefixo padrão é `ml:v1`, configurável por `REDIS_PREFIX`. Ele não indica a versão do formato da investigação. Os registros de uma partida usam o UUID entre chaves como hash tag Redis.
 
-Nenhum teste, servidor Redis, Docker ou chamada AWS foi executado nesta frente, conforme solicitado. Integração de configuração, dependência, Compose e ciclo de vida da conexão pertence à coordenação.
+| Sufixo dentro de `<prefix>:game:{uuid}` | Conteúdo |
+| --- | --- |
+| `:state` | Partida e sorteio privado |
+| `:investigation` | Investigação autoritativa, incluindo a mesa |
+| `:table` | Projeção da mesa para inspeção, gravada na mesma transação |
+| `:social` | Conhecimento, relações e proveniência |
+| `:conversation:<id>` | Participantes da conversa |
+| `:conversation:<id>:messages` | Mensagens por ID |
+| `:conversation:<id>:order` | Ordem de inserção das mensagens |
 
-## Construção e chaves
+Também existem índices de partidas/conversas, eventos, sessões administrativas, reservas, outbox e consumo. Essa tabela resume os agregados, não é uma lista completa de chaves. A [mesa determinística](mesa_deterministica.md) detalha a autoridade dos registros; o [admin](admin.md) descreve os índices de consulta.
 
-Injetar um cliente `redis.asyncio.Redis` com `decode_responses=True`. A conexão é compartilhada pela aplicação e encerrada no lifespan, não pelos repositories.
+## Consistência e isolamento
 
-Construtores: `RedisGameRepository(client, prefix="ml:v1")` e `RedisMemoryRepository(client, prefix="ml:v1")`.
+Repositories combinam operações atômicas e transações `WATCH/MULTI/EXEC`, com tentativas limitadas. IDs e payloads protegem contra duplicação e sobrescrita conflitante. O lote de mensagens é persistido inteiro; o outbox permite aplicar seus efeitos de forma idempotente.
 
-| Chave | Tipo | Conteúdo |
-| --- | --- | --- |
-| `ml:v1:game:{game_uuid}:state` | string JSON | `GameState` interno, incluindo sorteio secreto |
-| `ml:v1:game:{game_uuid}:conversation:conversation_uuid` | string JSON | `Conversation`, com participantes imutáveis |
-| `ml:v1:game:{game_uuid}:conversation:conversation_uuid:messages` | hash | ID da mensagem → JSON `ConversationMessage` |
-| `ml:v1:game:{game_uuid}:conversation:conversation_uuid:order` | list | IDs das mensagens na ordem de inserção |
+As reservas de conversa e ação do jogador coordenam inferência e alterações incompatíveis. Elas complementam a atomicidade do armazenamento. Um conflito esgotado retorna erro, sem loop ilimitado nem gravação parcial intencional.
 
-As chaves reais contêm as chaves literais ao redor do UUID da partida (`{uuid}`), como hash tag Redis. Isso coloca os registros de uma mesma partida no mesmo slot, sem pressupor suporte a cluster no cliente desta entrega. Cada partida tem namespace próprio; o prefixo é configurável e não aceita chaves.
+Leituras validam partida, participante e destinatário em contexto confiável. A API pública recebe projeções; o admin exige sessão. Isso não transforma um UUID público em autenticação de propriedade da partida. Erros de armazenamento são sanitizados e não devem devolver credenciais ou estado privado.
 
-## Operações e garantias
+## Formato e durabilidade
 
-- `create(game)`: `SET NX`, retorna `False` se o ID existir. O sorteio não é substituído.
-- `get(game_id)`: retorna estado validado ou `None`. JSON inválido/identidade divergente resulta em `StorageUnavailableError`.
-- `create_conversation`: exige partida existente e dois participantes elegíveis (`player` ou NPC vivo). `WATCH` da partida e da conversa protege a criação; ID já existente retorna `False`, sem alterar participantes.
-- `get_conversation`: lookup restrito ao namespace recebido; é interface interna, não endpoint público de histórico.
-- `append_messages`: valida remetentes contra os participantes. Mensagens são inseridas em hash e lista na mesma transação. Repetir o mesmo ID e payload não insere outra entrada. Mesmo ID com conteúdo diferente gera `ConflictError` e não grava nenhuma parte do lote. Duplicatas dentro de um lote seguem a mesma regra.
-- `list_messages`: valida o participante antes de ler; retorna as últimas mensagens em ordem de inserção, de mais antiga para mais recente no recorte, com limite padrão 20 e faixa permitida 1–200. A sequência de commit é a ordem do histórico; não se reordena por relógio do remetente. `WATCH`/`EXEC` confirma um snapshot consistente entre metadados, IDs e conteúdos.
+A investigação usa formato 2; o parser rejeita registros incompatíveis. Não há adaptador para partidas antigas. A chave materializada `:table` não é uma segunda fonte independente de verdade.
 
-Transações usam `WATCH`/`MULTI`/`EXEC` e no máximo cinco tentativas. Contenção esgotada gera `ConflictError`, sem loop ilimitado. Falhas de Redis são convertidas em `StorageUnavailableError` com mensagem genérica, sem respostas brutas, credenciais ou estado secreto.
+Os Composes local e de produção habilitam AOF. Localmente, os dados ficam em volume Docker; na AWS, no EBS da fundação em `/srv/ml-data`. A política `everysec` pode perder aproximadamente o último segundo em uma falha e não substitui backup.
 
-Autorização de leitura é baseada em `viewer_id`, que é parâmetro de serviço interno e deve vir de contexto confiável. Isso não implementa autenticação de jogador. O repository não interpreta mensagens nem permite que elas mudem participantes, papéis ou estado do mundo.
-
-## Durabilidade e retenção
-
-Os repositories não aplicam TTL, expiração ou remoção automática. Isso evita apagar evidências silenciosamente; retenção e exclusão de partidas ficam para uma entrega com política explícita.
-
-Para desenvolvimento, a integração deve habilitar AOF e volume persistente do Redis no Compose. A durabilidade final depende da configuração do servidor (por exemplo, `appendfsync everysec` pode perder aproximadamente o último segundo em uma falha). Redis não substitui uma estratégia de backup. Este código não realiza exportação, backup ou restauração por conta própria.
-
-Não há busca vetorial, índice global de partidas, paginação por cursor, compactação ou edição de mensagens. O tamanho total de um histórico ainda não possui quota de armazenamento. O limite de leitura limita o contexto carregado, não a retenção.
-
-## Limites de concorrência
-
-O append atômico evita misturar metade de dois pares de mensagens. Não serializa a inferência inteira: duas respostas geradas a partir do mesmo histórico podem ser persistidas em sequência. O harness deve aguardar cada resposta na base atual. Um futuro controle de turno/conversa poderá acrescentar reserva de execução e idempotência de requisição; isso não é prometido por esta interface.
+Dados de partida não têm expiração geral automática; sessões e reservas têm seus próprios prazos. O limite de histórico lido não limita o tamanho armazenado. Para operação e remoção deliberada de dados, consulte [deploy local](deploy_local.md) e [solução AWS](solucao_aws.md). Preserve backups de `artifacts/` ao limpar arquivos de desenvolvimento.

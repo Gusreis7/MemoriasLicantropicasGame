@@ -1,6 +1,6 @@
 # Mundo de exploração lateral
 
-Branch de implementação: `feat/mundo_localizacoes`. Segue os contratos de `contratos_visual.md`; nenhuma inferência ocorre no módulo world.
+O módulo `world` controla localizações e movimento por regras do servidor, sem inferência de modelo.
 
 ## Integração
 
@@ -33,7 +33,7 @@ O movimento recebe direção, sequência, local e revisão. O servidor integra a
 
 Sequências precisam crescer; local/revisão devem coincidir. Esses controles rejeitam comandos atrasados, repetidos ou enviados antes da viagem. Alterações usam revisão CAS e reserva por jogador. O cliente deve buscar estado atual após409 antes de retomar o fluxo.
 
-A viagem pelo mapa aceita qualquer outro local conhecido, define spawn160, direção idle e facing right, e preserva a sequência de movimento. Com `exit_side` opcional, exige x≤56 à esquerda ou x≥width−56 à direita e destino ligado no catálogo. O servidor escolhe a borda de chegada e o recuo de96px, voltando o personagem para dentro. A escolha explícita do mesmo local leva à outra ponta e também exige proximidade da saída. Veja [revisao_exploracao_dialogos.md](revisao_exploracao_dialogos.md). Não consome turno nem chama modelo. O evento `player.travelled` é acrescentado à lista `prefix:game:{UUID}:events` na mesma transação do mundo, com ID, data, origem, destino e bordas utilizadas. Conflito não gera evento duplicado; tipo de chave inválido é detectado antes do MULTI para evitar atualização parcial.
+A viagem pelo mapa aceita qualquer outro local conhecido, define spawn160, direção idle e facing right, e preserva a sequência de movimento. Com `exit_side` opcional, exige x≤56 à esquerda ou x≥width−56 à direita e destino ligado no catálogo. O servidor escolhe a borda de chegada e o recuo de96px, voltando o personagem para dentro. A escolha explícita do mesmo local leva à outra ponta e também exige proximidade da saída. Não consome turno nem chama modelo. O evento `player.travelled` é acrescentado à lista `prefix:game:{UUID}:events` na mesma transação do mundo, com ID, data, origem, destino e bordas utilizadas. Conflito não gera evento duplicado; tipo de chave inválido é detectado antes do MULTI para evitar atualização parcial.
 
 ## Abordagem e reserva
 

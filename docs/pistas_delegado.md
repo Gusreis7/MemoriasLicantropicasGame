@@ -1,6 +1,6 @@
 # Apetrechos, vestígios e custódia noturna
 
-Implementação em `feat/pistas_delegado`, módulo `investigation`. Segue os contratos de [contratos_ciclo_investigacao.md](contratos_ciclo_investigacao.md); o motor de fases e a transação Redis pertencem ao módulo `turns`.
+O módulo `investigation` implementa a apresentação do caso; o motor de fases e a transação Redis pertencem ao módulo `turns`. As declarações de álibis e observações seguem a [mesa determinística](mesa_deterministica.md).
 
 ## Catálogo e geração
 

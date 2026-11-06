@@ -1,7 +1,7 @@
-# Valores de rede consultados na conta em 2026-11-05. Revise antes do apply.
+# Substitua pelos IDs da sua VPC e de sub-redes públicas em zonas distintas.
 aws_region        = "us-east-1"
-vpc_id            = "vpc-09366afc61c55f827"
-public_subnet_ids = ["subnet-0ef12e91533ec4696", "subnet-038af4a8a303bf0c3"]
+vpc_id            = "vpc-REPLACE"
+public_subnet_ids = ["subnet-REPLACE-A", "subnet-REPLACE-B"]
 availability_zone = "us-east-1a"
 create_github_oidc_provider = false
 # Preencha OWNER_ID e REPO_ID reais. Se o repositório usa subject legado,
