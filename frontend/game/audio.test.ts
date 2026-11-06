@@ -20,6 +20,15 @@ beforeEach(() => {
 });
 
 describe('política de áudio', () => {
+  it('toca vinheta de vitória uma vez e permite interromper ao sair', async () => {
+    const {gameAudio} = await import('./audio');
+    gameAudio.unlock(); gameAudio.start(); gameAudio.effect('victory');
+    const jingle = sounds[1];
+    expect(jingle.src).toBe('/assets/audio/music/victory.ogg');
+    expect(jingle.loop).toBe(false); expect(jingle.play).toHaveBeenCalledTimes(1);
+    gameAudio.stopCinematicEffects(); expect(jingle.paused).toBe(true);
+    expect(sounds[0].paused).toBe(false);
+  });
   it('aguarda gesto e mantém só um ambiente ao alternar dia e noite', async () => {
     const {gameAudio} = await import('./audio');
     gameAudio.start(); expect(sounds).toHaveLength(0);

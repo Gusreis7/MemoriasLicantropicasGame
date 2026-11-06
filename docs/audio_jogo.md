@@ -1,5 +1,7 @@
 # Áudio do jogo
 
+O encerramento vitorioso pode disparar `gameAudio.effect('victory')`: vinheta musical curta de pizzicato Kenney CC0 (~1.32s) em `assets/audio/music/victory.ogg`. A interface deve chamá-la somente ao entrar na vitória, evitando repetir em cada polling. `stopCinematicEffects()` também cancela a vinheta em novo caso ou saída. O arquivo original e a licença acompanham a versão com normalização moderada e fades; créditos e hashes ficam junto dos demais sons.
+
 O uivo ativo agora é `werewolf/howl-long.ogg`, de 6,4 segundos, mantendo o ganho 0,85 e o disparo no impacto. A sequência termina em 10s para preservar sua cauda durante a fuga; pular continua interrompendo imediatamente. As três garras são diagonais com perfil serrilhado e afilado, preservando a paleta vinho e os pixels quadrados.
 
 Revisão de atmosfera: a noite usa `night-ominous.ogg`, um fundo sombrio de 40s com graves sustentados em 55/65,4/82,4Hz, vento filtrado e grilos discretos. Síntese original sem IA com FFmpeg e amostra CC0; receita em `scripts/generate_night_soundscape.sh`. O uivo dispara no impacto (3100ms), com ganho 0,85 em vez de 0,4, sempre multiplicado pelo volume do jogador. As marcas de garra são clusters de pixels espessos vinho, desenhados em canvas sem linhas suavizadas.
