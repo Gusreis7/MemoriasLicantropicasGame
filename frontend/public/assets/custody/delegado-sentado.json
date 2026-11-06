@@ -1,8 +1,11 @@
 {
   "generator": "image_gen built-in",
-  "revision": 2,
+  "revision": 3,
   "path": "/assets/custody/delegado-sentado.png",
-  "source": "exec-8f443d91-cf9e-4139-800e-808a0d705e67.png",
+  "source": "exec-9064c50f-982d-448d-baee-cfdfdd9e1503.png",
+  "previous_source": "exec-8f443d91-cf9e-4139-800e-808a0d705e67.png",
+  "revision_prompt": "Use case: precise-object-edit. Production transparent PNG seated delegate for pixel-art game Rio 1890. Image 1 is EDIT TARGET and exact identity/pose/costume/chair reference. Image 2 Floriano player sheet is supporting pixel-art STYLE reference only, not identity. Make a SMALL INCREASE in detail, about 20% more than image 1, a middle ground: keep the current expressive simplified face and slightly enlarged head but add restrained cheek/temple planes, a few gray hair and moustache pixel clusters, clear individual fingers/knuckles, subtle lapel seams and cloth folds, button highlights, shoe laces, and modest readable carved wood edges on the chair. Aim for expressive hand-pixeled RPG game sprite; do NOT return to photorealism or dense microtexture. Preserve exact seated upright pose, mature brown skin, short swept gray-black hair, dark thick moustache, serious expression looking slightly right, charcoal green frock coat, brown waistcoat, ivory collar, black cravat, brass watch chain, trousers and shoes. Preserve the full chair and both feet, same 1024x1536 portrait 2:3 canvas, same figure placement/scale and margins. Crisp stepped outlines, limited earthy shades, moderate shading more nuanced than flat cartoon, clearly visible pixel clusters. True transparent alpha outside subject/chair including openings, no halo, no glow, no background, no text. Single seated figure only.",
+  "sha256": "3ea604381c6e9ab5029cddcbd0d446db572ad1ed53b4eeaea0ab80822ccf2fcf",
   "initial_source": "exec-39348b80-60ee-4439-a36a-b5d4d242f89e.png",
   "references": {
     "edit_target": "/assets/custody/delegado-sentado.png before revision",
