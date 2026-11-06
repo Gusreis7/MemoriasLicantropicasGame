@@ -58,7 +58,7 @@ export class GameAudio {
   private sync() {
     if (!this.audible()) {this.loop?.pause(); return;}
     if (!this.loop) {
-      this.loop = new Audio(`/assets/audio/${this.night ? 'night-crickets.mp3' : 'day-birds.ogg'}`);
+      this.loop = new Audio(`/assets/audio/${this.night ? 'night-ominous.ogg' : 'day-birds.ogg'}`);
       this.loop.loop = true; this.loop.preload = 'auto';
     }
     this.loop.volume = this.volume * .28;
@@ -78,7 +78,7 @@ export class GameAudio {
     const folder = name === 'howl' || name === 'impact' ? 'werewolf' : 'kenney';
     const index = Number.isFinite(variant) ? Math.abs(Math.trunc(variant)) % options.length : 0;
     const sound = new Audio(`/assets/audio/${folder}/${options[index]}.ogg`);
-    const gain = name === 'step' ? .24 : name === 'howl' ? .4 : .55;
+    const gain = name === 'step' ? .24 : name === 'howl' ? .85 : .55;
     sound.volume = this.volume * gain; this.effectGains.set(sound, gain);
     this.effects.add(sound);
     if (cinematic) this.cinematicEffects.add(sound);

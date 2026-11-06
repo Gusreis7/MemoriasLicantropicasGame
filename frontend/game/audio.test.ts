@@ -25,7 +25,7 @@ describe('política de áudio', () => {
     gameAudio.start(); expect(sounds).toHaveLength(0);
     gameAudio.unlock(); expect(sounds).toHaveLength(1);
     const day = sounds[0]; gameAudio.setNight(true);
-    expect(day.paused).toBe(true); expect(sounds[1].src).toContain('night-crickets');
+    expect(day.paused).toBe(true); expect(sounds[1].src).toContain('night-ominous');
     gameAudio.setNight(true); expect(sounds).toHaveLength(2);
   });
 
@@ -57,9 +57,9 @@ describe('política de áudio', () => {
     expect(sounds[2].paused).toBe(true); expect(sounds[3].paused).toBe(true);
   });
 
-  it('preserva volume moderado do uivo ao ajustar volume geral', async () => {
+  it('preserva destaque do uivo respeitando o volume geral', async () => {
     const {gameAudio} = await import('./audio');
     gameAudio.unlock(); gameAudio.start(); gameAudio.effect('howl'); gameAudio.setVolume(.5);
-    expect(sounds[1].volume).toBeCloseTo(.2);
+    expect(sounds[1].volume).toBeCloseTo(.425);
   });
 });

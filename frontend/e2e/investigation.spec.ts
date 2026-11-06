@@ -193,6 +193,13 @@ test('quarta vítima encerra o caso com a edição de derrota do Clarim', async 
 });
 
 test('amanhecer retorna à banca e publica a morte sem manter o NPC no cenário', async ({page}) => {
+  await page.addInitScript(() => {
+    const play=HTMLMediaElement.prototype.play;
+    HTMLMediaElement.prototype.play=function() {
+      if(this.src.includes('/werewolf/howl.ogg')) document.documentElement.dataset.howlBeat=document.querySelector<HTMLElement>('#night-attack-overlay')?.dataset.beat;
+      return play.call(this);
+    };
+  });
   const audioFiles: string[] = [];
   page.on('response', response => {if(response.url().includes('/assets/audio/') && response.ok()) audioFiles.push(response.url());});
   const city = await cityFixture(page); await begin(page);
@@ -208,16 +215,18 @@ test('amanhecer retorna à banca e publica a morte sem manter o NPC no cenário'
   await expect(page.locator('#journal-overlay')).toBeHidden();
   const firstFrame = await page.locator('#night-attack-overlay').getAttribute('data-wolf-walk-frame');
   await expect.poll(() => page.locator('#night-attack-overlay').getAttribute('data-wolf-walk-frame')).not.toBe(firstFrame);
+  await expect(page.locator('#night-attack-overlay')).toHaveAttribute('data-beat', 'strike');
   await expect(page.locator('#night-attack-overlay')).toHaveAttribute('data-beat', 'fallen');
   await page.screenshot({path:'../artifacts/night-fallen.png',fullPage:true});
   await expect(page.locator('#night-attack-overlay')).toHaveAttribute('data-beat', 'escape');
   await page.screenshot({path:'../artifacts/night-escape.png',fullPage:true});
   await expect(page.locator('#night-attack-overlay')).toBeHidden({timeout: 5000});
   expect(audioFiles.some(url=>url.includes('day-birds'))).toBe(true);
-  expect(audioFiles.some(url=>url.includes('night-crickets'))).toBe(true);
+  expect(audioFiles.some(url=>url.includes('night-ominous'))).toBe(true);
   expect(audioFiles.some(url=>url.includes('knifeSlice'))).toBe(true);
   expect(audioFiles.some(url=>url.includes('werewolf/howl'))).toBe(true);
   expect(audioFiles.some(url=>url.includes('werewolf/impact-1'))).toBe(true);
+  await expect(page.locator('html')).toHaveAttribute('data-howl-beat','strike');
   await expect(page.locator('#journal-overlay')).toBeVisible({timeout: 5000});
   await expect(page.locator('#journal-headline')).toHaveText('Rubião é encontrado morto');
   await expect(page.locator('#case-day')).toHaveText('DIA 2'); await expect(page.locator('#location-name')).toHaveText('Praça Verde');

@@ -3,6 +3,20 @@ import {wolfWalkFrame} from './wolf-walk';
 import {gameAudio} from './audio';
 
 export const STRIKES = ['garra lateral', 'golpe descendente', 'bote rasteiro', 'salto de emboscada'] as const;
+/** Stepped pixel clusters, with a dark wine edge and muted red core. */
+function drawPixelClaws(ctx:CanvasRenderingContext2D,variant:number,progress:number) {
+  ctx.save();ctx.globalAlpha=Math.min(1,(1-progress)*3);
+  const count=Math.min(15,Math.ceil(progress*30));
+  for(let claw=0;claw<3;claw++) for(let step=0;step<count;step++) {
+    const x=variant===1?580+claw*18+Math.floor(step/4)*3:570+(variant===2?0:claw*18)+step*3;
+    const y=variant===1?211+step*4:variant===2?249+claw*14+Math.floor(step/4)*3:235+step*3;
+    const thickness=step<3||step>11?6:9;
+    ctx.fillStyle='#420f21';ctx.fillRect(x-3,y-3,thickness+6,9);
+    ctx.fillStyle='#781b36';ctx.fillRect(x,y,thickness,6);
+    if(step>3&&step<11){ctx.fillStyle='#9b3048';ctx.fillRect(x,y,3,3);}
+  }
+  ctx.restore();
+}
 export function strikeVariant(day: number) {return Math.max(0, Math.trunc(day) - 2) % STRIKES.length;}
 export function newNightVictim(previous: JournalEdition[], next: JournalEdition[]) {
   const latest = next.at(-1);
@@ -74,7 +88,7 @@ export async function playNightAttack(edition:JournalEdition, manifest:Character
           if(t<2900 && footfall>lastFootfall){gameAudio.effect('step');lastFootfall=footfall;}
           if(t>=2900&&!slashed){gameAudio.effect('slash',variant);slashed=true;}
           if(t>=3100&&!hit){gameAudio.effect('impact',variant);hit=true;}
-          if(t>=3900&&!howled){gameAudio.effect('howl');howled=true;}
+          if(t>=3100&&!howled){gameAudio.effect('howl');howled=true;}
           const escapeFootfall=Math.floor(escape*600/42);
           if(escape>0 && escapeFootfall>lastEscapeFootfall){gameAudio.effect('step');lastEscapeFootfall=escapeFootfall;}
         }
@@ -97,9 +111,9 @@ export async function playNightAttack(edition:JournalEdition, manifest:Character
           drawActor(wolfWalking,walkFrame,wx,307,125,130);
         } else if(escape>0) drawActor(wolfWalking,wolfWalkFrame(escape*600),518+escape*600,307,125,130);
         else drawActor(wolf,t>=3900?'3':variant===1?'2':variant===2?'0':variant===3?'3':'1',wx,314+lift,125,145,lunging?(variant-1.5)*.12:0);
-        if(lunging&&!reduced){ctx.strokeStyle='rgba(218,235,245,.7)';ctx.lineWidth=3;for(let i=0;i<3;i++){ctx.beginPath();const x=580+i*8;ctx.moveTo(x,variant===1?205:250);ctx.lineTo(x+(variant===0?42:18),variant===1?278:277+i*5);ctx.stroke();}}
+        if(lunging&&!reduced) drawPixelClaws(ctx,variant,(t-2900)/600);
         if(t>5100)root.querySelector('[role=status]')!.textContent='O lobisomem foge pelas sombras. A vítima permanece imóvel.';
-        else if(t>3800)root.querySelector('[role=status]')!.textContent='Um uivo atravessa a cidade. O Clarim trará a notícia ao amanhecer.';
+        else if(t>3800)root.querySelector('[role=status]')!.textContent='O silêncio retorna. O Clarim trará a notícia ao amanhecer.';
         if(reduced?elapsed>=1200:t>=7300){finish();return;}raf=requestAnimationFrame(render);
       };render(start);
     });

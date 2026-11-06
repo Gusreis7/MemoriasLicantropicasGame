@@ -6,6 +6,7 @@ Todos os arquivos são gratuitos sob **CC0 1.0 Universal**: https://creativecomm
 | --- | --- | --- | --- |
 | day-birds.ogg | isaiah658 — Ambient Bird Sounds | https://opengameart.org/content/ambient-bird-sounds — CC0 | https://opengameart.org/sites/default/files/birds-isaiah658.ogg |
 | night-crickets.mp3 | syncopika — cricket sounds | https://opengameart.org/content/cricket-sounds — CC0 | https://opengameart.org/sites/default/files/cricketsounds090613.mp3 |
+| night-ominous.ogg | Mix original do projeto: graves e vento procedurais + grilos CC0 de syncopika | CC0; síntese sem IA com FFmpeg, reproduzível em scripts/generate_night_soundscape.sh | Arquivo local de 40s, fades de 1s nas bordas |
 | kenney/*.ogg | Kenney Vleugels — RPG Audio | https://kenney.nl/assets/rpg-audio — CC0; licença original em kenney/license.txt | https://opengameart.org/sites/default/files/RPGsounds_Kenney.zip |
 | werewolf/howl-source.mp3, howl.ogg | NaturesTemper — Wolf howl | https://freesound.org/people/NaturesTemper/sounds/398430/ — CC0 | https://cdn.freesound.org/previews/398/398430_3862281-hq.mp3 |
 | werewolf/impact-{1,2,3,4}.ogg | qubodup — 40 wet towel club/pound/hit/attack sounds | https://opengameart.org/content/40-wet-towel-clubpoundhitattack-sounds — CC0 | https://opengameart.org/sites/default/files/wet_towel_on_body.7z |

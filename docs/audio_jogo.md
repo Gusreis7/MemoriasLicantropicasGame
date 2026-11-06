@@ -1,5 +1,7 @@
 # Áudio do jogo
 
+Revisão de atmosfera: a noite usa `night-ominous.ogg`, um fundo sombrio de 40s com graves sustentados em 55/65,4/82,4Hz, vento filtrado e grilos discretos. Síntese original sem IA com FFmpeg e amostra CC0; receita em `scripts/generate_night_soundscape.sh`. O uivo dispara no impacto (3100ms), com ganho 0,85 em vez de 0,4, sempre multiplicado pelo volume do jogador. As marcas de garra são clusters de pixels espessos vinho, desenhados em canvas sem linhas suavizadas.
+
 Ambiente diurno de pássaros, noturno de grilos e efeitos de papel, caderno, vestígios, passos alternados, aproximação, golpe e impacto usam arquivos CC0 locais. Créditos, autores e downloads em [CREDITS.md](../frontend/public/assets/audio/CREDITS.md). Não há dependência de serviços externos em execução.
 
 O som começa no gesto de iniciar/continuar o caso. Volume inicial 45%; o fundo usa 28% desse volume, com efeitos discretos. Volume e mute persistem no armazenamento local. A aba oculta pausa ambiente e efeitos; voltar retoma somente o ambiente. Trocar dia/noite pausa o loop anterior. Falhas de carregamento ou autoplay não impedem a investigação.
