@@ -1,3 +1,5 @@
+@font-face{font-family:'Clarim Baskerville';font-style:normal;font-weight:400 700;font-display:swap;src:url('/assets/fonts/libre-baskerville/latin-normal.woff2') format('woff2')}
+@font-face{font-family:'Clarim Baskerville';font-style:italic;font-weight:400;font-display:swap;src:url('/assets/fonts/libre-baskerville/latin-italic.woff2') format('woff2')}
 :root{font-family:Georgia,'Times New Roman',serif;color:#e9e8d2;background:#102c27;font-synthesis:none;--ink:#173a31;--muted:#9aab99;--paper:#f2ead5;--gold:#d9ba79;--copper:#b77b4d;--line:#3c5845}
 .victory-paper .press-defeat{float:left;width:44%;height:auto;aspect-ratio:1.5;margin:0 18px 8px 0;border:1px solid #807e71;background:#080e16;image-rendering:pixelated}
 .audio-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.audio-controls label{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}.audio-controls input{width:80px;accent-color:var(--gold)}.masthead{flex-wrap:wrap}@media(max-width:700px){.audio-controls{width:100%;justify-content:flex-end;gap:8px}.audio-controls input{width:90px}}
@@ -232,7 +234,7 @@ kbd{font:10px/1.2 Arial,sans-serif;min-width:21px;padding:4px 5px;border:1px sol
 .newspaper-dateline,.newspaper-edition{display:flex;align-items:center;justify-content:space-between;font:8px/1.4 Arial,sans-serif;letter-spacing:.15em;color:#4d4d46}
 .newspaper-dateline{padding-right:30px}
 .newspaper-dateline .icon-button{position:absolute;right:0;top:-10px}
-.newspaper-masthead h2{font:bold 43px/.95 Georgia,serif;letter-spacing:-.045em;margin:11px 0 8px;color:#24241f;text-shadow:1px 1px #fffdf4}
+.newspaper-masthead h2{font:bold 43px/1.15 'Clarim Baskerville',Georgia,serif;letter-spacing:-.045em;margin:11px 0 8px;color:#24241f;text-shadow:1px 1px #fffdf4;text-align:center}
 .newspaper-masthead h2:before,.newspaper-masthead h2:after{content:'✦';display:inline-block;margin:0 15px;font:12px Georgia,serif;vertical-align:middle;color:#56564e}
 .newspaper-edition span:last-child{font-weight:bold}
 .newspaper-story{padding:0 2px;text-align:left;color:#292923}
@@ -497,3 +499,9 @@ kbd{font:10px/1.2 Arial,sans-serif;min-width:21px;padding:4px 5px;border:1px sol
 .night-attack-overlay{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;background:#020810ed;padding:16px}.night-attack-dialog{width:min(1100px,100%);color:#e9e6d5;text-align:center}.night-attack-dialog canvas{display:block;width:100%;height:auto;image-rendering:pixelated;border:1px solid #7c8f9b;box-shadow:0 0 90px #000}.night-attack-dialog [role=status]{min-height:3em;margin:18px auto;max-width:650px}.night-attack-dialog button{color:#f4e7c7;border-color:#c4ac7c}
 .phase-overlay.is-night-waiting{background:linear-gradient(0deg,#020a13aa,transparent 38%);align-items:end;padding:18px}.is-night-waiting .phase-modal{width:min(960px,100%);max-width:960px;padding:12px 22px;background:#081523df;border:1px solid #718b9a88;box-shadow:0 8px 35px #0006;backdrop-filter:blur(3px)}.is-night-waiting .phase-moon{display:none}.is-night-waiting .phase-modal h2{font-size:23px;margin:5px 0}.is-night-waiting .phase-modal .eyebrow{margin:0;font-size:10px}.is-night-waiting .phase-modal>p:not(.eyebrow){margin:5px 0;font-size:12px;line-height:1.4}@media(max-width:600px){.phase-overlay.is-night-waiting{padding:8px}.is-night-waiting .phase-modal{padding:10px}.is-night-waiting .phase-modal h2{font-size:19px}}
 .phase-overlay.is-night-waiting{backdrop-filter:none}
+/* Shared newspaper type: opening, daily, victory and defeat editions. */
+.newspaper-masthead h2,.victory-paper .newspaper-masthead h2{font-family:'Clarim Baskerville',Georgia,serif;font-weight:700;text-align:center}
+.journal-modal h3,.victory-paper h3{font-family:'Clarim Baskerville',Georgia,serif;font-weight:700;line-height:1.3}
+#journal-body,.victory-paper>p{font-family:'Clarim Baskerville',Georgia,serif;font-size:15px;line-height:1.8}
+.journal-motto{font-family:'Clarim Baskerville',Georgia,serif}
+@media(max-width:600px){.newspaper-masthead h2,.victory-paper .newspaper-masthead h2{font-size:clamp(23px,6.3vw,34px)}.newspaper-masthead h2:before,.newspaper-masthead h2:after{margin:0 7px;font-size:9px}.journal-modal h3,.victory-paper h3{font-size:22px}#journal-body,.victory-paper>p{font-size:14px}}
