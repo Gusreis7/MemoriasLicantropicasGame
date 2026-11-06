@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     aws_use_default_credentials: bool = False
     api_docs_enabled: bool = True
     allowed_hosts: str = "*"
+    security_trusted_proxies: str = ""
     aws_profile: str | None = None
     aws_profile_source_dir: str | None = Field(default=None, repr=False)
     bedrock_api_key: SecretStr | None = Field(

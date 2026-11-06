@@ -51,7 +51,7 @@ Instale as dependências e exponha somente o Redis de desenvolvimento. Se a API 
 uv sync --locked
 python3 scripts/configure_local.py
 docker compose -f compose.yaml -f compose.debug.yaml up -d --wait redis
-REDIS_URL=redis://127.0.0.1:7080/0 AWS_PROFILE=terraform uv run uvicorn src.main:app --host 127.0.0.1 --port 7079 --reload
+REDIS_URL=redis://127.0.0.1:7080/0 AWS_PROFILE=terraform uv run uvicorn src.main:app --host 127.0.0.1 --port 7079 --reload --no-proxy-headers
 ```
 
 Substitua `terraform` pelo seu perfil. Em outro terminal:

@@ -25,6 +25,7 @@ services:
       ADMIN_ALLOWED_ORIGINS: http://localhost:7078,http://127.0.0.1:7078
       ADMIN_COOKIE_SECURE: "false"
       API_DOCS_ENABLED: "false"
+      SECURITY_TRUSTED_PROXIES: 172.30.253.0/28
       ALLOWED_HOSTS: memoriaslicantropicasgame.gustavodreis.dev.br,localhost,127.0.0.1
       SOCIAL_ENABLED: "true"
     volumes:

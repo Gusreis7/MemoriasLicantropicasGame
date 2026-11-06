@@ -38,6 +38,10 @@ O EBS de dados é criptografado e tem proteção contra destruição no bootstra
 
 ## Containers e persistência
 
+A API também aplica limites por IP em cada processo: 20 requisições/s com rajada de 40, criação de partidas 6/min com rajada de 6 e mensagens 30/min com rajada de 5. Retorna 429 com `Retry-After`. Corpos têm limite de 16 KiB e prazo de 10 segundos. Três tentativas de caminhos de exploração conhecidos, corpo excessivo ou corpo lento causam bloqueio de dez minutos. O texto narrativo não é usado para detectar ataques. O login mantém sua proteção específica contra força bruta.
+
+`SECURITY_TRUSTED_PROXIES` permite aceitar um único IP válido em `X-Forwarded-For` somente dos proxies configurados. Na produção, confia na rede Docker do Nginx, que sobrescreve o cabeçalho público; fora dela usa o endereço da conexão. O controle mantém até 10 mil clientes, é local ao processo e reinicia com ele. Uma futura implantação com várias réplicas exige um contador compartilhado. Os limites do Nginx continuam como proteção adicional na borda.
+
 `deploy/production/compose.yaml` define API, Redis, frontend público e frontend administrativo. As imagens da API e da web vêm do ECR por digest. O Redis usa uma imagem fixada por digest pela fundação.
 
 | Serviço | Exposição e função |
