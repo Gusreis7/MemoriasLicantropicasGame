@@ -1,0 +1,24 @@
+{
+  "id": "rubiao",
+  "path": "/assets/cinematics/fallen/rubiao.png",
+  "generator": "image_gen built-in",
+  "prompt": "Use case: identity-preserve. Production pixel-art game sprite, one single full-body fallen pose of Rubião from reference character sheet (identity and costume reference, not edit target). Preserve his warm medium tan skin, brown side-parted hair, small mustache, ochre tan jacket, rust waistcoat, white shirt, dark tie, dark trousers and brown shoes. He lies motionless after the nocturnal attack, eyes CLOSED, body fully horizontal on the ground viewed from the side, head on LEFT, feet on RIGHT, relaxed limp arms, legs resting slightly bent. Do NOT merely rotate a standing pose: anatomically natural collapsed side-lying body, head rests near ground, shoulder and hip rest on same ground plane. Entire body fully visible with transparent margin; low horizontal silhouette. Match reference expressive pixel art with crisp square pixel clusters, dark outlines, simple forms, restrained warm earthy palette. Render as isolated sprite on genuinely TRANSPARENT background, no floor no scenery no cast shadow no typography. No blood no wounds no gore no weapon no other characters. Landscape composition, occupies central horizontal band, intended game display width 100px and height 30-40px. One pose only.",
+  "reference": "/assets/characters/rubiao.png",
+  "source": "/home/gustavoreis/.codex/generated_images/01a1ae1d-d0c8-7f33-bdf4-e344a5c620ba/exec-11045144-9a8f-4110-9f15-d4ae1380a371.png",
+  "size": [
+    2172,
+    724
+  ],
+  "bbox": [
+    0,
+    23,
+    2158,
+    724
+  ],
+  "transparent_pixels": 1000539,
+  "sha256": "c4c242a502c91275b602b90615bbc2fb5366c092f296338176b0f984c6efc15b",
+  "bboxFormat": "[left,top,right,bottom] PIL alpha.getbbox()",
+  "pixelsEdited": false,
+  "pose": "lying motionless, eyes closed, head left, feet right, no gore",
+  "suggestedDisplayWidth": 112
+}

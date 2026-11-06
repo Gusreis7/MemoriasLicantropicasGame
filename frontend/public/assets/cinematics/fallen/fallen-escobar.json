@@ -1,0 +1,24 @@
+{
+  "id": "escobar",
+  "path": "/assets/cinematics/fallen/escobar.png",
+  "generator": "image_gen built-in",
+  "prompt": "Use case: identity-preserve. Production pixel-art game sprite, ONE single full-body fallen pose of Escobar from reference character sheet (IDENTITY AND COSTUME REFERENCE). Preserve warm brown skin, dark curly hair, short dark beard and mustache, navy blue period jacket, plum waistcoat with gold buttons and watch chain, ivory shirt and cravat, dark trousers and brown boots. He lies completely motionless after an attack, eyes CLOSED, body fully horizontal on ground seen from side, head on LEFT feet on RIGHT, limp relaxed arms, legs resting slightly bent. Anatomically natural collapsed side-lying body: head and shoulder and hip rest near same ground plane. Do NOT rotate a standing pose. Entire body fully visible with generous transparent margin; low horizontal silhouette, one pose only. Match the reference expressive chunky pixel art, crisp square pixel clusters, dark stepped outlines, simple shapes, restrained warm earthy palette, readable at width112px and height30px. TRANSPARENT background, no floor no cast shadow no scenery no letters. NO blood, wounds, gore, weapons, other people. Landscape canvas, body occupies central horizontal band.",
+  "reference": "/assets/characters/escobar.png",
+  "source": "/home/gustavoreis/.codex/generated_images/01a1ae1d-d0c8-7f33-bdf4-e344a5c620ba/exec-3d576e1b-afcf-46d4-91f6-07922b94ea5c.png",
+  "size": [
+    2172,
+    724
+  ],
+  "bbox": [
+    0,
+    19,
+    2140,
+    706
+  ],
+  "transparent_pixels": 1031191,
+  "sha256": "fd29eb730adaf8c69ab66f9cf5da55ebc23697a650ac3033372c5602dc6d393f",
+  "bboxFormat": "[left,top,right,bottom] PIL alpha.getbbox()",
+  "pixelsEdited": false,
+  "pose": "lying motionless, eyes closed, head left, feet right, no gore",
+  "suggestedDisplayWidth": 112
+}
