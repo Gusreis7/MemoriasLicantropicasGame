@@ -1,5 +1,6 @@
 import type {CharacterManifest, JournalEdition, WorldSnapshot} from '../shared/api';
 import {wolfWalkFrame} from './wolf-walk';
+import {gameAudio} from './audio';
 
 export const STRIKES = ['garra lateral', 'golpe descendente', 'bote rasteiro', 'salto de emboscada'] as const;
 export function strikeVariant(day: number) {return Math.max(0, Math.trunc(day) - 2) % STRIKES.length;}
@@ -43,6 +44,8 @@ export async function playNightAttack(edition:JournalEdition, manifest:Character
     clearTimeout(loadTimeout);
     if(abort.signal.aborted)return;
     document.body.append(root);
+    gameAudio.setNight(true);
+    if (!reduced) gameAudio.effect('sneak');
     const canvas=root.querySelector('canvas')!; const ctx=canvas.getContext('2d')!;
     const button=root.querySelector('button')!; const previousFocus=document.activeElement as HTMLElement|null; button.focus();
     const drawActor=(a:Actor,frame:string,x:number,y:number,w:number,h:number,angle=0,alpha=1)=>{
@@ -52,13 +55,19 @@ export async function playNightAttack(edition:JournalEdition, manifest:Character
     };
     root.dataset.strike=String(strikeVariant(edition.day));
     await new Promise<void>(resolve=>{
-      let raf=0; let ended=false; const start=performance.now();
+      let raf=0; let ended=false; let lastFootfall=-1; let slashed=false; let hit=false; const start=performance.now();
       const finish=()=>{if(ended)return;ended=true;cancelAnimationFrame(raf);document.removeEventListener('keydown',key);root.remove();previousFocus?.focus({preventScroll:true});resolve();};
       const key=(e:KeyboardEvent)=>{if(e.key==='Escape'){e.preventDefault();finish();}};
       stop=()=>{abort.abort();finish();};button.onclick=finish;document.addEventListener('keydown',key);
       const render=(now:number)=>{
         const t=reduced?3900:now-start;const approach=Math.min(1,t/2900);const impact=Math.max(0,Math.min(1,(t-3100)/700));
         const variant=strikeVariant(edition.day); const lunging=t>2900&&t<3500;
+        if (!reduced) {
+          const footfall=Math.floor(approach*378/42);
+          if(t<2900 && footfall>lastFootfall){gameAudio.effect('step');lastFootfall=footfall;}
+          if(t>=2900&&!slashed){gameAudio.effect('slash',variant);slashed=true;}
+          if(t>=3100&&!hit){gameAudio.effect('impact',variant);hit=true;}
+        }
         ctx.clearRect(0,0,960,360);ctx.imageSmoothingEnabled=false;
         ctx.save();ctx.filter=reduced?'none':`blur(${approach*2}px)`;ctx.drawImage(bg,0,0,960,360);
         Object.keys(pedestrians.frames).filter(f=>f.endsWith('-0')).slice(0,2).forEach((frame,i)=>{ctx.filter=`blur(${reduced?0:3+approach*5}px)`;for(let trail=0;trail<3;trail++)drawActor(pedestrians,frame,90+i*765+trail*6,308,60,86,0,1/(trail+1));});
@@ -78,5 +87,5 @@ export async function playNightAttack(edition:JournalEdition, manifest:Character
         if(t>= (reduced?3900:4900)){finish();return;}raf=requestAnimationFrame(render);
       };render(start);
     });
-  } catch {root.remove();} finally {clearTimeout(loadTimeout);if(cancel)cancel=undefined;abort.abort();}
+  } catch {root.remove();} finally {gameAudio.setNight(false);clearTimeout(loadTimeout);if(cancel)cancel=undefined;abort.abort();}
 }

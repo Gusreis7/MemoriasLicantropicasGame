@@ -23,7 +23,7 @@ export class GameAudio {
       if (saved && typeof saved.volume === 'number' && Number.isFinite(saved.volume)) this.volume = Math.max(0, Math.min(1, saved.volume));
       if (saved && typeof saved.muted === 'boolean') this.muted = saved.muted;
     } catch { /* Audio settings are optional when storage is unavailable. */ }
-    document.addEventListener('visibilitychange', () => {
+    if (typeof document !== 'undefined') document.addEventListener('visibilitychange', () => {
       if (document.hidden) this.stopEffects();
       this.sync();
     });

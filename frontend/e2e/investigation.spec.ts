@@ -193,6 +193,8 @@ test('quarta vítima encerra o caso com a edição de derrota do Clarim', async 
 });
 
 test('amanhecer retorna à banca e publica a morte sem manter o NPC no cenário', async ({page}) => {
+  const audioFiles: string[] = [];
+  page.on('response', response => {if(response.url().includes('/assets/audio/') && response.ok()) audioFiles.push(response.url());});
   const city = await cityFixture(page); await begin(page);
   city.state.phase = 'night'; city.state.revision++; city.state.phase_ends_at = new Date(Date.now() + 8000).toISOString();
   await expect(page.locator('#phase-overlay')).toBeVisible({timeout: 5000});
@@ -203,9 +205,15 @@ test('amanhecer retorna à banca e publica a morte sem manter o NPC no cenário'
   await expect(page.locator('#night-attack-overlay')).toBeVisible({timeout: 5000});
   await expect(page.locator('#night-attack-overlay')).toHaveAttribute('data-strike', '0');
   await expect(page.locator('#journal-overlay')).toBeHidden();
-  await page.waitForTimeout(3200);
+  const firstFrame = await page.locator('#night-attack-overlay').getAttribute('data-wolf-walk-frame');
+  await expect.poll(() => page.locator('#night-attack-overlay').getAttribute('data-wolf-walk-frame')).not.toBe(firstFrame);
+  await page.screenshot({path:'../artifacts/werewolf-walking.png',fullPage:true});
+  await page.waitForTimeout(3000);
   await page.screenshot({path:'../artifacts/night-attack.png',fullPage:true});
   await expect(page.locator('#night-attack-overlay')).toBeHidden({timeout: 5000});
+  expect(audioFiles.some(url=>url.includes('day-birds'))).toBe(true);
+  expect(audioFiles.some(url=>url.includes('night-crickets'))).toBe(true);
+  expect(audioFiles.some(url=>url.includes('knifeSlice'))).toBe(true);
   await expect(page.locator('#journal-overlay')).toBeVisible({timeout: 5000});
   await expect(page.locator('#journal-headline')).toHaveText('Rubião é encontrado morto');
   await expect(page.locator('#case-day')).toHaveText('DIA 2'); await expect(page.locator('#location-name')).toHaveText('Praça Verde');
