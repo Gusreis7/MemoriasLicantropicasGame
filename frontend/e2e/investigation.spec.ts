@@ -112,7 +112,6 @@ async function begin(page: import('@playwright/test').Page) {
 test('busca, apresenta vestígios e pede detenção antes de aguardar a noite', async ({page}) => {
   const city = await cityFixture(page); await begin(page);
   await expect(page.locator('#case-clock')).toHaveText(/09:[0-2]\d/);
-  await page.screenshot({path:'../artifacts/crime-red-silhouette.png',fullPage:true});
   await page.locator('canvas').click(); await page.keyboard.down('ArrowRight');
   await expect(page.locator('#inspect-crime')).toBeVisible({timeout: 8000}); await page.keyboard.up('ArrowRight');
   await page.locator('#inspect-crime').click();
