@@ -23,6 +23,7 @@ class ContainerPolicy(unittest.TestCase):
                 "WEB_IMAGE": "web@sha256:" + "b" * 64,
                 "REDIS_IMAGE": "redis@sha256:" + "c" * 64,
                 "AWS_REGION": "us-east-1",
+                "CADDY_IMAGE": "caddy@sha256:" + "d" * 64,
             },
             text=True,
         )
@@ -32,6 +33,8 @@ class ContainerPolicy(unittest.TestCase):
     def test_no_public_admin_api_or_redis(self):
         self.assertFalse(self.services["api"].get("ports"))
         self.assertFalse(self.services["redis"].get("ports"))
+        self.assertFalse(self.services["game"].get("ports"))
+        self.assertEqual({p['published'] for p in self.services['caddy']['ports']}, {'80', '443'})
         self.assertTrue(
             all(p["host_ip"] == "127.0.0.1" for p in self.services["admin"]["ports"])
         )
@@ -71,3 +74,11 @@ class ContainerPolicy(unittest.TestCase):
         self.assertEqual(egress["ipv4_address"], "172.30.254.2")
         self.assertTrue(all(egress["gw_priority"] > value.get("gw_priority", 0)
                             for name, value in networks.items() if name != "egress"))
+
+    def test_certificate_storage_is_persistent_and_only_caddy_has_edge_access(self):
+        caddy = self.services['caddy']
+        self.assertEqual(set(caddy['networks']), {'frontend', 'edge'})
+        sources = {v['target']: v['source'] for v in caddy['volumes']}
+        self.assertEqual(sources['/data'], '/srv/ml-data/caddy/data')
+        self.assertEqual(sources['/config'], '/srv/ml-data/caddy/config')
+        self.assertEqual([name for name, service in self.services.items() if 'edge' in service['networks']], ['caddy'])

@@ -40,10 +40,12 @@ uuid=$(blkid -s UUID -o value "$device")
 grep -q "UUID=$uuid " /etc/fstab || printf 'UUID=%s /srv/ml-data ext4 defaults,nodev,nosuid,noexec,nofail 0 2\n' "$uuid" >> /etc/fstab
 mountpoint -q /srv/ml-data || mount /srv/ml-data
 install -d -o 999 -g 999 -m 0700 /srv/ml-data/redis
+install -d -o 1000 -g 1000 -m 0700 /srv/ml-data/caddy /srv/ml-data/caddy/data /srv/ml-data/caddy/config
 # Neither ec2-user nor a container can edit the host deployment files.
 chown -R root:root /etc/ml-game
 chmod 0755 /etc/ml-game
 chmod 0644 /etc/ml-game/*.conf /etc/ml-game/compose.yaml
+chmod 0644 /etc/ml-game/Caddyfile
 chmod 0600 /etc/ml-game/config.json
 systemctl daemon-reload
 systemctl enable ml-imds-firewall.service ml-game.service

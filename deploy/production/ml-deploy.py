@@ -160,6 +160,7 @@ def main():
             "API_IMAGE": manifest["api_image"],
             "WEB_IMAGE": manifest["web_image"],
             "REDIS_IMAGE": config["redis_image"],
+            "CADDY_IMAGE": config["caddy_image"],
             "AWS_REGION": config["aws_region"],
         }
         atomic_write(
@@ -178,6 +179,7 @@ def main():
                 "api",
                 "game",
                 "admin",
+                "caddy",
             )
         except subprocess.CalledProcessError:
             if previous:
@@ -192,6 +194,7 @@ def main():
                     "api",
                     "game",
                     "admin",
+                    "caddy",
                 )
             raise
         finally:

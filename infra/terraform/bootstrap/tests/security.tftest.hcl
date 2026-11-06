@@ -1,5 +1,8 @@
 mock_provider "aws" {
   override_during = plan
+  mock_resource "aws_eip" {
+    defaults = { id = "eipalloc-0123456789abcdef0", public_ip = "203.0.113.10", arn = "arn:aws:ec2:us-east-1:123456789012:elastic-ip/eipalloc-0123456789abcdef0" }
+  }
   mock_resource "aws_vpc" { defaults = { id = "vpc-0123456789abcdef0", arn = "arn:aws:ec2:us-east-1:123456789012:vpc/vpc-0123456789abcdef0" } }
   mock_resource "aws_subnet" { defaults = { id = "subnet-0123456789abcdef0", arn = "arn:aws:ec2:us-east-1:123456789012:subnet/subnet-0123456789abcdef0" } }
   mock_resource "aws_internet_gateway" { defaults = { id = "igw-0123456789abcdef0" } }

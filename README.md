@@ -48,7 +48,7 @@ O painel administrativo permite acompanhar sorteio, eventos, conversas e consumo
 - **Agentes:** ferramentas vinculadas à identidade de cada NPC, mestre da sessão e circulação social com LangGraph.
 - **Modelos:** cliente Bedrock Mantle, saídas estruturadas e medição de uso. Fatos e permissões são definidos pelo servidor.
 - **Interface:** TypeScript, Phaser e Vite; proxies Nginx no deploy.
-- **Produção:** Terraform, EC2, ALB/ACM, EBS, ECR, S3 e entrega por GitHub OIDC/SSM.
+- **Produção:** Terraform, EC2 com Elastic IP, registro A no Registro.br, HTTPS automático com Caddy, EBS, ECR, S3 e entrega por GitHub OIDC/SSM.
 
 A investigação usa formato 2. Dados antigos incompatíveis são recusados; não há migração ou adaptador. O namespace Redis padrão `ml:v1` é independente desse formato.
 

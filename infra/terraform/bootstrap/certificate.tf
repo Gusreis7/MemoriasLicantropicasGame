@@ -1,3 +1,5 @@
+# Legado preservado: não participa da publicação por Elastic IP/Caddy.
+# Limpeza somente em uma mudança separada, com revisão do state e do DNS.
 resource "aws_acm_certificate" "game" {
   domain_name       = var.domain_name
   validation_method = "DNS"

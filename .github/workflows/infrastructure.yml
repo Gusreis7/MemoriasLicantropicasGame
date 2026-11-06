@@ -64,6 +64,10 @@ jobs:
           options=()
           if [ "$OPERATION" = destroy ]; then options+=(-destroy); fi
           terraform -chdir=infra/terraform/app plan -input=false -lock-timeout=5m "${options[@]}" -out=reviewed.tfplan
+          terraform -chdir=infra/terraform/app show -json reviewed.tfplan | python3 scripts/check_infrastructure_plan.py "$OPERATION"
       - name: Executar o plano deste mesmo job
         if: inputs.operation != 'plan'
         run: terraform -chdir=infra/terraform/app apply -input=false -lock-timeout=5m reviewed.tfplan
+      - name: Mostrar IP para registro A no Registro.br
+        if: inputs.operation == 'apply'
+        run: terraform -chdir=infra/terraform/app output public_ip

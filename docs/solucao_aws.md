@@ -1,74 +1,56 @@
 # Solução na AWS
 
-Este documento descreve a infraestrutura versionada em `infra/terraform/`, `deploy/production/` e `.github/workflows/`. Não é um inventário consultado da conta nem comprova que um deploy foi executado. O procedimento operacional está em [reprodução na AWS](reproducao_aws.md); a lógica dos personagens está em [orquestração dos agentes](orquestracao_agentes.md).
-
-## Arquitetura
+A publicação usa um registro A manual no Registro.br apontando para um Elastic IP exclusivo do jogo. Caddy executa na EC2, obtém e renova o certificado automaticamente e encaminha requisições ao Nginx público pela rede Docker interna. A [reprodução](reproducao_aws.md) descreve a sequência operacional.
 
 ```mermaid
 flowchart LR
-    Jogador --> DNS[Route 53]
-    DNS --> ALB[ALB HTTPS e certificado ACM]
-    ALB --> Web[Nginx público na EC2]
-    Web --> API[API FastAPI]
-    API --> Redis[Redis com AOF em EBS]
+    Jogador --> DNS[Registro.br: registro A]
+    DNS --> EIP[Elastic IP da EC2]
+    EIP --> Caddy[Caddy HTTP/HTTPS]
+    Caddy --> Web[Nginx interno do jogo]
+    Web --> API[FastAPI interna]
+    API --> Redis[Redis em EBS]
     API --> Mantle[Bedrock Mantle]
-    Operador --> SSM[Session Manager]
-    SSM --> Admin[Nginx admin em loopback]
+    Operador --> SSM[Túnel SSM]
+    SSM --> Admin[Admin em 127.0.0.1:7078]
     Admin --> API
-    GitHub[GitHub Actions com OIDC] --> Terraform[Terraform e estado S3]
-    GitHub --> ECR[ECR por digest]
-    GitHub --> Entrega[Manifesto S3 e documento SSM]
-    Entrega --> EC2[Host EC2]
 ```
 
-O bootstrap cria uma VPC própria com DNS, Internet Gateway, duas sub-redes públicas em zonas distintas e rotas para a internet. Os padrões são `10.42.0.0/16`, `us-east-1a` e `us-east-1b`. A instância Amazon Linux 2023 `m7i-flex.large` usa a subnet primária, na mesma AZ do EBS. Ela tem IP público para saída e recebe tráfego de aplicação somente do security group do ALB na porta 8080. Não há ingresso SSH.
+## Terraform e persistência
 
-O ALB redireciona HTTP para HTTPS, usa certificado ACM e verifica `/health`. O domínio configurado é `memoriaslicantropicasgame.gustavodreis.dev.br`. A zona Route 53 desse subdomínio exige delegação no DNS do domínio pai.
-
-## Separação do Terraform
-
-| Raiz | Recursos e ciclo de vida |
+| Raiz | Responsabilidade |
 | --- | --- |
-| `infra/terraform/bootstrap` | Fundação persistente: VPC/subnets/rotas/IGW, estado/releases S3, ECR, DNS, ACM, EBS, identidades OIDC/IAM, perfil da instância e documentos SSM |
-| `infra/terraform/app` | Aplicação substituível: instância, ALB, target group, security groups e registro DNS de acesso |
+| `bootstrap` | VPC com DNS, IGW, duas subnets públicas, rotas, EIP persistente, EBS, buckets S3, ECR, IAM/OIDC e documentos SSM; mantém também ACM/Route53 legados |
+| `app` | EC2 `m7i-flex.large`, security group público 80/443, associação do EIP e anexo do EBS |
 
-O assistente `scripts/bootstrap_aws.py` conduz `plan`, `apply` e `configure`, conferindo identidade, recursos, state e subject OIDC. A primeira execução começa com estado local e depois migra para `bootstrap/terraform.tfstate` no bucket S3 criado. As seguintes reutilizam esse state. A aplicação usa `production/terraform.tfstate` e consulta os outputs da fundação por remote state. O backend usa criptografia, versionamento e lockfile S3. O output `foundation` publica a VPC, as duas subnets e a subnet específica da instância; não são mais entradas manuais.
+O bootstrap publica `foundation.elastic_ip`, `elastic_ip_allocation_id` e `caddy_image`. A EC2 e o EBS ficam na subnet/AZ primária. O EIP pertence à base permanente, com `prevent_destroy`: destruir apenas app desassocia o endereço, mas não o libera.
 
-O EBS de dados é criptografado e tem proteção contra destruição no bootstrap. Ele fica na mesma zona da instância e monta em `/srv/ml-data`. O disco raiz da EC2 é separado e descartável. Destruir apenas a raiz `app` preserva os dados e a fundação; não elimina todos os recursos ou custos da conta.
+O state S3 continua separado em `bootstrap/terraform.tfstate` e `production/terraform.tfstate`, com lock, criptografia e versionamento. O assistente `scripts/bootstrap_aws.py` confere identidade, inventário, OIDC e states antes de planejar/aplicar; nunca substitui um state divergente automaticamente.
 
-## Containers e persistência
+## Rede e certificados
 
-A API também aplica limites por IP em cada processo: 20 requisições/s com rajada de 40, criação de partidas 6/min com rajada de 6 e mensagens 30/min com rajada de 5. Retorna 429 com `Retry-After`. Corpos têm limite de 16 KiB e prazo de 10 segundos. Três tentativas de caminhos de exploração conhecidos, corpo excessivo ou corpo lento causam bloqueio de dez minutos. O texto narrativo não é usado para detectar ataques. O login mantém sua proteção específica contra força bruta.
+Somente 80 e 443 TCP entram pelo security group. Não há SSH público. API, Redis e Nginx do jogo não publicam portas no host. O admin publica somente `127.0.0.1:7078` e exige sessão autenticada depois do túnel SSM.
 
-`SECURITY_TRUSTED_PROXIES` permite aceitar um único IP válido em `X-Forwarded-For` somente dos proxies configurados. Na produção, confia na rede Docker do Nginx, que sobrescreve o cabeçalho público; fora dela usa o endereço da conexão. O controle mantém até 10 mil clientes, é local ao processo e reinicia com ele. Uma futura implantação com várias réplicas exige um contador compartilhado. Os limites do Nginx continuam como proteção adicional na borda.
+Caddy usa a imagem oficial linux/amd64 fixada por digest, usuário sem privilégios, filesystem somente leitura, capabilities removidas e bind de portas baixas permitido apenas em seu namespace de rede. HTTP redireciona para HTTPS; HTTP/3 não é publicado. O listener de saúde 8081 fica no loopback do container.
 
-`deploy/production/compose.yaml` define API, Redis, frontend público e frontend administrativo. As imagens da API e da web vêm do ECR por digest. O Redis usa uma imagem fixada por digest pela fundação.
+`/data` e `/config` do Caddy são montados em `/srv/ml-data/caddy/{data,config}`, no EBS persistente. A conta ACME, chaves e certificados sobrevivem a reinícios e substituições da EC2. Não apague esse diretório para corrigir erros de DNS: isso pode perder a conta/chaves e provocar novas emissões.
 
-| Serviço | Exposição e função |
-| --- | --- |
-| Web | Porta 8080 do host, acessível pelo ALB; bloqueia admin e documentação da API |
-| API | Porta 8000 interna; serve jogo e rotas autenticadas do admin |
-| Redis | Rede interna; AOF `everysec` no EBS, limite de memória e política `noeviction` |
-| Admin | Apenas `127.0.0.1:7078`, acessível por túnel SSM |
+Caddy não usa credenciais de DNS ou plugins de Registro.br. A emissão usa os desafios públicos ACME; o registro A deve apontar para o EIP e as portas 80/443 devem estar acessíveis. Remova AAAA antigo do mesmo hostname se não houver IPv6 configurado. Veja a [documentação oficial de HTTPS automático](https://caddyserver.com/docs/automatic-https).
 
-Os containers usam usuário sem privilégios, filesystem somente leitura, `cap_drop: ALL`, `no-new-privileges`, tmpfs e limites de memória/logs. As redes separam backend e saída. O firewall do host aplica as restrições de saída e de acesso aos metadados definidas em `container-firewall.sh`.
+A rede `edge` dá saída HTTP/HTTPS somente ao Caddy e bloqueia IMDS/host. Nginx/admin ficam em `frontend`; somente Caddy pode informar a Nginx o IP original, sobrescrevendo X-Forwarded-For. A API usa sua rede de saída fixa para AWS/Mantle; Redis fica somente em `backend`. O firewall e os limites de requisições continuam ativos.
 
-Redis guarda partidas, mesa, memórias, relações, sessões administrativas e métricas. O AOF e o EBS sobrevivem à substituição da aplicação, mas isso não constitui uma política de backup externo. A configuração não fornece alta disponibilidade do Redis ou de múltiplas instâncias da API. AOF `everysec` também não equivale a confirmação de cada gravação em disco.
+## Entrega
 
-## Identidade e segredos
+GitHub Actions assume roles por OIDC. O delivery constrói imagens API/web no ECR, com tags imutáveis de commit e referências por digest, verifica o scan e grava `releases/COMMIT.json` no S3. O manifesto contém apenas versão e imagens; não contém senha ou arquivos arbitrários de host.
 
-GitHub Actions assume roles por OIDC; não usa access keys estáticas. As políticas restringem repositório, ambiente e operações. A implementação está vinculada a `Gusreis7/MemoriasLicantropicasGame` e ao domínio indicado acima; mudar somente um `.tfvars` não adapta toda a solução para outro proprietário.
+O documento SSM recebe somente o commit. Cloud-init instala arquivos fixos, prepara EBS/firewall e systemd. O instalador valida o manifesto e os digests, obtém a senha por SecureString, inicia Redis/API/Nginx/admin/Caddy e verifica a saúde interna. Depois o delivery confere se DNS resolve exclusivamente para o EIP e aguarda HTTPS com certificado confiável e resposta de saúde válida.
 
-A EC2 usa instance profile para ECR, releases S3, SSM, leitura do parâmetro administrativo e acesso ao modelo Bedrock/Mantle. O Compose de produção usa credenciais padrão da instância, sem copiar `.aws` do desenvolvedor.
+Se DNS/certificado ainda não estiver pronto, o delivery falha com indicação da configuração pendente; a instalação interna pode já ter terminado. Consulte os logs antes de repetir. Rollback de imagens não reverte dados ou certificados.
 
-A senha administrativa é um `SecureString` em `/memorias-licantropicas/production/admin-password`. O deploy a materializa em `/run/ml-game/admin_password`, montado na API como arquivo somente leitura. Ela não é variável Terraform, conteúdo de manifesto ou segredo entregue ao frontend.
+## Recursos legados e limites
 
-## Entrega e recuperação
+O certificado ACM, CNAME de validação e zona Route53 já aplicados permanecem na raiz bootstrap, com os mesmos endereços Terraform. Nenhuma emissão/validação ACM, delegação NS, ALB ou alias Route53 é necessária na raiz app.
 
-O workflow `infrastructure.yml` oferece `plan`, `apply` e `destroy` da raiz `app`, com roles e ambientes separados. O bootstrap e a delegação DNS são preparados antes desse fluxo. A destruição exige confirmação do domínio.
+Caso um state app antigo contenha ALB/listeners/alias ou uma EC2 que precise ser substituída, o workflow recusa o plano de apply comum por conter remoções/substituições. Uma migração/limpeza deve ser preparada separadamente, com backup e revisão. A configuração não apaga esses recursos na conta sem essa decisão. Não use remoção de state como atalho.
 
-O workflow `delivery.yml` executa em `main` e pode ser iniciado manualmente. `scripts/deliver_aws.py` constrói imagens `linux/amd64`, usa o commit completo como tag imutável, espera a análise do ECR e rejeita achados altos ou críticos. Um manifesto com digests é salvo em S3 e um documento SSM fixo recebe somente o commit a instalar.
-
-No host, `ml-deploy.py` valida o manifesto e os repositórios permitidos, serializa a operação por lock, obtém a senha no SSM e aplica o Compose. Se a aplicação falhar na verificação, tenta restaurar as imagens anteriores. Esse rollback não restaura Redis nem desfaz alterações de formato dos dados.
-
-O workflow de entrega valida a construção e a compilação Python; não executa toda a suíte de backend e frontend. Execute os [testes](testes.md) antes de integrar mudanças. Os testes Terraform e de segurança locais verificam a configuração; não comprovam permissões efetivas nem conectividade em uma conta real.
+O ambiente é uma única EC2; EIP e EBS não fornecem alta disponibilidade. Redis usa AOF everysec e não substitui backup externo. A senha administrativa permanece em Parameter Store e é montada em arquivo somente leitura na API.

@@ -6,6 +6,25 @@ from pathlib import Path
 import subprocess
 import tempfile
 import time
+import socket
+import urllib.request
+
+
+def verify_public_https(domain, expected_ip, attempts=60):
+    url = f"https://{domain}/health"
+    for attempt in range(attempts):
+        try:
+            addresses = {item[4][0] for item in socket.getaddrinfo(domain, 443, type=socket.SOCK_STREAM)}
+            if addresses != {expected_ip}:
+                raise ValueError("DNS does not point exclusively to the game Elastic IP")
+            with urllib.request.urlopen(url, timeout=15) as response:
+                if response.status == 200 and response.geturl() == url and json.loads(response.read(4096)).get('status') == 'ok':
+                    return
+        except (OSError, ValueError):
+            pass
+        if attempt + 1 < attempts:
+            time.sleep(10)
+    raise RuntimeError(f"Release installed, but HTTPS is not ready. Check the A record for {domain} -> {expected_ip}, stale AAAA records and Caddy logs.")
 
 
 def cli(*args, allow_missing=False):
@@ -201,28 +220,8 @@ def main():
             time.sleep(10)
         else:
             raise TimeoutError("Deployment did not finish")
-        target = json.loads(
-            cli(
-                "elbv2",
-                "describe-target-groups",
-                "--names",
-                "mlgame-production",
-                "--query",
-                "TargetGroups[0].TargetGroupArn",
-                "--output",
-                "json",
-            )
-        )
-        cli(
-            "elbv2",
-            "wait",
-            "target-in-service",
-            "--target-group-arn",
-            target,
-            "--targets",
-            f"Id={instances[0]},Port=8080",
-        )
-        print("Healthy release:", commit)
+        verify_public_https(foundation["domain_name"], foundation["elastic_ip"])
+        print("Healthy HTTPS release:", commit)
 
 
 if __name__ == "__main__":

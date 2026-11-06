@@ -1,34 +1,15 @@
-resource "aws_security_group" "alb" {
-  name_prefix = "mlgame-alb-"
-  description = "Public HTTPS and HTTP redirect only"
-  vpc_id      = local.foundation.vpc_id
-}
 resource "aws_security_group" "host" {
   name_prefix = "mlgame-host-"
-  description = "ALB to web only; no public SSH/admin/API/Redis"
+  description = "Public HTTP/HTTPS only; admin via SSM, API and Redis private"
   vpc_id      = local.foundation.vpc_id
 }
 resource "aws_vpc_security_group_ingress_rule" "public" {
   for_each          = toset(["80", "443"])
-  security_group_id = aws_security_group.alb.id
+  security_group_id = aws_security_group.host.id
   ip_protocol       = "tcp"
   from_port         = tonumber(each.key)
   to_port           = tonumber(each.key)
   cidr_ipv4         = "0.0.0.0/0"
-}
-resource "aws_vpc_security_group_egress_rule" "alb_target" {
-  security_group_id            = aws_security_group.alb.id
-  referenced_security_group_id = aws_security_group.host.id
-  ip_protocol                  = "tcp"
-  from_port                    = 8080
-  to_port                      = 8080
-}
-resource "aws_vpc_security_group_ingress_rule" "host" {
-  security_group_id            = aws_security_group.host.id
-  referenced_security_group_id = aws_security_group.alb.id
-  ip_protocol                  = "tcp"
-  from_port                    = 8080
-  to_port                      = 8080
 }
 resource "aws_vpc_security_group_egress_rule" "host" {
   for_each          = toset(["80", "443"])
@@ -48,6 +29,7 @@ resource "aws_instance" "game" {
   user_data_replace_on_change = true
   user_data_base64 = base64gzip(templatefile("${path.module}/cloud-init.yaml.tftpl", {
     files = {
+      "/etc/ml-game/Caddyfile"              = file("${path.module}/../../../deploy/production/Caddyfile")
       "/etc/ml-game/compose.yaml"           = file("${path.module}/../../../deploy/production/compose.yaml")
       "/etc/ml-game/game.conf"              = file("${path.module}/../../../deploy/production/game.conf")
       "/etc/ml-game/proxy-game.conf"        = file("${path.module}/../../../deploy/production/proxy-game.conf")
@@ -87,71 +69,13 @@ resource "aws_volume_attachment" "data" {
   stop_instance_before_detaching = true
   force_detach                   = false
 }
-resource "aws_lb" "game" {
-  name                       = "mlgame-production"
-  load_balancer_type         = "application"
-  internal                   = false
-  security_groups            = [aws_security_group.alb.id]
-  subnets                    = local.foundation.public_subnet_ids
-  drop_invalid_header_fields = true
-  enable_deletion_protection = false
-  desync_mitigation_mode     = "strictest"
-  idle_timeout               = 150
-}
-resource "aws_lb_target_group" "game" {
-  name     = "mlgame-production"
-  port     = 8080
-  protocol = "HTTP"
-  vpc_id   = local.foundation.vpc_id
-  health_check {
-    path    = "/health"
-    matcher = "200"
-  }
-}
-resource "aws_lb_target_group_attachment" "game" {
-  target_group_arn = aws_lb_target_group.game.arn
-  target_id        = aws_instance.game.id
-  port             = 8080
-}
-resource "aws_acm_certificate_validation" "game" {
-  certificate_arn         = local.foundation.certificate_arn
-  validation_record_fqdns = local.foundation.validation_records
-  timeouts { create = "20m" }
-}
-resource "aws_lb_listener" "https" {
-  load_balancer_arn = aws_lb.game.arn
-  port              = 443
-  protocol          = "HTTPS"
-  ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
-  certificate_arn   = aws_acm_certificate_validation.game.certificate_arn
-  default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.game.arn
-  }
-}
-resource "aws_lb_listener" "redirect" {
-  load_balancer_arn = aws_lb.game.arn
-  port              = 80
-  protocol          = "HTTP"
-  default_action {
-    type = "redirect"
-    redirect {
-      port        = "443"
-      protocol    = "HTTPS"
-      status_code = "HTTP_301"
-    }
-  }
-}
-resource "aws_route53_record" "game" {
-  zone_id = local.foundation.hosted_zone_id
-  name    = local.foundation.domain_name
-  type    = "A"
-  alias {
-    name                   = aws_lb.game.dns_name
-    zone_id                = aws_lb.game.zone_id
-    evaluate_target_health = true
-  }
+
+resource "aws_eip_association" "game" {
+  allocation_id       = local.foundation.elastic_ip_allocation_id
+  instance_id         = aws_instance.game.id
+  allow_reassociation = false
 }
 output "instance_id" { value = aws_instance.game.id }
+output "public_ip" { value = local.foundation.elastic_ip }
+output "elastic_ip_allocation_id" { value = local.foundation.elastic_ip_allocation_id }
 output "game_url" { value = "https://${local.foundation.domain_name}" }
-output "target_group_arn" { value = aws_lb_target_group.game.arn }

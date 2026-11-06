@@ -14,6 +14,8 @@ override_data {
     releases_bucket          = "mock-releases", api_repository = "123456789012.dkr.ecr.us-east-1.amazonaws.com/game-api",
     web_repository           = "123456789012.dkr.ecr.us-east-1.amazonaws.com/game-web", redis_image = "redis@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     admin_password_parameter = "/game/admin-password", deploy_document = "game-deploy"
+    elastic_ip               = "203.0.113.10", elastic_ip_allocation_id = "eipalloc-0123456789abcdef0",
+    caddy_image              = "caddy@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
   } } }
 }
 override_data {
@@ -31,11 +33,11 @@ run "workload_security" {
     error_message = "Instância, IMDSv2 e disco precisam cumprir o contrato."
   }
   assert {
-    condition     = aws_vpc_security_group_ingress_rule.host.from_port == 8080 && length(aws_vpc_security_group_ingress_rule.public) == 2
-    error_message = "Só o listener do jogo pode ser exposto ao ALB; nenhum admin, SSH, Redis ou API."
+    condition     = length(aws_vpc_security_group_ingress_rule.public) == 2 && alltrue([for rule in aws_vpc_security_group_ingress_rule.public : contains([80, 443], rule.from_port) && rule.cidr_ipv4 == "0.0.0.0/0"])
+    error_message = "Somente HTTP/HTTPS do Caddy podem receber tráfego público."
   }
   assert {
-    condition     = aws_lb_listener.https.port == 443 && aws_lb_listener.redirect.default_action[0].redirect[0].protocol == "HTTPS"
-    error_message = "O tráfego público deve usar TLS."
+    condition     = aws_eip_association.game.allocation_id == "eipalloc-0123456789abcdef0" && !aws_eip_association.game.allow_reassociation && output.public_ip == "203.0.113.10"
+    error_message = "A EC2 deve usar somente o EIP exclusivo, sem roubar associação existente."
   }
 }

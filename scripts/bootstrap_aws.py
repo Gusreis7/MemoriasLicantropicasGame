@@ -252,13 +252,13 @@ class Bootstrap:
                 raise BootstrapError('State remoto apareceu durante a aplicação; migração automática recusada. Preserve o state local.')
             self.backend(state, migrate=True)
         self.outputs()
-        print('Fundação aplicada. A delegação DNS é externa; depois execute configure.')
+        print('Fundação aplicada. Execute configure, provisione app e cadastre o registro A no Registro.br.')
 
     def outputs(self):
         outputs = json.loads(terraform('output', '-json'))
-        print('NS reais para delegar no DNS pai:')
-        for ns in outputs['dns_nameservers']['value']:
-            print(f'  {ns}')
+        if 'public_ip' in outputs:
+            print(f'IP exclusivo do jogo para registro A: {outputs["public_ip"]["value"]}')
+        print('A zona Route53 e o ACM legados são preservados; não é necessária delegação DNS para Caddy.')
         return outputs
 
     def configure(self):
@@ -304,7 +304,7 @@ class Bootstrap:
                 raise BootstrapError('Senhas diferentes ou tamanho inválido.')
             ssm.put_parameter(Name=PARAMETER, Type='SecureString', Value=password, Overwrite=False)
             print('SecureString cadastrado sem exibir o valor.')
-        print('Configuração concluída. Execute AWS infrastructure: plan/apply e depois AWS delivery, após delegação DNS.')
+        print('Configuração concluída. Provisione EC2/EIP, cadastre o registro A no Registro.br e execute AWS delivery.')
 
 
 def main():

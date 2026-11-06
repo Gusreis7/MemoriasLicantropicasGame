@@ -61,7 +61,7 @@ resource "aws_iam_role_policy" "delivery" {
     { Effect = "Allow", Action = ["s3:GetObject", "s3:PutObject"], Resource = "${aws_s3_bucket.releases.arn}/releases/*.json" },
     { Effect = "Allow", Action = ["ssm:SendCommand"], Resource = aws_ssm_document.deploy.arn },
     { Effect = "Allow", Action = ["ssm:SendCommand"], Resource = "arn:aws:ec2:${var.aws_region}:${local.account}:instance/*", Condition = { StringEquals = { "ssm:resourceTag/Project" = var.project } } },
-    { Effect = "Allow", Action = ["ssm:GetCommandInvocation", "ssm:DescribeInstanceInformation", "ec2:DescribeInstances", "elasticloadbalancing:DescribeTargetGroups", "elasticloadbalancing:DescribeTargetHealth"], Resource = "*" }
+    { Effect = "Allow", Action = ["ssm:GetCommandInvocation", "ssm:DescribeInstanceInformation", "ec2:DescribeInstances"], Resource = "*" }
   ] })
 }
 resource "aws_ssm_document" "admin_tunnel" {

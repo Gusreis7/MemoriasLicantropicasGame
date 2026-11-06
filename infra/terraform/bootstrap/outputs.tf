@@ -8,6 +8,9 @@ output "foundation" {
     validation_records       = [for r in aws_route53_record.validation : r.fqdn]
     hosted_zone_id           = aws_route53_zone.game.zone_id
     vpc_id                   = aws_vpc.game.id
+    elastic_ip               = aws_eip.game.public_ip
+    elastic_ip_allocation_id = aws_eip.game.id
+    caddy_image              = var.caddy_image
     public_subnet_ids        = [aws_subnet.public["primary"].id, aws_subnet.public["secondary"].id]
     instance_subnet_id       = aws_subnet.public["primary"].id
     availability_zone        = var.availability_zone

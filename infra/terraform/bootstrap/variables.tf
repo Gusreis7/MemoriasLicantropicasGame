@@ -67,3 +67,11 @@ variable "redis_image" {
     error_message = "Fixe a imagem oficial Redis por digest."
   }
 }
+variable "caddy_image" {
+  type    = string
+  default = "caddy@sha256:fc9cbc100585871d18d4e451cca7021785c90a7006087427ae5ceb3e4efe6424"
+  validation {
+    condition     = can(regex("^caddy@sha256:[a-f0-9]{64}$", var.caddy_image))
+    error_message = "Fixe a imagem oficial Caddy linux/amd64 por digest."
+  }
+}

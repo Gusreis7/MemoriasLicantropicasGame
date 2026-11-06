@@ -1,137 +1,128 @@
-# Reprodução na AWS
+# Publicação com Elastic IP, Registro.br e Caddy
 
-A infraestrutura tem duas raízes: `bootstrap` mantém rede, EBS, DNS, ECR, buckets e identidades; `app` mantém EC2, ALB e acesso público. A [arquitetura](solucao_aws.md) detalha os serviços.
+Leia a [arquitetura AWS](solucao_aws.md). O fluxo é: preparar a base → provisionar EC2/EIP → cadastrar registro A → publicar → verificar HTTPS. Não há etapa de delegação Route53 ou validação ACM.
 
-## Pré-requisitos
+## 1. Preparar e atualizar a base
 
-Execute os comandos na raiz do checkout. Instale AWS CLI v2, Terraform (CI usa 1.17.1; configuração exige >=1.11.4), GitHub CLI, Python 3.13 e uv. Para acesso administrativo, instale também o Session Manager Plugin.
-
-Autentique o perfil AWS `terraform` e o GitHub CLI com permissão administrativa no repositório `Gusreis7/MemoriasLicantropicasGame`. A região do assistente é fixa: `us-east-1`.
+Use AWS CLI v2, Terraform (CI usa 1.17.1, mínimo 1.11.4), Python 3.13/uv, GitHub CLI e Session Manager Plugin. O assistente fixa perfil `terraform`, região `us-east-1` e o repositório autorizado. Na raiz:
 
 ```sh
 uv sync --locked
 aws sts get-caller-identity --profile terraform --region us-east-1
 gh auth status
-uv run python scripts/bootstrap_aws.py --help
-```
-
-O domínio permanece `memoriaslicantropicasgame.gustavodreis.dev.br`. Você precisa controlar o DNS pai `gustavodreis.dev.br`. A EC2 continua `m7i-flex.large`, com Redis em EBS gp3 criptografado persistente de 20 GiB por padrão.
-
-## 1. Inspecionar e planejar a fundação
-
-Na inspeção realizada nesta entrega, a identidade do perfil foi confirmada como `arn:aws:iam::681835981654:user/terraform`. O provider OIDC existente e o prefixo efetivo `repo:Gusreis7@89582195/MemoriasLicantropicasGame@1437666201` foram confirmados por consultas reais. O bucket esperado retornou 404; as consultas de tag do projeto, VPC, EBS, ECR e zona DNS não retornaram recursos correspondentes. Isso não substitui a inspeção de IAM: as três consultas `iam:GetRole` foram negadas para `memorias-licantropicas-runtime`, `memorias-licantropicas-infrastructure` e `memorias-licantropicas-delivery`.
-
-Por esse motivo, o comando `plan` foi interrompido antes de executar Terraform. Nenhum plano real foi aplicado, nenhum NS foi emitido e nenhum workflow de deploy foi disparado nesta entrega. Um administrador da conta deve revisar as permissões do perfil `terraform`, começando por `iam:GetRole` nos ARNs `arn:aws:iam::681835981654:role/memorias-licantropicas-{runtime,infrastructure,delivery}` (a expressão entre chaves representa três ARNs, não sintaxe de política IAM). O perfil também precisa das permissões de criação/leitura/atualização dos recursos da fundação. Corrigir apenas a primeira negação não comprova que todas as demais permissões estejam disponíveis. Não amplie as roles de CI para contornar essa falta de acesso do operador.
-
-Localmente, foram validados os planos com provider simulado nas duas raízes Terraform, o assistente com AWS/GitHub simulados e a configuração de isolamento dos containers. Publicação no ECR, execução do SSM, boot da EC2 e conectividade do modelo dependem da conclusão do deploy real abaixo.
-
-```sh
 uv run python scripts/bootstrap_aws.py plan --account-id 681835981654
 terraform -chdir=infra/terraform/bootstrap show ../../../artifacts/aws-bootstrap/reviewed.tfplan
 ```
 
-O assistente confere identidade AWS, states local e S3, inventário por tags e nomes fixos, zona DNS, repositórios ECR e provider OIDC. Erros de permissão não são interpretados como ausência. Recursos existentes sem state gerenciável ou states divergentes interrompem o fluxo; recupere/importe o state antes de prosseguir.
-
-O subject OIDC vem da API do GitHub, inclusive o formato imutável com IDs. Não é deduzido pela data de criação do repo. `--oidc-subject-prefix` é um recurso para conferência manual quando a API não informa o formato; não substitui a consulta dos IDs ou permite outro repositório.
-
-A primeira execução usa state local para criar o próprio bucket. Nas seguintes, o assistente inicializa o backend S3 existente. Ele salva o plano revisável e metadados em `artifacts/aws-bootstrap/`, fora do Git. Esse diretório pode conter state de planejamento e informações da conta; preserve suas permissões privadas.
-
-A rede é criada pelo Terraform: VPC `10.42.0.0/16`, DNS habilitado, Internet Gateway, subnets públicas `10.42.0.0/24` e `10.42.1.0/24`, tabela de rotas com saída `0.0.0.0/0` e duas associações. AZs padrão: `us-east-1a` e `us-east-1b`. A subnet primária e o EBS usam a mesma `availability_zone`. Não informe `vpc_id` ou `public_subnet_ids`.
-
-Para mudar CIDR/AZ antes da primeira criação, use um `terraform.tfvars` local na raiz bootstrap, conforme o exemplo. Se já houver EBS, preserve sua AZ. Em uma base antiga, aplicar o novo bootstrap muda os outputs da rede; planeje depois a aplicação e revise a substituição da EC2/ALB. O disco persistente não deve ser substituído.
-
-## 2. Aplicar o plano revisado
-
-Após revisar o plano:
+Confira que o plano preserva o EBS, buckets/state, rede e recursos legados. A mudança esperada para a base já existente é adicionar um EIP e atualizar IAM/outputs; não substituir o volume ou a VPC. Depois de revisar:
 
 ```sh
 uv run python scripts/bootstrap_aws.py apply --account-id 681835981654
-```
-
-Essa etapa cria recursos cobrados. Antes de aplicar, o assistente verifica novamente identidade, OIDC, state, fonte e integridade do plano. Não aplica remoções/substituições automaticamente.
-
-Após a primeira criação, migra o state local para `bootstrap/terraform.tfstate` no bucket `memorias-licantropicas-681835981654-tfstate`, com criptografia, versionamento e `use_lockfile=true`. O backend gerado fica em `backend.tf` ignorado pelo Git. Não apague states, metadados de backend ou backups para resolver um erro; se a aplicação/migração for interrompida, preserve os arquivos e recupere a operação antes de repetir.
-
-## 3. Delegar o DNS
-
-O comando apply imprime os **NS reais** da zona criada. Você também pode recuperá-los:
-
-```sh
-AWS_PROFILE=terraform AWS_REGION=us-east-1 terraform -chdir=infra/terraform/bootstrap output -json dns_nameservers
-```
-
-No provedor de DNS do domínio pai, crie a delegação NS para `memoriaslicantropicasgame` com todos os servidores retornados, exatamente como foram emitidos. Essa ação é externa ao Terraform do jogo. Não use servidores exemplificativos: os valores só existem depois do provisionamento.
-
-Aguarde a propagação e a validação DNS do certificado ACM antes do apply da aplicação. O bootstrap cria o CNAME de validação dentro da zona delegada; a raiz app aguarda a emissão do certificado.
-
-## 4. Configurar GitHub e senha administrativa
-
-```sh
 uv run python scripts/bootstrap_aws.py configure --account-id 681835981654
 ```
 
-O assistente usa os outputs reais para cadastrar estas variáveis GitHub:
+A primeira criação de uma base usa state local e migração para S3; execuções posteriores reutilizam o state existente. O assistente recusa states divergentes, plano alterado ou remoções/substituições. Preserve arquivos de state, backups e metadados de backend. Os planos ficam em `artifacts/aws-bootstrap/`, ignorado pelo Git.
 
-| Variável | Origem |
-| --- | --- |
-| `AWS_ACCOUNT_ID` | Identidade conferida |
-| `AWS_REGION` | `us-east-1` |
-| `TF_STATE_BUCKET` | Bucket do bootstrap |
-| `AWS_INFRASTRUCTURE_ROLE_ARN` | Role de infraestrutura |
-| `AWS_DELIVERY_ROLE_ARN` | Role de entrega |
+O provider OIDC existente é reutilizado. O prefixo efetivo é consultado no GitHub; não é adivinhado. Configure cadastra as cinco variáveis dos workflows e os ambientes restritos a main sem remover proteções existentes. A senha é lida por getpass e enviada diretamente ao Parameter Store, sem argumentos de processo ou arquivos; uma senha já cadastrada é preservada.
 
-Os ambientes `infrastructure`, `destruction` e `production` ficam restritos a `main`. Ambientes com proteções existentes incompatíveis exigem revisão manual em vez de remover reviewers ou regras silenciosamente. Configure aprovações adicionais no GitHub se desejar.
+## 2. Provisionar EC2 e associar o EIP
 
-A senha administrativa é lida por `getpass`, confirmada e gravada diretamente pelo SDK AWS como `SecureString`, sem argumentos de processo, logs ou arquivos. Um parâmetro existente é preservado. Rotação é uma operação explícita:
-
-```sh
-uv run python scripts/configure_aws_admin.py --profile terraform --region us-east-1 --overwrite
-```
-
-A senha não entra em Terraform/state, manifesto S3 ou variáveis GitHub. Uma nova entrega recarrega a senha no arquivo temporário do host.
-
-## 5. Provisionar aplicação e entregar
-
-As alterações precisam estar publicadas em `main` para que os workflows executem o código correto. Depois do bootstrap, configuração e delegação DNS:
+Publique a implementação revisada em main antes de usar os workflows. Inicie o plano:
 
 ```sh
 gh workflow run infrastructure.yml --repo Gusreis7/MemoriasLicantropicasGame --ref main -f operation=plan
 gh run list --repo Gusreis7/MemoriasLicantropicasGame --workflow infrastructure.yml --limit 5
 ```
 
-Confira o log do plano e, depois:
+Confira os logs e execute apply, aguardando sucesso:
 
 ```sh
 gh workflow run infrastructure.yml --repo Gusreis7/MemoriasLicantropicasGame --ref main -f operation=apply
 ```
 
-Aguarde esse workflow terminar com sucesso antes de entregar:
+O workflow imprime `public_ip`. O EIP é dedicado ao jogo, permanece alocado na base e não pode ser reassociado silenciosamente de outra instância.
+
+Como alternativa local, após o bootstrap aplicado, use os mesmos states S3 e um plano salvo:
+
+```sh
+export AWS_PROFILE=terraform AWS_REGION=us-east-1
+terraform -chdir=infra/terraform/app init -lockfile=readonly -backend-config=bucket=memorias-licantropicas-681835981654-tfstate -backend-config=key=production/terraform.tfstate -backend-config=region=us-east-1 -backend-config=encrypt=true -backend-config=use_lockfile=true
+terraform -chdir=infra/terraform/app plan -var=state_bucket=memorias-licantropicas-681835981654-tfstate -out=reviewed.tfplan
+terraform -chdir=infra/terraform/app show -json reviewed.tfplan | python3 scripts/check_infrastructure_plan.py apply
+terraform -chdir=infra/terraform/app show reviewed.tfplan
+# Após revisar o plano:
+terraform -chdir=infra/terraform/app apply reviewed.tfplan
+terraform -chdir=infra/terraform/app output -raw public_ip
+```
+
+Não execute o fluxo local e os workflows em paralelo. O lock do state protege cada raiz; a atualização da base deve terminar antes do plano de app. Cloud-init prepara o host e o disco, mas não baixa a aplicação antes da entrega.
+
+## 3. Cadastrar o registro A no Registro.br
+
+Na zona DNS que é autoritativa para `gustavodreis.dev.br`, cadastre:
+
+| Campo | Valor |
+| --- | --- |
+| Tipo | A |
+| Nome | `memoriaslicantropicasgame` |
+| Destino | `98.95.157.47`, EIP provisionado nesta implantação |
+
+Se a interface pedir o nome completo, use `memoriaslicantropicasgame.gustavodreis.dev.br`. Não use o IP público temporário da EC2. Remova A/AAAA conflitantes desse hostname. Não é necessário mudar os nameservers de todo o domínio.
+
+Alocação confirmada na AWS: `eipalloc-0802363bb84135383`. Para futuras recriações, confira novamente `terraform output -raw public_ip`; esse output é a referência operacional.
+
+Nesta implantação a associação foi confirmada com a EC2 `i-00079ff6f9b0e7b08`, SSM Online e security group expondo somente 80/443 TCP. O volume `vol-07cb5703329d861d8` foi preservado. A base aplicou 1 criação/2 atualizações e a aplicação 8 criações, sem destruições. A emissão do certificado e a verificação externa de HTTPS aguardam o registro A e o delivery do código novo; ainda não são resultados confirmados.
+
+O diagnóstico remoto via SSM também confirmou cloud-init concluído, Docker ativo, EBS montado em `/srv/ml-data` com ext4 e diretórios de dados/configuração do Caddy existentes, privados e pertencentes a UID/GID 1000. Os testes locais incluem validação do Caddyfile na imagem oficial fixada, 26 testes Python de bootstrap/deploy e os dois testes Terraform com provider simulado.
+
+Se o subdomínio já estiver delegado por NS à zona Route53, o registro A no pai será ignorado enquanto a delegação existir. Revise essa delegação no provedor de DNS, mantendo a zona AWS preservada até decidir sua limpeza. Se o DNS autoritativo do domínio pai não for o Registro.br, edite o registro no provedor autoritativo efetivo.
+
+Confira a propagação:
+
+```sh
+dig +short A memoriaslicantropicasgame.gustavodreis.dev.br
+dig +short AAAA memoriaslicantropicasgame.gustavodreis.dev.br
+```
+
+O A deve retornar somente o EIP do jogo; não deve haver AAAA sem IPv6 funcional. A emissão pública depende desse apontamento e do acesso externo às portas 80/443.
+
+## 4. Publicar e verificar HTTPS
+
+Após o DNS apontar corretamente:
 
 ```sh
 gh workflow run delivery.yml --repo Gusreis7/MemoriasLicantropicasGame --ref main
 gh run list --repo Gusreis7/MemoriasLicantropicasGame --workflow delivery.yml --limit 5
+curl --fail https://memoriaslicantropicasgame.gustavodreis.dev.br/health
+curl -I http://memoriaslicantropicasgame.gustavodreis.dev.br
 ```
 
-A entrega também dispara em push para main. Antes da infraestrutura/configuração inicial ela poderá falhar por pré-requisitos ausentes; repita manualmente depois das etapas acima.
+O delivery preserva ECR por digest → manifesto S3 → instalação SSM. Caddy inicia junto da aplicação e solicita o certificado. HTTPS deve ter certificado confiável e HTTP deve redirecionar para HTTPS. O workflow aguarda DNS/HTTPS; não depende de ALB. Não use curl -k para considerar emissão bem-sucedida.
 
-O workflow constrói imagens linux/amd64, publica tags imutáveis com o commit, verifica vulnerabilidades, grava manifesto em `releases/COMMIT.json` e chama o documento SSM fixo. Na EC2, cloud-init prepara arquivos e EBS, o instalador confere commit/digests, inicia Compose e aguarda saúde. Nginx público recebe somente o ALB; admin continua em loopback por túnel SSM. A API usa a rede de saída explicitamente como gateway padrão. Não se abre SSH, Redis ou porta da API ao público.
+Em caso de falha, com uma sessão operacional autorizada na EC2, consulte:
 
 ```sh
-curl --fail https://memoriaslicantropicasgame.gustavodreis.dev.br/health
+sudo systemctl status ml-game.service
+sudo journalctl -u cloud-final -u ml-game --no-pager -n 100
+sudo docker compose --env-file /run/ml-game/images.env -f /etc/ml-game/compose.yaml logs --tail=100 caddy game
 ```
 
-Crie uma partida e teste uma tarefa com inferência; saúde HTTP não comprova acesso ao Bedrock. Examine também o painel e o resultado SSM. Restaurar imagens anteriores não restaura dados.
+Confira erros ACME, A/AAAA, firewall, portas e persistência de `/srv/ml-data/caddy`. Não apague certificados ou repita emissões em ciclos rápidos. Uma instalação saudável internamente pode ter HTTPS ainda pendente; corrija o DNS e confira novamente.
 
-## 6. Admin privado e ciclo de vida
+Teste também uma partida e uma tarefa de inferência: o endpoint de saúde não comprova acesso ao modelo.
 
-Use um perfil de operador autorizado com a política de túnel indicada pelo bootstrap. Substitua o ID da EC2 obtido no output da aplicação:
+## 5. Admin e preservação
+
+O admin continua somente no loopback da EC2. Com uma identidade operacional autorizada:
 
 ```sh
 aws ssm start-session --profile SEU_PERFIL_OPERADOR --region us-east-1 --target i-INSTANCE_ID --document-name memorias-licantropicas-admin-tunnel --parameters 'localPortNumber=["7078"]'
 ```
 
-Abra http://127.0.0.1:7078 e faça login. O túnel não elimina a autenticação do painel.
+Abra http://127.0.0.1:7078 e faça login. O painel não passa pelo Caddy público.
 
-Destruir a raiz app pelo workflow exige a confirmação exata do domínio. A fundação continua, incluindo VPC, volume, zona, ECR e buckets, e pode continuar gerando custos. Remover definitivamente a fundação exige backup e decisão específica sobre as proteções `prevent_destroy`. Nunca remova o bucket que contém o state necessário para administrar os recursos.
+A zona Route53, o CNAME de validação e o certificado ACM antigos continuam no bootstrap. Sua remoção não faz parte deste deploy. Uma proposta de limpeza deve listar IDs, dependências e plano separado, preservando a zona pai e o DNS de outros serviços. ALB/alias presentes em um state app antigo também exigem revisão separada: o workflow bloqueia sua destruição no apply comum.
 
-O backend segue a [referência S3 do Terraform](https://docs.hashicorp.com/terraform/language/backend/s3), e o subject é conferido pela [API OIDC do GitHub](https://docs.github.com/en/rest/actions/oidc).
+Destruir app preserva EIP, EBS, certificados Caddy no EBS, state e rede. A EC2 pode ser recriada na mesma AZ e associada ao mesmo EIP. Essa base continua gerando custos enquanto existir.
+
+Referência: [HTTPS automático do Caddy](https://caddyserver.com/docs/automatic-https).
