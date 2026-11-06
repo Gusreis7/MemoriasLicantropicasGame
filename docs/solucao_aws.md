@@ -21,7 +21,7 @@ flowchart LR
     Entrega --> EC2[Host EC2]
 ```
 
-O ambiente usa uma VPC existente, duas ou mais sub-redes públicas em zonas distintas para o ALB e uma instância Amazon Linux 2023 `m7i-flex.large`. A instância tem IP público para saída e recebe tráfego de aplicação somente do security group do ALB na porta 8080. Não há ingresso SSH.
+O bootstrap cria uma VPC própria com DNS, Internet Gateway, duas sub-redes públicas em zonas distintas e rotas para a internet. Os padrões são `10.42.0.0/16`, `us-east-1a` e `us-east-1b`. A instância Amazon Linux 2023 `m7i-flex.large` usa a subnet primária, na mesma AZ do EBS. Ela tem IP público para saída e recebe tráfego de aplicação somente do security group do ALB na porta 8080. Não há ingresso SSH.
 
 O ALB redireciona HTTP para HTTPS, usa certificado ACM e verifica `/health`. O domínio configurado é `memoriaslicantropicasgame.gustavodreis.dev.br`. A zona Route 53 desse subdomínio exige delegação no DNS do domínio pai.
 
@@ -29,10 +29,10 @@ O ALB redireciona HTTP para HTTPS, usa certificado ACM e verifica `/health`. O d
 
 | Raiz | Recursos e ciclo de vida |
 | --- | --- |
-| `infra/terraform/bootstrap` | Fundação persistente: estado/releases S3, ECR, DNS, ACM, EBS, identidades OIDC/IAM, perfil da instância e documentos SSM |
+| `infra/terraform/bootstrap` | Fundação persistente: VPC/subnets/rotas/IGW, estado/releases S3, ECR, DNS, ACM, EBS, identidades OIDC/IAM, perfil da instância e documentos SSM |
 | `infra/terraform/app` | Aplicação substituível: instância, ALB, target group, security groups e registro DNS de acesso |
 
-O bootstrap começa com estado local e depois migra para `bootstrap/terraform.tfstate` no bucket S3 criado. A aplicação usa `production/terraform.tfstate` e consulta os outputs da fundação por remote state. O backend usa criptografia, versionamento e lockfile S3.
+O assistente `scripts/bootstrap_aws.py` conduz `plan`, `apply` e `configure`, conferindo identidade, recursos, state e subject OIDC. A primeira execução começa com estado local e depois migra para `bootstrap/terraform.tfstate` no bucket S3 criado. As seguintes reutilizam esse state. A aplicação usa `production/terraform.tfstate` e consulta os outputs da fundação por remote state. O backend usa criptografia, versionamento e lockfile S3. O output `foundation` publica a VPC, as duas subnets e a subnet específica da instância; não são mais entradas manuais.
 
 O EBS de dados é criptografado e tem proteção contra destruição no bootstrap. Ele fica na mesma zona da instância e monta em `/srv/ml-data`. O disco raiz da EC2 é separado e descartável. Destruir apenas a raiz `app` preserva os dados e a fundação; não elimina todos os recursos ou custos da conta.
 

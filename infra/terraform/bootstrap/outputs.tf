@@ -7,8 +7,9 @@ output "foundation" {
     certificate_arn          = aws_acm_certificate.game.arn
     validation_records       = [for r in aws_route53_record.validation : r.fqdn]
     hosted_zone_id           = aws_route53_zone.game.zone_id
-    vpc_id                   = var.vpc_id
-    public_subnet_ids        = var.public_subnet_ids
+    vpc_id                   = aws_vpc.game.id
+    public_subnet_ids        = [aws_subnet.public["primary"].id, aws_subnet.public["secondary"].id]
+    instance_subnet_id       = aws_subnet.public["primary"].id
     availability_zone        = var.availability_zone
     data_volume_id           = aws_ebs_volume.data.id
     instance_profile         = aws_iam_instance_profile.runtime.name

@@ -10,7 +10,7 @@ override_data {
     certificate_arn          = "arn:aws:acm:us-east-1:123456789012:certificate/01234567-0123-0123-0123-012345678901",
     validation_records       = ["_test.memoriaslicantropicasgame.gustavodreis.dev.br"],
     vpc_id                   = "vpc-0123456789abcdef0", public_subnet_ids = ["subnet-0123456789abcdef0", "subnet-0123456789abcdef1"],
-    availability_zone        = "us-east-1a", data_volume_id = "vol-0123456789abcdef0", instance_profile = "mock-runtime",
+    availability_zone        = "us-east-1a", instance_subnet_id = "subnet-0123456789abcdef0", data_volume_id = "vol-0123456789abcdef0", instance_profile = "mock-runtime",
     releases_bucket          = "mock-releases", api_repository = "123456789012.dkr.ecr.us-east-1.amazonaws.com/game-api",
     web_repository           = "123456789012.dkr.ecr.us-east-1.amazonaws.com/game-web", redis_image = "redis@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     admin_password_parameter = "/game/admin-password", deploy_document = "game-deploy"

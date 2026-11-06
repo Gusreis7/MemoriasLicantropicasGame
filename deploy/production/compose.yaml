@@ -33,7 +33,7 @@ services:
     networks:
       backend: {}
       frontend: {}
-      egress: {ipv4_address: 172.30.254.2}
+      egress: {ipv4_address: 172.30.254.2, gw_priority: 1}
     depends_on: {redis: {condition: service_healthy}}
     init: true
   redis:

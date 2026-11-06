@@ -41,7 +41,7 @@ resource "aws_vpc_security_group_egress_rule" "host" {
 resource "aws_instance" "game" {
   ami                         = data.aws_ssm_parameter.ami.value
   instance_type               = "m7i-flex.large"
-  subnet_id                   = one([for subnet in data.aws_subnet.public : subnet.id if subnet.availability_zone == local.foundation.availability_zone])
+  subnet_id                   = local.foundation.instance_subnet_id
   associate_public_ip_address = true
   vpc_security_group_ids      = [aws_security_group.host.id]
   iam_instance_profile        = local.foundation.instance_profile
@@ -75,8 +75,8 @@ resource "aws_instance" "game" {
   tags        = { Name = "${local.foundation.project}-production" }
   lifecycle {
     precondition {
-      condition     = alltrue([for subnet in data.aws_subnet.public : subnet.vpc_id == local.foundation.vpc_id && subnet.map_public_ip_on_launch]) && length(toset([for subnet in data.aws_subnet.public : subnet.availability_zone])) >= 2
-      error_message = "Forneça subnets públicas da VPC indicada, em pelo menos duas AZs."
+      condition     = alltrue([for subnet in data.aws_subnet.public : subnet.vpc_id == local.foundation.vpc_id && subnet.map_public_ip_on_launch]) && length(toset([for subnet in data.aws_subnet.public : subnet.availability_zone])) >= 2 && one([for subnet in data.aws_subnet.public : subnet.availability_zone if subnet.id == local.foundation.instance_subnet_id]) == local.foundation.availability_zone
+      error_message = "A rede do bootstrap precisa de duas AZs públicas e a EC2 deve usar a AZ do volume persistente."
     }
   }
 }

@@ -18,19 +18,25 @@ variable "domain_name" {
     error_message = "Esta base está restrita ao domínio do jogo."
   }
 }
-variable "vpc_id" {
-  type = string
-}
-variable "public_subnet_ids" {
-  type = list(string)
+variable "vpc_cidr" {
+  type    = string
+  default = "10.42.0.0/16"
   validation {
-    condition     = length(distinct(var.public_subnet_ids)) >= 2
-    error_message = "O ALB precisa de subnets públicas em pelo menos duas AZs."
+    condition     = can(cidrnetmask(var.vpc_cidr)) && can(cidrsubnet(var.vpc_cidr, 8, 1)) && can(regex("/16$", var.vpc_cidr))
+    error_message = "Informe uma rede IPv4 /16 para dividir em subnets públicas /24."
   }
 }
 variable "availability_zone" {
   type    = string
   default = "us-east-1a"
+}
+variable "secondary_availability_zone" {
+  type    = string
+  default = "us-east-1b"
+  validation {
+    condition     = var.secondary_availability_zone != var.availability_zone
+    error_message = "As duas subnets públicas precisam de AZs distintas."
+  }
 }
 variable "github_oidc_subject_prefix" {
   type        = string

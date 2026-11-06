@@ -14,7 +14,7 @@ Environment=DOCKER_CONFIG=/run/ml-game/docker
 ExecStart=/usr/local/sbin/ml-deploy
 ExecReload=/usr/local/sbin/ml-deploy
 ExecStop=/bin/sh -c '/usr/bin/docker compose --env-file /run/ml-game/images.env -f /etc/ml-game/compose.yaml stop --timeout 60'
-TimeoutStartSec=600
+TimeoutStartSec=1800
 TimeoutStopSec=90
 [Install]
 WantedBy=multi-user.target

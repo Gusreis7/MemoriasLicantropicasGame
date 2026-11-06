@@ -1,8 +1,8 @@
-# Substitua pelos IDs da sua VPC e de sub-redes públicas em zonas distintas.
-aws_region        = "us-east-1"
-vpc_id            = "vpc-REPLACE"
-public_subnet_ids = ["subnet-REPLACE-A", "subnet-REPLACE-B"]
-availability_zone = "us-east-1a"
+# A rede é criada pelo bootstrap; não informe IDs de VPC/subnets.
+aws_region                  = "us-east-1"
+vpc_cidr                    = "10.42.0.0/16"
+availability_zone           = "us-east-1a"
+secondary_availability_zone = "us-east-1b"
 create_github_oidc_provider = false
 # Preencha OWNER_ID e REPO_ID reais. Se o repositório usa subject legado,
 # informe explicitamente "repo:Gusreis7/MemoriasLicantropicasGame".

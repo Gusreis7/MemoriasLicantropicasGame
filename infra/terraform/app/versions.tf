@@ -23,7 +23,6 @@ data "terraform_remote_state" "bootstrap" {
   config  = { bucket = var.state_bucket, key = var.bootstrap_key, region = var.aws_region }
 }
 locals { foundation = data.terraform_remote_state.bootstrap.outputs.foundation }
-data "aws_vpc" "existing" { id = local.foundation.vpc_id }
 data "aws_subnet" "public" {
   for_each = toset(local.foundation.public_subnet_ids)
   id       = each.value

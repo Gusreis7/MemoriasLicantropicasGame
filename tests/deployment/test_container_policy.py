@@ -64,3 +64,10 @@ class ContainerPolicy(unittest.TestCase):
         self.assertEqual(env["AWS_USE_DEFAULT_CREDENTIALS"], "true")
         self.assertEqual(set(self.services["redis"]["networks"]), {"backend"})
         self.assertEqual(set(self.services["admin"]["networks"]), {"frontend"})
+
+    def test_api_default_gateway_matches_firewall_egress_network(self):
+        networks = self.services["api"]["networks"]
+        egress = networks["egress"]
+        self.assertEqual(egress["ipv4_address"], "172.30.254.2")
+        self.assertTrue(all(egress["gw_priority"] > value.get("gw_priority", 0)
+                            for name, value in networks.items() if name != "egress"))

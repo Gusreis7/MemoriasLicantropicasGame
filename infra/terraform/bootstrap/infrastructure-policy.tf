@@ -1,7 +1,7 @@
 locals {
   ec2         = "arn:aws:ec2:${var.aws_region}:${local.account}"
   elb         = "arn:aws:elasticloadbalancing:${var.aws_region}:${local.account}"
-  subnet_arns = [for id in var.public_subnet_ids : "${local.ec2}:subnet/${id}"]
+  subnet_arns = [for subnet in aws_subnet.public : subnet.arn]
 }
 resource "aws_iam_role_policy" "infrastructure" {
   role = aws_iam_role.ci["infrastructure"].id
@@ -20,7 +20,7 @@ resource "aws_iam_role_policy" "infrastructure" {
     { Effect = "Allow", Action = ["ec2:RunInstances"], Resource = local.subnet_arns },
     { Effect = "Allow", Action = ["ec2:RunInstances"], Resource = "${local.ec2}:security-group/*", Condition = { StringEquals = { "ec2:ResourceTag/Project" = var.project } } },
     { Effect = "Allow", Action = ["ec2:RunInstances"], Resource = "${local.ec2}:volume/*", Condition = { StringEquals = { "aws:RequestTag/Project" = var.project }, Bool = { "ec2:Encrypted" = "true" } } },
-    { Effect = "Allow", Action = ["ec2:CreateSecurityGroup"], Resource = ["${local.ec2}:security-group/*", "${local.ec2}:vpc/${var.vpc_id}"] },
+    { Effect = "Allow", Action = ["ec2:CreateSecurityGroup"], Resource = ["${local.ec2}:security-group/*", aws_vpc.game.arn] },
     { Effect = "Allow", Action = ["ec2:CreateTags"], Resource = ["${local.ec2}:instance/*", "${local.ec2}:volume/*", "${local.ec2}:network-interface/*", "${local.ec2}:security-group/*", "${local.ec2}:security-group-rule/*"], Condition = { StringEquals = { "aws:RequestTag/Project" = var.project, "ec2:CreateAction" = ["RunInstances", "CreateSecurityGroup", "AuthorizeSecurityGroupIngress", "AuthorizeSecurityGroupEgress"] } } },
     { Effect = "Allow", Action = ["ec2:TerminateInstances", "ec2:StopInstances", "ec2:StartInstances", "ec2:ModifyInstanceAttribute", "ec2:ModifySecurityGroupRules", "ec2:CreateTags", "ec2:DeleteSecurityGroup", "ec2:AuthorizeSecurityGroupIngress", "ec2:AuthorizeSecurityGroupEgress", "ec2:RevokeSecurityGroupIngress", "ec2:RevokeSecurityGroupEgress", "ec2:DeleteTags"], Resource = ["${local.ec2}:instance/*", "${local.ec2}:security-group/*", "${local.ec2}:volume/*", "${local.ec2}:security-group-rule/*"], Condition = { StringEquals = { "ec2:ResourceTag/Project" = var.project } } },
     { Sid = "KeepIMDSv2Required", Effect = "Allow", Action = ["ec2:ModifyInstanceMetadataOptions"], Resource = "${local.ec2}:instance/*", Condition = { StringEquals = { "ec2:ResourceTag/Project" = var.project, "ec2:MetadataHttpTokens" = "required" } } },
