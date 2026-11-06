@@ -63,4 +63,4 @@ O agente decide ações e interage com a API do jogo. As sessões e os relatóri
 
 `--max-live-calls` limita somente as chamadas do agente Floriano. As inferências de NPCs, mestre e convivência feitas no servidor são adicionais. Uma simulação interrompida não conta como vitória ou derrota concluída. Antes de aumentar N, confira uma execução curta e seus relatórios.
 
-Os arquivos datados em `docs/reports/` são evidências históricas, com seus próprios cenários e versões. Eles não substituem executar os testes no checkout atual.
+Relatórios históricos de avaliações anteriores podem ser recuperados pelo Git. Execute os testes no checkout atual para validar a versão em uso.

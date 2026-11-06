@@ -6,13 +6,13 @@ Este documento separa os usos de IA no produto dos usos de IA no desenvolvimento
 
 O servidor usa o modelo configurado em `BEDROCK_MODEL`; o padrão atual é `qwen.qwen3-32b`, acessado pelo Bedrock Mantle. O modelo é usado para dar voz aos NPCs, escolher tons de entrega permitidos, circulação social, assembleia e textos editoriais. Credenciais entram por perfil AWS, credenciais padrão do ambiente ou bearer configurado; elas não são enviadas ao cliente do jogo.
 
-O motor decide os fatos: sorteio, mortes, turnos, posições, presenças noturnas, álibis, observações, permissões de conhecimento, validade de provas e resultado de acusações. O modelo não recebe acesso direto ao Redis nem pode trocar a identidade da persona. Falha, atraso ou saída inválida em diálogos da mesa preservam a resposta factual canônica com tom direto. Veja [orquestração dos agentes](orquestracao_agentes.md), [mesa determinística](mesa_deterministica.md) e [consumo LLM](consumo_llm.md).
+O motor decide os fatos: sorteio, mortes, turnos, posições, presenças noturnas, álibis, observações, permissões de conhecimento, validade de provas e resultado de acusações. O modelo não recebe acesso direto ao Redis nem pode trocar a identidade da persona. Falha, atraso ou saída inválida em diálogos da mesa preservam a resposta factual canônica com tom direto. Veja [orquestração dos agentes](orquestracao_agentes.md).
 
 Uso e custo conhecidos são medidos pelo cliente da aplicação e ficam disponíveis no painel administrativo. Uma estimativa não substitui a fatura do provedor. Os testes comuns usam clientes controlados e bloqueiam HTTP externo; as simulações por API chamam o ambiente configurado de propósito, conforme [testes](testes.md).
 
 ## IA na produção visual
 
-Parte dos sprites, cenários, retratos e variações foi produzida com `image_gen` integrado ao ambiente de desenvolvimento. Os prompts, arquivos de origem, hashes, referências de estilo e revisões ficam nos manifestos em `frontend/public/assets/` e em [direção de arte](art_direction.md). As imagens não definem papéis secretos, pistas ou resultados da partida.
+Parte dos sprites, cenários, retratos e variações foi produzida com `image_gen` integrado ao ambiente de desenvolvimento. Os prompts, arquivos de origem, hashes, referências de estilo e revisões ficam nos manifestos em `frontend/public/assets/`. As imagens não definem papéis secretos, pistas ou resultados da partida.
 
 Os sons distribuídos não são gerados por IA. Seus créditos e licenças estão em [créditos de efeitos open source](creditos_efeitos_open_source.md).
 

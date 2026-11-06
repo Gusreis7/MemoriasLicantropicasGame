@@ -24,7 +24,7 @@ A mesa cria `NightRecord`, encontros compartilhados e presenças individuais. As
 
 Quando Floriano ouve uma pessoa acompanhada, a declaração aguarda confirmação. Ao ouvir a outra pessoa sobre o mesmo encontro, ambas as declarações passam a confirmadas. Estar sozinho, ter cobertura parcial e não haver informação disponível são estados diferentes. Repetir uma pergunta não cria novas fontes ou pistas duplicadas.
 
-O cenário inicial garante uma observação por um sobrevivente com visibilidade compatível. Ver alguém não equivale a passar a noite com ele nem a testemunhar um ataque. Perguntas sobre noites futuras pedem outra data e não geram prova. Os detalhes e invariantes estão em [mesa determinística](mesa_deterministica.md).
+O cenário inicial garante uma observação por um sobrevivente com visibilidade compatível. Ver alguém não equivale a passar a noite com ele nem a testemunhar um ataque. Perguntas sobre noites futuras pedem outra data e não geram prova. Os invariantes são implementados em `src/modules/table/rules.py`.
 
 ## Fofocas, segredos e relações
 

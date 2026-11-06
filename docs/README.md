@@ -9,11 +9,8 @@ Os guias abaixo descrevem a implementação atual. Planos de entrega e contratos
 | [Solução AWS](solucao_aws.md) | Arquitetura, persistência, rede, identidade e entrega |
 | [Reprodução na AWS](reproducao_aws.md) | Preparação da conta, Terraform, CI e acesso administrativo |
 | [Orquestração dos agentes](orquestracao_agentes.md) | Personas, mestre, regras, contexto e circulação de conhecimento |
-| [Mesa determinística](mesa_deterministica.md) | Noites, álibis, declarações e invariantes do estado |
 | [Testes](testes.md) | Suítes locais, Redis real e simulações por API |
 | [Créditos de efeitos open source](creditos_efeitos_open_source.md) | Sons distribuídos, fontes, licenças e agradecimentos |
 | [Uso de IA e Codex](uso_ia_e_codex.md) | IA no jogo, assets, programação guiada e seu teste |
 
-Referências técnicas: [mundo](mundo.md), [turnos e crimes](turnos_crimes.md), [investigação](pistas_delegado.md), [Redis](redis.md), [admin](admin.md), [interface do admin](frontend_admin.md), [interface do jogo](frontend_jogo.md), [consumo LLM](consumo_llm.md) e [relações e noites](relacoes_mestre_noites_v4.md).
-
-Documentos de arte, áudio e proveniência dos recursos continuam neste diretório. Os arquivos em `reports/` são resultados históricos de avaliações com data e escopo próprios; não representam a validação automática do checkout atual.
+Os documentos e relatórios antigos podem ser recuperados pelo histórico Git. Créditos e metadados dos recursos distribuídos permanecem junto aos assets.

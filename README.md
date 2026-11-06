@@ -75,6 +75,6 @@ A suíte comum não consome o modelo real. Os scripts `scripts/smoke_table_api.p
 | [Orquestração dos agentes](docs/orquestracao_agentes.md) | Entender NPCs, mestre, dados e permissões |
 | [Índice técnico](docs/README.md) | Consultar mecânicas, interface e referências especializadas |
 
-Recursos visuais e sonoros mantêm sua documentação de proveniência e atribuição junto aos arquivos e aos guias de arte/áudio. Relatórios históricos de avaliação permanecem em `docs/reports/`; planos de trabalho e contratos de delegação antigos podem ser consultados no histórico Git.
+Recursos visuais e sonoros mantêm metadados, proveniência e atribuição junto aos arquivos. Documentos e relatórios antigos podem ser recuperados pelo histórico Git.
 
 
