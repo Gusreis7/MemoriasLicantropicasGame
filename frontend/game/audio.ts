@@ -1,10 +1,11 @@
 /** Local CC0 recordings; no requests to third-party audio services at runtime. */
-export type SoundEffect = 'paper' | 'close' | 'clue' | 'step' | 'sneak' | 'slash' | 'impact' | 'howl';
+export type SoundEffect = 'paper' | 'close' | 'clue' | 'step' | 'sneak' | 'slash' | 'impact' | 'howl' | 'victory';
 const files: Record<SoundEffect, string[]> = {
   paper: ['bookFlip1'], close: ['bookClose'], clue: ['handleSmallLeather'],
   step: ['footstep00', 'footstep01'], sneak: ['cloth1'],
   slash: ['knifeSlice', 'knifeSlice2'],
   impact: ['impact-1', 'impact-2', 'impact-3', 'impact-4'], howl: ['howl-long'],
+  victory: ['victory'],
 };
 
 export class GameAudio {
@@ -74,8 +75,8 @@ export class GameAudio {
     }
     if (this.effects.size >= 6) return;
     const options = files[name];
-    const cinematic = name === 'howl' || name === 'impact' || name === 'sneak' || name === 'slash';
-    const folder = name === 'howl' || name === 'impact' ? 'werewolf' : 'kenney';
+    const cinematic = name === 'howl' || name === 'impact' || name === 'sneak' || name === 'slash' || name === 'victory';
+    const folder = name === 'victory' ? 'music' : name === 'howl' || name === 'impact' ? 'werewolf' : 'kenney';
     const index = Number.isFinite(variant) ? Math.abs(Math.trunc(variant)) % options.length : 0;
     const sound = new Audio(`/assets/audio/${folder}/${options[index]}.ogg`);
     const gain = name === 'step' ? .24 : name === 'howl' ? .85 : .55;
@@ -87,7 +88,7 @@ export class GameAudio {
     sound.addEventListener('error', release, {once: true});
     void sound.play().catch(release);
   }
-  /** Cancel only cinematic sounds when skipping or closing an attack. */
+  /** Cancel cinematic sounds and victory music on skip, close, or a new case. */
   stopCinematicEffects() {
     for (const sound of this.cinematicEffects) {sound.pause(); this.effects.delete(sound);}
     this.cinematicEffects.clear();
