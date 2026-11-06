@@ -1,10 +1,8 @@
-FROM python:3.13-slim@sha256:ae14d4ce8771606477a81446e7ef429edd6762305fc50c84507c1041fa8285d1
+FROM python:3.13-alpine@sha256:d76f585fb0d5107dd47143da5e61554fd9cae656a30f3470f815cb8475769b6a
 
-# Apply Debian security fixes without changing the Python dependency lock.
-# Disable APT retries while upgrading the vulnerable APT bundled in the base.
-RUN DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=0 update \
-    && DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=0 upgrade -y \
-    && rm -rf /var/lib/apt/lists/*
+# Alpine uses musl instead of the vulnerable glibc in the previous Debian base.
+RUN apk upgrade --no-cache \
+    && python -m pip uninstall --yes pip
 
 COPY --from=ghcr.io/astral-sh/uv:0.13.6@sha256:af22a52f5eafef3d78e551599d405c02df61919d18028f0cea8eda93bc9986d0 /uv /bin/uv
 
@@ -19,8 +17,8 @@ COPY src ./src
 COPY scripts/run_session_simulations.py ./scripts/run_session_simulations.py
 COPY scripts/smoke_table_api.py ./scripts/smoke_table_api.py
 COPY scripts/smoke_application.py ./scripts/smoke_application.py
-RUN uv sync --locked --no-dev --no-editable \
-    && useradd --create-home app
+RUN uv sync --locked --no-dev --no-editable --no-cache \
+    && addgroup -g 1000 app && adduser -D -u 1000 -G app app
 
 USER app
 EXPOSE 8000
