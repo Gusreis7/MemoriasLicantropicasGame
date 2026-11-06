@@ -12,7 +12,7 @@
   },
   "dependencies": {"phaser": "^4.2.1"},
   "devDependencies": {
-    "@types/node": "^24.0.0",
+    "@types/node": "^26.6.6",
     "@playwright/test": "^1.56.1",
     "typescript": "^5.9.3",
     "vite": "^7.1.0",
