@@ -27,28 +27,24 @@ LOCATIONS = {"praca_verde": "Praça Verde", "cabana_capitu": "Cabana da Capitu",
 
 
 def record_activities(game, world, day, period, now, *, source="world_snapshot", crime=None, crimes=(), excluded_ids=()):
-    """Posições do instante registrado, sem inventar trajetos ou presença durante toda a noite."""
+    """Projeção do registro noturno único; de dia, retrato do mundo físico."""
+    if period == "night":
+        from src.modules.table.rules import make_night_record
+        night = make_night_record(game, world, day, now,
+            crimes=(*((crime,) if crime is not None else ()), *crimes), excluded_ids=excluded_ids)
+        return tuple(ActivityRecord(
+            id=presence.id, npc_id=presence.npc_id, day=day, period="night",
+            location_id=presence.location_id,
+            companion_ids=presence.companion_ids,
+            observed_by=tuple(sorted({observation.observer_id for observation in night.observations
+                                      if observation.subject_id == presence.npc_id})),
+            activity=("Passou a noite com a companhia indicada." if presence.companion_ids
+                      else "Passou a noite sem companhia que pudesse confirmar."),
+            source=source, occurred_at=now,
+        ) for presence in night.presences if presence.location_id is not None)
     places = {npc.npc_id: npc.location_id for npc in world.npcs if npc.activity != "travelling"}
     positions = {npc.npc_id: npc.x for npc in world.npcs}
     living = {npc.character_id for npc in game.characters if npc.alive and npc.character_id not in excluded_ids}
-    wolf = next((npc.character_id for npc in game.characters if npc.role == "werewolf"), None)
-    partners = {}
-    witness = None
-    if period == "night":
-        civilians = sorted((living & places.keys()) - {wolf})
-        # Cônjuges podem passar a noite juntos; a identidade da fera prevalece.
-        if {"bentinho", "capitu"} <= set(civilians):
-            partners.update({"bentinho": "capitu", "capitu": "bentinho"})
-        remaining = [person for person in civilians if person not in partners]
-        if remaining:
-            offset = (game.id.int + day) % len(remaining)
-            remaining = remaining[offset:] + remaining[:offset]
-        # Alguns civis também ficam sós: ausência de álibi não identifica a fera.
-        for index in range(0, max(0, len(remaining) - 2), 2):
-            a, b = remaining[index:index + 2]
-            partners.update({a: b, b: a})
-        if civilians and wolf in living:
-            witness = civilians[(game.id.int + day) % len(civilians)]
     for event in ((*((crime,) if crime is not None else ()), *crimes)):
         places[event.killer_id] = event.location_id
         positions[event.killer_id] = event.x
@@ -56,27 +52,39 @@ def record_activities(game, world, day, period, now, *, source="world_snapshot",
     for npc_id, location in places.items():
         if npc_id not in living:
             continue
-        companions = ((partners[npc_id],) if npc_id in partners else ()) if period == "night" else tuple(other for other in places if other != npc_id and other in living
+        companions = tuple(other for other in places if other != npc_id and other in living
                            and places[other] == location and abs(positions[other] - positions[npc_id]) <= 64)
         observers = tuple(other for other in places if other != npc_id and other in living
                           and places[other] == location)
-        if period == "night":
-            observers = tuple(dict.fromkeys((*companions, *((witness,) if npc_id == wolf and witness else ()))))
-            if npc_id in partners:
-                location = places[sorted((npc_id, partners[npc_id]))[0]]
         result.append(ActivityRecord(
             id=uuid4(), npc_id=npc_id, day=day, period=period, location_id=location,
             companion_ids=companions, observed_by=observers,
-            activity=("Passou a noite com a companhia indicada." if period == "night" and companions else
-                      "Passou a noite sem companhia que pudesse confirmar." if period == "night"
-                      else "Tratava de seus afazeres no local no instante registrado."),
+            activity="Tratava de seus afazeres no local no instante registrado.",
             source=source, occurred_at=now,
         ))
     return tuple(result)
 
 
 def make_interrogation(state, game, npc_id, day, period, names, now):
-    member = next(member for member in game.characters if member.character_id == npc_id)
+    if not any(member.character_id == npc_id for member in game.characters):
+        raise NotFoundError("Morador não encontrado nesta partida.")
+    if period == "night":
+        from src.modules.table.rules import alibi_statement
+        from uuid import NAMESPACE_URL, uuid5
+        statement = alibi_statement(game.id, state.table, npc_id, day, names, now)
+        night = next((night for night in state.table.nights if night.day == day), None)
+        seen = tuple(observation for observation in night.observations if observation.observer_id == npc_id) if night else ()
+        observations = tuple(ActivityClaim(
+            npc_id=item.subject_id, location_id=item.location_id, companion_ids=(),
+            activity="Presença observada brevemente; isso não comprova toda a noite.",
+        ) for item in seen)
+        return Interrogation(
+            id=uuid5(NAMESPACE_URL, f"{game.id}:table-interrogation:{npc_id}:{day}:night"),
+            npc_id=npc_id, day=day, period="night", location_id=statement.location_id,
+            companion_ids=statement.companion_ids, activity="Registro da mesa sobre o período noturno.",
+            text=statement.text, observations=observations, truthful=True,
+            source_record_ids=statement.source_ids, created_at=now,
+        )
     records = tuple(record for record in state.activity_records
                     if record.day == day and record.period == period)
     own = next((record for record in records if record.npc_id == npc_id), None)
@@ -85,27 +93,9 @@ def make_interrogation(state, game, npc_id, day, period, names, now):
             location_id=None, activity="Sem registro acessível desse período.",
             text="Não consigo reconstituir esse período com segurança, detetive. Prefiro admitir a lacuna.",
             truthful=True, created_at=now)
-    is_wolf = member.role == "werewolf"
     location = own.location_id
     companions = own.companion_ids
     activity = own.activity
-    memory_lapse = period == "night" and (npc_id == "bacamarte" or
-        (not own.companion_ids and (day + sum(ord(character) for character in npc_id)) % 4 == 0))
-    if memory_lapse:
-        return Interrogation(id=uuid4(), npc_id=npc_id, day=day, period=period,
-            location_id=None, activity="Não fixa local e companhia com segurança nesse período.",
-            text="Recordo-me de alguns afazeres, detetive, mas não fixarei local ou companhia sem certeza. "
-                 "Uma lacuna de memória não deve valer por prova contra ninguém.",
-            truthful=True, source_record_ids=(own.id,), created_at=now)
-    is_civil_offender=any(c.killer_id==npc_id and c.day==day and c.cause=="civil" for c in state.crimes)
-    if (is_wolf or is_civil_offender) and period == "night":
-        # Encobrimento estável, sem consultar nem revelar o papel de terceiros.
-        destinations = tuple(LOCATIONS)
-        location = destinations[(destinations.index(location) + 1) % len(destinations)]
-        companions = ()
-    # Redação e grau de reserva são conteúdo da persona, não assinatura do papel.
-    if period == "night":
-        activity = "Tratava de assuntos particulares no instante de que me recordo."
     # Limite de conhecimento e disposição: cada um recorda apenas encontros observados.
     limit = 2 if npc_id in {"capitu", "virgilia", "florenca"} else 1
     # Recordações sobre terceiros referem-se a outros instantes do período. A
@@ -122,14 +112,15 @@ def make_interrogation(state, game, npc_id, day, period, names, now):
             f"{LOCATIONS.get(record.location_id, record.location_id)}" for record in observed) + "."
     return Interrogation(id=uuid4(), npc_id=npc_id, day=day, period=period,
         location_id=location, companion_ids=companions, activity=activity, text=text,
-        observations=observations, truthful=not (is_wolf and period == "night"),
+        observations=observations, truthful=True,
         source_record_ids=(own.id, *(record.id for record in observed)), created_at=now)
 
 
 def npc_interrogation_context(state, npc_id):
     """Projeção epistêmica reutilizada por diálogo com jogador e encontros sociais."""
     versions = tuple(record for record in state.interrogations if record.npc_id == npc_id)
-    observations = tuple(record for record in state.activity_records if npc_id in record.observed_by)
+    observations = tuple(record for record in state.activity_records if record.period == "day" and npc_id in record.observed_by)
+    night_observations = tuple(item for night in state.table.nights for item in night.observations if item.observer_id == npc_id)
     return {
         "cooperacao_com_investigacao": COOPERATION.get(npc_id, "Ajude a esclarecer o crime com o que sabe."),
         "suas_versoes_de_interrogatorio": [{"dia": record.day, "periodo": record.period,
@@ -138,7 +129,10 @@ def npc_interrogation_context(state, npc_id):
         "observacoes_pessoais_de_presenca": [{"dia": record.day, "periodo": record.period,
             "personagem_id": record.npc_id, "local_id": record.location_id,
             "atividade": record.activity, "limite": "Observação em um instante; não cobre toda a noite."}
-            for record in observations],
+            for record in observations] + [{"dia": item.day, "periodo": "night",
+                "personagem_id": item.subject_id, "local_id": item.location_id,
+                "atividade": "Presença observada brevemente.", "limite": "Avistamento não equivale a companhia durante toda a noite."}
+                for item in night_observations],
         "seus_confrontos": [{"fala": record.text, "dia": record.day}
                             for record in state.confrontations if record.npc_id == npc_id],
         "limite_das_versoes": "Preserve o conteúdo das versões que você prestou. Uma alegação alheia "

@@ -129,33 +129,26 @@ async def test_detective_accusation_circulates_with_provenance_and_returns_to_hi
         entry for entry in state.knowledge if entry.source_message_id == incoming.id
     )
     assert original.owner_id == "capitu" and original.speaker_id == "player"
-    assert original.claimed_source_id == "virgilia" and original.stance == "undecided"
+    assert original.claimed_source_id is None and original.stance == "undecided"
     assert not [entry for entry in state.knowledge if entry.owner_id == "virgilia"]
 
     speeches = []
 
     def speak(messages):
-        data = json.loads(messages[0].content.split("Dados autorizados:\n", 1)[1])
-        actor = data["sua_ficha_privada"]["id"]
+        data = json.loads(messages[0].content.split("Dados: ", 1)[1])
+        actor = data["ator"]
         claim = next(
             item
-            for item in data["alegacoes_compartilhaveis"]
-            if proposition in item["proposicao"]
+            for item in data["alegacoes_autorizadas"]
+            if proposition in item["texto"]
         )
-        quoted = claim["proposicao"]
+        quoted = claim["texto"]
         if actor == "capitu":
-            assert data["interlocutor"] == "Virgília Neves"
-            speech = (
-                f"Floriano me disse: {quoted} Virgília, de onde tirou essa história?"
-            )
-            intent = "confront"
+            assert data["destinatario"] == "virgilia"
         else:
-            assert actor == "virgilia" and data["interlocutor"] == "Capitu"
-            assert data["falas_deste_encontro"][0]["fala"] == speeches[0]
-            speech = f"Capitu me atribui esta história: {quoted} Nego a acusação; não fiz tal denúncia."
-            intent = "deny"
-        speeches.append(speech)
-        return {"fala": speech, "intent": intent, "claim_ids": [claim["id"]]}
+            assert actor == "virgilia" and data["destinatario"] == "capitu"
+        speeches.append(quoted)
+        return {"intent": "repeat", "claim_ids": [claim["id"]]}
 
     social_llm = RecordingLLM(speak)
     social = SocialService(
@@ -182,7 +175,7 @@ async def test_detective_accusation_circulates_with_provenance_and_returns_to_hi
     state = await repository.get(game.id)
     encounter = state.encounters[-1]
     assert [item.sender_id for item in encounter.messages] == ["capitu", "virgilia"]
-    assert len(extraction_llm.calls) == 1 and len(social_llm.calls) == 2
+    assert len(extraction_llm.calls) == 0 and len(social_llm.calls) == 2
     received = next(
         entry
         for entry in state.knowledge
@@ -194,21 +187,8 @@ async def test_detective_accusation_circulates_with_provenance_and_returns_to_hi
         original.id,
     )
     assert received.speaker_id == "capitu" and received.claimed_source_id == "player"
-    own_denial = next(
-        entry
-        for entry in state.knowledge
-        if entry.owner_id == "virgilia" and entry.kind == "denial"
-    )
-    returned_denial = next(
-        entry
-        for entry in state.knowledge
-        if entry.owner_id == "capitu" and entry.kind == "denial"
-    )
-    assert own_denial.root_id == original.root_id and own_denial.parent_ids == (
-        received.id,
-    )
-    assert returned_denial.parent_ids == (own_denial.id,)
-    assert returned_denial.speaker_id == "virgilia"
+    assert received.proposition == original.proposition
+    assert not any(entry.kind == "denial" for entry in state.knowledge)
     assert await turns.sync(game.id) == initial_case
     assert await storage.games.get(game.id) == initial_game
 
@@ -271,10 +251,7 @@ async def test_detective_accusation_circulates_with_provenance_and_returns_to_hi
         proposition in entry["conteudo"] and entry["quem_falou"] == "capitu"
         for entry in memories
     )
-    assert any(
-        entry["tipo"] == "denial" and entry["quem_falou"] == "virgilia"
-        for entry in memories
-    )
+    assert all(entry["tipo"] != "denial" for entry in memories)
     for profile in profiles:
         if profile.id != "virgilia":
             assert profile.bio not in prompt

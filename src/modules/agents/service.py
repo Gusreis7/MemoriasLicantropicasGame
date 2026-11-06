@@ -43,6 +43,7 @@ class HarnessService:
         session_master=None,
         trace_sink: TraceSink | None = None,
         turn_timeout_seconds: float = 60,
+        table_service=None,
     ) -> None:
         if not 0 <= history_limit <= 100:
             raise ValueError("O limite de histórico deve estar entre 0 e 100.")
@@ -68,6 +69,10 @@ class HarnessService:
         from src.modules.agents.workflow import DialogueWorkflow
 
         self._workflow = DialogueWorkflow(self)
+        self._table_workflow = None
+        if table_service is not None:
+            from src.modules.agents.table_workflow import TableDialogueWorkflow
+            self._table_workflow = TableDialogueWorkflow(self, table_service)
 
     @property
     def graph(self):
@@ -82,7 +87,8 @@ class HarnessService:
         speaker_id: str,
         text: str,
     ) -> HarnessReply:
-        return await self._workflow.respond(
+        workflow = self._table_workflow or self._workflow
+        return await workflow.respond(
             game_id, npc_id, conversation_id, speaker_id, text
         )
 

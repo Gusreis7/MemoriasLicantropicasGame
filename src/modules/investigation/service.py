@@ -9,7 +9,7 @@ from src.modules.investigation.catalog import INVENTORIES, ITEMS_BY_ID, OBSERVED
 from src.modules.investigation.rules import evaluate_accusation, find_evidence, make_testimony
 from src.modules.investigation.schema import (
     AchievementPublic, AccusationPublic, CasePublic, CrimePublic, EndingPublic, EvidencePublic, JournalPublic, TestimonyPublic,
-    ActivityClaimPublic, InterrogationPublic, ConfrontationPublic,
+    ActivityClaimPublic, InterrogationPublic, ConfrontationPublic, TableStatementPublic,
 )
 
 
@@ -27,6 +27,20 @@ class InvestigationService(AssemblyServiceMixin):
 
     async def public(self, state) -> CasePublic:
         names, now = await self._names(), self._turns.now()
+        from src.modules.table.rules import statement_status
+        reports = []
+        for statement in state.table.statements:
+            if statement.recipient_id != 'player':
+                continue
+            status = statement_status(state.table, statement)
+            admissible = ((statement.kind == 'alibi' and status in ('alone', 'confirmed'))
+                          or (statement.kind in ('sighting', 'suspicion') and statement.subject_id is not None))
+            reports.append(TableStatementPublic(id=statement.id, npc_id=statement.speaker_id,
+                npc_name=names.get(statement.speaker_id, statement.speaker_id), subject_id=statement.subject_id,
+                day=statement.day, period=statement.period, kind=statement.kind, text=statement.text,
+                location_id=statement.location_id, companion_ids=statement.companion_ids,
+                alibi_status=statement.alibi_status, confirmation_status=status,
+                source_ids=statement.source_ids, admissible=admissible))
         ending = None
         if state.status != "active":
             if not state.crimes:
@@ -79,11 +93,7 @@ class InvestigationService(AssemblyServiceMixin):
                 evidence_ids=record.evidence_ids, testimony_ids=record.testimony_ids,
                 interrogation_ids=record.interrogation_ids, confessed=record.confessed, text=record.text)
                 for record in state.confrontations),
-            case_reports=tuple({"id": event["outgoing_id"], "npc_id": event["npc_id"],
-                "npc_name": names.get(event["npc_id"], event["npc_id"]), "day": event["day"],
-                "kind": event.get("assessment", {}).get("kind"), "text": event["outgoing"]}
-                for event in state.dialogue_events if event.get("narrative_authorized") and event.get("useful")
-                and event.get("assessment", {}).get("kind") in ("alibi", "suspicion")),
+            case_reports=tuple(reports),
         )
 
     @staticmethod
@@ -114,7 +124,12 @@ class InvestigationService(AssemblyServiceMixin):
                     *record_activities(game, world, day, period, self._turns.now(),
                         excluded_ids=(state.detained_npc_id,) if state.detained_npc_id else ()))})
             record = make_interrogation(state, game, npc_id, day, period, names, self._turns.now())
-            return CaseTransition(state=state.model_copy(update={"interrogations": (*state.interrogations, record)}),
+            changes = {"interrogations": (*state.interrogations, record)}
+            if period == 'night':
+                from src.modules.table.rules import alibi_statement, disclose_statements
+                statement = alibi_statement(game_id, state.table, npc_id, day, names, self._turns.now())
+                changes['table'] = disclose_statements(state.table, (statement,))
+            return CaseTransition(state=state.model_copy(update=changes),
                 events=(CaseEvent(type="character.interrogated", data={"interrogation_id": str(record.id),
                     "npc_id": npc_id, "day": day, "period": period}),))
         return await self.public(await self._turns.act(game_id, transition))
@@ -215,6 +230,10 @@ class InvestigationService(AssemblyServiceMixin):
                 events=(CaseEvent(type="evidence.presented", data={"evidence_id": str(evidence.id),
                     "testimony_id": str(record.id), "witness_id": npc_id, "day": state.day}),))
         state = await self._turns.act(game_id, transition)
+        if getattr(self, '_knowledge', None) is not None:
+            testimony = next(record for record in state.testimonies if record.witness_id == npc_id
+                and find_evidence(state, record.evidence_id).item_id == find_evidence(state, evidence_id).item_id)
+            await self._knowledge.record_canonical_help(game_id, npc_id, testimony.id, state.day)
         if self._memory is not None:
             conversation = await self._memory.get_player_conversation(game_id, npc_id)
             evidence = find_evidence(state, evidence_id)

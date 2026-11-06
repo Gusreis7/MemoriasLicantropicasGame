@@ -31,6 +31,15 @@ export interface CaseCrime {id: string; day: number; victim_id: string; victim_n
 export interface CaseEvidence {id: string; crime_id: string; item_id: string; name: string; kind: 'unique' | 'singular' | 'common'; description: string; examined?: boolean; inspection_text?: string | null}
 export interface CaseAchievement {id: string; title: string; description: string; unlocked_at: string; source_message_id?: string | null; source_npc_id?: string | null}
 export interface CaseTestimony {id: string; day: number; evidence_id: string; witness_id: string; witness_name: string; recognition: 'recognizes' | 'denies' | 'unknown'; claimed_owner_id: string | null; text: string}
+export interface CaseReport {
+  id: string; npc_id: string; npc_name: string; subject_id: string | null; day: number;
+  period: 'day' | 'night' | null;
+  kind: 'alibi' | 'sighting' | 'suspicion' | 'gossip' | 'secret' | 'public_fact';
+  text: string; location_id: LocationID | null; companion_ids: string[];
+  alibi_status: 'alone' | 'accompanied' | 'partial' | 'unavailable' | null;
+  confirmation_status: 'confirmed' | 'awaiting_confirmation' | 'alone' | 'partial' | 'unavailable' | 'reported';
+  source_ids: string[]; admissible: boolean;
+}
 export interface AccusationReview {ready: boolean; route: 'examined_trace' | 'corroborated_personal_marks' | 'witness_reports' | null; missing: string[]; reason: string}
 export interface CaseAccusation {id: string; day: number; suspect_id: string; suspect_name: string; evidence_ids: string[]; testimony_ids: string[]; accepted: boolean; reason: string}
 export interface CaseInterrogation {
@@ -55,7 +64,7 @@ export interface CasePublic {
   assembly_session?: AssemblySession | null;
   expelled_npc_ids?: string[];
   interrogations?: CaseInterrogation[]; confrontations?: CaseConfrontation[];
-  case_reports?: Array<{id: string; npc_id: string; npc_name: string; day: number; kind: string; text: string}>;
+  case_reports?: CaseReport[];
   ending: {result: 'won' | 'lost'; message: string; werewolf_id: string; method?: 'detention' | 'confession' | 'survival' | 'assembly' | 'player_expelled'} | null;
 }
 

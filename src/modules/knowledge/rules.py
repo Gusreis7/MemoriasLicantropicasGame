@@ -42,7 +42,7 @@ def transmit(state, message, recipient_id, day):
         raise AccessDeniedError("A fala cita um relato que o emissor não conhece.")
     from src.modules.knowledge.mechanics import can_share, gossip_weight
     for identifier in message.claim_ids:
-        if not can_share(owned[identifier], state.relationships, message.sender_id, recipient_id):
+        if not can_share(owned[identifier], state.relationships, message.sender_id, recipient_id, game_id=state.game_id):
             raise AccessDeniedError("A confidência exige um vínculo de confiança maior.")
     entries = list(state.knowledge)
     new_suspicions = []
@@ -54,11 +54,9 @@ def transmit(state, message, recipient_id, day):
         known_root = any(entry.owner_id == recipient_id and entry.root_id == parent.root_id for entry in entries)
         # Repetição e recirculação não representam nova fonte independente.
         kind = {"deny": "denial", "correct": "correction", "interpret": "interpretation"}.get(message.intent, parent.kind)
-        proposition = message.content if message.intent in ("deny", "correct", "interpret") else parent.proposition
-        normalized = "".join(character for character in unicodedata.normalize("NFKD", message.content.casefold())
-                             if not unicodedata.combining(character))
-        aliases = ("floriano", "detetive") if parent.speaker_id == "player" else (parent.speaker_id,)
-        claimed_source = parent.speaker_id if any(alias in normalized for alias in aliases) else None
+        # A transmission can change stance, never its canonical proposition.
+        proposition = parent.proposition
+        claimed_source = parent.speaker_id
         effective_parent = parent
         if message.intent in ("deny", "correct", "interpret"):
             own_variant = next((entry for entry in entries if entry.owner_id == message.sender_id

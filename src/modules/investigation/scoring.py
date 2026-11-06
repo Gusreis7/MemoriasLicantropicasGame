@@ -62,33 +62,37 @@ def assess_dossier(state, suspect_id, evidence_ids, testimony_ids, report_ids=()
     source_bonus = .5 * min(2, len(witnesses))
     conflict = public_alibi_conflict(state, suspect_id)
     contradiction_bonus = .75 if conflict and witnesses else 0.
-    from src.modules.characters.catalog import CHARACTERS
-    from src.textutils import normalize, word_tokens, has_any_phrase
-    name = next((person.name for person in CHARACTERS if person.id == suspect_id), suspect_id)
-    name_tokens = set(word_tokens(normalize(name)))
-    available = {event.get('outgoing_id'): event for event in state.dialogue_events
-                 if event.get('narrative_authorized') and event.get('useful')
-                 and event.get('assessment', {}).get('kind') in ('alibi', 'suspicion')}
+    # Identidade, assunto e cobertura vêm da mesa. A redação da persona não
+    # participa da decisão e nenhuma declaração ainda privada pode ser anexada.
+    available = {str(record.id): record for record in state.table.statements
+                 if record.recipient_id == 'player'}
     selected_reports = []
     for identifier in dict.fromkeys(report_ids):
-        event = available.get(str(identifier))
-        if event is None:
+        record = available.get(str(identifier))
+        if record is None:
             raise NotFoundError('Relato útil não encontrado nesta partida.')
-        selected_reports.append(event)
-    accusing_sources = set()
-    unconfirmed = False
-    for event in selected_reports:
-        tokens = set(word_tokens(normalize(event.get('outgoing', ''))))
-        kind = event['assessment']['kind']
-        if kind == 'suspicion' and event['npc_id'] != suspect_id and name_tokens & tokens:
-            accusing_sources.add(event['npc_id'])
-        mentions_other = any(person.id != suspect_id and has_any_phrase(normalize(event.get('outgoing', '')),
-                             (f"com {normalize(person.name.split()[0])}", f"cuidando de {normalize(person.name.split()[0])}",
-                              f"companhia de {normalize(person.name.split()[0])}"))
-                             for person in CHARACTERS)
-        if kind == 'alibi' and event['npc_id'] == suspect_id and not mentions_other and (tokens & {'sozinho', 'sozinha', 'ninguem', 'desacompanhado', 'desacompanhada'} or has_any_phrase(normalize(event.get('outgoing', '')), ('sem companhia', 'nao tive companhia', 'sem testemunhas', 'nao tenho quem confirme', 'nao me lembro se alguem', 'nao sei se alguem me viu', 'nao me lembro exatamente da hora ou se alguem me viu'))):
-            unconfirmed = True
-    report_bonus = min(3., 2. * len(accusing_sources)) + (2. if unconfirmed else 0.)
+        selected_reports.append(record)
+    from src.modules.table.rules import statement_status
+    confirmed_nights = {record.day for record in selected_reports
+        if record.kind == 'alibi' and record.subject_id == suspect_id
+        and record.speaker_id == suspect_id and record.period == 'night'
+        and statement_status(state.table, record) == 'confirmed'}
+    accusing_reports = tuple(record for record in selected_reports
+        if record.kind in ('suspicion', 'sighting') and record.subject_id == suspect_id
+        and record.speaker_id != suspect_id and record.source_ids
+        and not (record.period == 'night' and record.day in confirmed_nights))
+    alone_reports = tuple(record for record in selected_reports
+        if record.kind == 'alibi' and record.speaker_id == suspect_id
+        and record.subject_id == suspect_id and record.alibi_status == 'alone'
+        and record.period == 'night' and not record.companion_ids and record.source_ids
+        and record.day not in confirmed_nights)
+    # Um boato transmitido por várias pessoas conserva a mesma raiz; a mesma
+    # pessoa também não se transforma em duas fontes por anexar dois relatos.
+    accusing_roots = {record.root_id for record in accusing_reports}
+    accusing_sources = {record.speaker_id for record in accusing_reports}
+    independent_report_sources = min(len(accusing_roots), len(accusing_sources))
+    unconfirmed = bool(alone_reports)
+    report_bonus = min(3., 2. * independent_report_sources) + (2. if unconfirmed else 0.)
     total = material + source_bonus + contradiction_bonus + report_bonus
     corroborated = len(witnesses) >= 2 or (bool(witnesses) and conflict)
     # O reconhecimento de duas marcas distintas por duas fontes por peça já
@@ -99,7 +103,11 @@ def assess_dossier(state, suspect_id, evidence_ids, testimony_ids, report_ids=()
     personal = frozenset(item for item, sources in personal_sources.items() if len(sources) >= 2)
     examined_route = bool(len(item_ids) >= 2 and examined and corroborated and total >= CUSTODY_THRESHOLD)
     witness_route = len(personal) >= 2 and total >= CUSTODY_THRESHOLD
-    report_route = bool(accusing_sources and unconfirmed and (item_ids or len(accusing_sources) >= 2))
+    matching_reports = tuple(record for record in accusing_reports if any(
+        alone.day == record.day and record.period == alone.period for alone in alone_reports))
+    matching_sources = min(len({record.root_id for record in matching_reports}),
+                           len({record.speaker_id for record in matching_reports}))
+    report_route = bool(matching_sources and (item_ids or matching_sources >= 2))
     accepted = examined_route or witness_route or report_route
     route = 'examined_trace' if examined_route else 'corroborated_personal_marks' if witness_route else 'witness_reports' if report_route else None
     return DossierAssessment(material, source_bonus, contradiction_bonus, total, item_ids,

@@ -154,6 +154,25 @@ class AchievementPublic(Contract):
     source_npc_id: str | None = None
 
 
+class TableStatementPublic(Contract):
+    """Uma declaração efetivamente entregue a Floriano, com estado canônico."""
+
+    id: UUID
+    npc_id: str
+    npc_name: str
+    subject_id: str | None = None
+    day: int
+    period: Literal["day", "night"] | None = None
+    kind: Literal["alibi", "sighting", "suspicion", "gossip", "secret", "public_fact"]
+    text: str
+    location_id: LocationID | None = None
+    companion_ids: tuple[str, ...] = ()
+    alibi_status: Literal["alone", "accompanied", "partial", "unavailable"] | None = None
+    confirmation_status: Literal["confirmed", "awaiting_confirmation", "alone", "partial", "unavailable", "reported"] = "reported"
+    source_ids: tuple[UUID, ...] = ()
+    admissible: bool = False
+
+
 class CasePublic(Contract):
     achievements: tuple[AchievementPublic, ...] = ()
     achievement_total: int = 7
@@ -177,7 +196,7 @@ class CasePublic(Contract):
     expelled_npc_ids: tuple[str, ...] = ()
     interrogations: tuple[InterrogationPublic, ...] = ()
     confrontations: tuple[ConfrontationPublic, ...] = ()
-    case_reports: tuple[dict, ...] = ()
+    case_reports: tuple[TableStatementPublic, ...] = ()
 
 
 class AssemblyRequest(AccuseRequest):

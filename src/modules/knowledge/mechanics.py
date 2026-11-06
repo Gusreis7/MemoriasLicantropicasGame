@@ -17,11 +17,21 @@ def closeness(relation):
                  + .15 * relation.loyalty / 100 - .30 * relation.resentment / 100) * 100
 
 
-def can_share(entry, relationships, sender, recipient):
+def can_share(entry, relationships, sender, recipient, *, game_id=None):
+    if entry.owner_id != sender:
+        return False
     if entry.visibility == 'public':
         return True
     if entry.visibility == 'private' and sender != entry.owner_id:
         return False
+    if entry.visibility == 'private' and game_id is not None and entry.origin == 'authored':
+        from uuid import NAMESPACE_URL, uuid5
+        from src.modules.knowledge.seeds import TOPICS
+        permitted_roots = {uuid5(NAMESPACE_URL, f'{game_id}:author-topic:{topic}')
+                           for topic, owners, _, _, _, visibility, _ in TOPICS
+                           if visibility == 'private' and sender in owners}
+        if entry.root_id in permitted_roots and can_confide_personal(sender, relation_for(relationships, sender, recipient)):
+            return True
     return closeness(relation_for(relationships, sender, recipient)) >= entry.disclosure_threshold
 
 

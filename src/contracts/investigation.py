@@ -6,6 +6,7 @@ from uuid import UUID
 from pydantic import AwareDatetime, Field
 
 from src.contracts.model import Contract
+from src.contracts.table import TableState
 from src.modules.world.model import LocationID
 
 Phase = Literal["day", "night", "finished"]
@@ -199,12 +200,13 @@ class NightStory(Contract):
 
 
 class InvestigationState(Contract):
+    table: TableState = Field(default_factory=TableState)
     night_story: NightStory | None = None
     active_evidence_by_npc: dict[str, UUID] = Field(default_factory=dict)
     achievements: tuple[Achievement, ...] = ()
     game_id: UUID
     revision: int = Field(default=0, ge=0)
-    version: Literal["1"] = "1"
+    version: Literal["2"] = "2"
     day: int = Field(default=1, ge=1)
     phase: Phase = "day"
     status: CaseStatus = "active"

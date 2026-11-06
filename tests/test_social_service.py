@@ -38,21 +38,19 @@ class Speaker:
         if self.started is not None:
             self.started.set()
             await self.resume.wait()
-        data = json.loads(messages[0].content.split("Dados autorizados:\n", 1)[1])
-        claims = data["alegacoes_compartilhaveis"]
+        data = json.loads(messages[0].content.split("Dados: ", 1)[1])
+        claims = data["alegacoes_autorizadas"]
         if self.payload is not None:
             result = self.payload
         elif claims:
             claim = claims[0]
             result = {
-                "fala": f"{claim['fonte_direta']} me disse: “{claim['proposicao']}”. Quero ouvi-la sobre isso.",
-                "intent": "confront" if data["tom"] == "hostil" else "warn",
+                "intent": "repeat",
                 "claim_ids": [claim["id"]],
             }
         else:
             result = {
-                "fala": "A cidade anda inquieta; o que pensa do jornal de hoje?",
-                "intent": "ask",
+                "intent": "end",
                 "claim_ids": [],
             }
         if isinstance(result, str):
@@ -192,9 +190,9 @@ async def test_own_detective_claim_selects_target_and_each_tick_confirms_one_spe
     assert learned.confidence == "low"
     assert len(case.speaker.calls) == 1
     data = json.loads(
-        case.speaker.calls[0][0].content.split("Dados autorizados:\n", 1)[1]
+        case.speaker.calls[0][0].content.split("Dados: ", 1)[1]
     )
-    assert data["sua_ficha_privada"]["id"] == "capitu"
+    assert data["ator"] == "capitu" and "sua_ficha_privada" not in data
     assert (
         "Secretamente apaixonado por Bentinho" not in case.speaker.calls[0][0].content
     )
@@ -368,19 +366,16 @@ async def test_unspoken_claim_is_not_injected_or_transmitted(social_case):
     )
 
 
-async def test_natural_paraphrase_keeps_provenance_without_robotic_suffix(social_case):
+async def test_authorized_selection_composes_canonical_text_and_preserves_provenance(social_case):
     case = social_case
     claim, _ = await start_encounter(case)
-    speech = "Virgília, soube por Floriano dessa denúncia. O que houve entre nós?"
     case.speaker.payload = {
-        "fala": speech,
-        "intent": "ask",
+        "intent": "repeat",
         "claim_ids": [str(claim.id)],
     }
     assert await case.service.tick(case.game.id)
     state = await case.repository.get(case.game.id)
-    assert state.encounters[-1].messages[-1].content == speech
-    assert "Isso é um relato" not in speech
+    assert state.encounters[-1].messages[-1].content == claim.proposition
     assert any(
         e.owner_id == "virgilia" and e.root_id == claim.root_id for e in state.knowledge
     )
@@ -436,7 +431,6 @@ async def test_daily_schedule_caps_both_participations_and_number_of_encounters(
 ):
     case = social_case
     case.speaker.payload = {
-        "fala": "Preciso ir; voltaremos a conversar amanhã.",
         "intent": "end",
         "claim_ids": [],
     }
@@ -493,7 +487,7 @@ async def test_unparsed_literal_memory_never_enters_social_prompt(social_case):
     assert "PENDING_LITERAL_PRIVATE" not in case.speaker.calls[-1][0].content
 
 
-async def test_hostile_encounter_has_limited_causal_relationship_change(social_case):
+async def test_hostile_feelings_do_not_invent_a_confrontation_from_model_tone(social_case):
     case = social_case
     await start_encounter(case, owner="florenca", target="bacamarte", arrive=False)
     social = await case.repository.get(case.game.id)
@@ -519,9 +513,7 @@ async def test_hostile_encounter_has_limited_causal_relationship_change(social_c
         assert await case.service.tick(case.game.id)
     state = await case.repository.get(case.game.id)
     relation = relationship_for(state, "bacamarte", "florenca")
-    assert relation.resentment == before.resentment + 3
-    assert relation.trust == before.trust - 1
-    assert state.encounters[-1].id in relation.causes
+    assert relation == before
     assert not await case.service.tick(case.game.id)
     assert (
         relationship_for(

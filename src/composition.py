@@ -125,6 +125,7 @@ def build_services(settings: Settings) -> Services:
     investigation._social_repository = social_repository
     investigation._assembly_llm = assembly_llm
     knowledge = KnowledgeService(social_repository, characters, extraction_llm)
+    investigation._knowledge = knowledge
     social = SocialService(social_repository, knowledge, games, characters, world_repository,
                            turns, speech_llm, player_gate, enabled=settings.social_enabled)
     worker = SocialWorker(social, social_repository, interval_seconds=settings.social_poll_seconds)
@@ -134,11 +135,13 @@ def build_services(settings: Settings) -> Services:
     social_clients = (*social_clients, master_llm)
     master = SessionMasterService(turns, games, memory, master_llm, redis, settings.redis_prefix)
     turns._victory_editor = master.publish_victory
+    from src.modules.table.service import GameTableService
+    table_service = GameTableService(turns, characters, knowledge)
     harness = HarnessService(characters, games, memory, dialogue_llm, history_limit=settings.llm_history_limit,
                              day_policy=turns, context_provider=investigation.npc_context_locked,
                              knowledge_provider=knowledge.context if knowledge else None, session_master=master,
                              trace_sink=RedisDialogueTraceRecorder(redis, settings.redis_prefix).record,
-                             turn_timeout_seconds=settings.llm_turn_timeout_seconds)
+                             turn_timeout_seconds=settings.llm_turn_timeout_seconds, table_service=table_service)
     return Services(
         characters=CharacterService(characters),
         games=GameService(characters, games, day_policy=turns),

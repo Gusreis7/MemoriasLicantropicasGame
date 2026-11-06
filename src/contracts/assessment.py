@@ -6,6 +6,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from src.contracts.model import ConversationMessage
+from src.contracts.table import TableStatement
 
 
 class AssessmentProposal(BaseModel):
@@ -48,6 +49,7 @@ class DialogueAssessment(AssessmentProposal):
     source: Literal["local", "model", "fallback"] = "local"
     attempts: int = Field(default=0, ge=0, le=2)
     error_code: str | None = Field(default=None, max_length=80)
+    table_statements: tuple[TableStatement, ...] = ()
 
 
 class PendingDialogueExchange(BaseModel):

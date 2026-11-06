@@ -115,6 +115,8 @@ O [guia de execução](docs/execucao_docker.md#desenvolvimento-fora-do-docker) c
 
 Papéis e objetivos ficam ocultos durante a investigação; a identidade do lobisomem é revelada ao encerrar a partida. Conversar exige dia ativo e NPC vivo, livre, no mesmo local e ao alcance; o servidor fixa o interlocutor como jogador. O admin possui autenticação no backend; a área de jogo ainda é um protótipo local sem contas de jogadores. Veja [contratos visuais](docs/contratos_visual.md) e [mundo](docs/mundo.md).
 
+Álibis, avistamentos e informações divulgadas agora pertencem à [mesa determinística](docs/mesa_deterministica.md). O modelo escolhe uma entrega permitida; o servidor compõe o conteúdo factual. O formato de investigação é `2`, sem leitura ou adaptação de partidas antigas.
+
 ## Verificação
 
 ```sh

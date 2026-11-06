@@ -158,6 +158,7 @@ class TurnService:
         names = {profile.id: profile.name for profile in await self._characters.list()}
         day, events, fresh = state.day + 1, [], []
         records = state.activity_records
+        table = state.table
         story = state.night_story
         detention = 'transformed' if state.detained_npc_id == wolf else 'released' if state.detained_npc_id else 'none'
         if detention == 'transformed':
@@ -181,6 +182,9 @@ class TurnService:
             # Um único retrato do período noturno; os dois ataques conservam cenas próprias.
             records += record_activities(game,world,state.day,'night',boundary,source='night_resolution',
                 crimes=tuple(fresh),excluded_ids=(state.detained_npc_id,) if state.detained_npc_id else ())
+            from src.modules.table.rules import make_night_record, append_night
+            table = append_night(table, make_night_record(game, world, state.day, boundary,
+                crimes=tuple(fresh), excluded_ids=tuple(person for person in (*state.expelled_npc_ids, state.detained_npc_id) if person)))
             if story.plot and story.plot.status=='frustrated' and (not previous_plot or previous_plot.status!='frustrated'):
                 events.append(CaseEvent(type='civil_plot.frustrated',data={'character_id':story.plot.planner_id,
                     'target_id':story.plot.target_id,'stress':story.plot.stress,'day':state.day}))
@@ -195,7 +199,7 @@ class TurnService:
         updated=state.model_copy(update={'revision':state.revision+1,'day':day,
             'phase':'day' if status=='active' else 'finished','status':status,
             'phase_ends_at':boundary+timedelta(seconds=self._day_seconds) if status=='active' else boundary,
-            'crimes':crimes,'detained_npc_id':None,'activity_records':records,'ending_method':method,'night_story':story})
+            'crimes':crimes,'detained_npc_id':None,'activity_records':records,'ending_method':method,'night_story':story,'table':table})
         edition=(final_edition(updated,names,werewolf_id=wolf,detention=detention) if status!='active' else
                  morning_edition(day,crimes,fresh,names,detention,state.detained_npc_id))
         updated=updated.model_copy(update={'journal':(*state.journal,edition)})

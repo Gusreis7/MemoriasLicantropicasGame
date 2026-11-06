@@ -9,6 +9,7 @@ import pytest
 from src.contracts.errors import AccessDeniedError, ConflictError, NotFoundError
 from src.contracts.investigation import CaseEvent, CaseTransition
 from src.contracts.model import GameCharacter, GameState
+from src.contracts.table import TableState
 from src.modules.investigation.interrogation import (
     CONFESSION_DIFFICULTY, make_confrontation, make_interrogation, npc_interrogation_context,
 )
@@ -74,7 +75,11 @@ async def test_interrogation_needs_proximity_and_is_stable_without_truth_leak(in
     record = result.interrogations[0]
     assert record.npc_id == "capitu" and record.location_id is not None
     private = await inquiry.turns.sync(inquiry.game.id)
-    assert private.interrogations[0].truthful is False
+    assert private.interrogations[0].truthful is True
+    presence = next(item for night in private.table.nights if night.day == 0
+                    for item in night.presences if item.npc_id == "capitu")
+    assert private.interrogations[0].location_id == presence.location_id
+    assert private.interrogations[0].companion_ids == presence.companion_ids
     assert all(term not in result.model_dump_json() for term in
                ("truthful", "source_record_ids", "activity_records", "pressure", "CONFESSION_DIFFICULTY"))
     assert await inquiry.service.interrogate(inquiry.game.id, "capitu", 0) == result
@@ -100,24 +105,32 @@ async def test_current_day_is_snapshot_and_past_without_record_admits_unknown(in
     result = await inquiry.service.interrogate(inquiry.game.id, "rubiao", 1, "day")
     saved = result.interrogations[0]
     assert saved.location_id == "praca_verde"
-    # Sem retrospectiva inventada se uma partida antiga não tiver registros.
+    # Ausência de um registro na mesa não fabrica passado ou companhia.
     state = await inquiry.turns.sync(inquiry.game.id)
-    missing = state.model_copy(update={"activity_records": ()})
+    missing = state.model_copy(update={"table": TableState()})
     record = make_interrogation(missing, inquiry.game, "rubiao", 0, "night", inquiry.names, inquiry.clock[0])
     assert record.location_id is None and record.observations == ()
-    assert "lacuna" in record.text
+    assert "registro seguro" in record.text
 
 
-async def test_civil_lacuna_and_individual_observation_limits(inquiry):
+async def test_civil_alibi_is_truthful_and_observations_are_private_to_witness(inquiry):
     await near(inquiry, "bacamarte")
     result = await inquiry.service.interrogate(inquiry.game.id, "bacamarte", 0)
-    assert result.interrogations[0].location_id is None
     state = await inquiry.turns.sync(inquiry.game.id)
+    own = next(item for night in state.table.nights if night.day == 0
+               for item in night.presences if item.npc_id == "bacamarte")
+    assert result.interrogations[0].location_id == own.location_id
+    assert result.interrogations[0].companion_ids == own.companion_ids
     for npc_id in inquiry.names:
         context = npc_interrogation_context(state, npc_id)
         for observation in context["observacoes_pessoais_de_presenca"]:
-            assert any(record.npc_id == observation["personagem_id"] and npc_id in record.observed_by
-                       for record in state.activity_records)
+            if observation["periodo"] == "night":
+                assert any(item.subject_id == observation["personagem_id"] and item.observer_id == npc_id
+                           and item.location_id == observation["local_id"]
+                           for night in state.table.nights for item in night.observations)
+            else:
+                assert any(record.npc_id == observation["personagem_id"] and npc_id in record.observed_by
+                           for record in state.activity_records if record.period == "day")
         assert "truthful" not in json.dumps(context)
 
 
@@ -194,17 +207,25 @@ async def test_night_records_are_persisted_and_night_actions_blocked(inquiry):
     assert all(record.source != "initial_scenario" for record in state.activity_records if record.day == 1)
 
 
-async def test_snapshots_exclude_detained_and_travelling_characters(inquiry):
+async def test_day_snapshots_exclude_transit_and_nights_resolve_reciprocal_company(inquiry):
     from src.modules.investigation.interrogation import record_activities
     world = await inquiry.world.get(inquiry.game.id)
     world = world.model_copy(update={"npcs": tuple(npc.model_copy(update={"activity": "travelling"})
         if npc.npc_id == "virgilia" else npc for npc in world.npcs)})
-    records = record_activities(inquiry.game, world, 1, "night", inquiry.clock[0], excluded_ids=("capitu",))
+    records = record_activities(inquiry.game, world, 1, "day", inquiry.clock[0], excluded_ids=("capitu",))
     assert all(record.npc_id not in {"capitu", "virgilia"} for record in records)
     assert all(not ({"capitu", "virgilia"} & set(record.observed_by + record.companion_ids)) for record in records)
+    night = record_activities(inquiry.game, world, 1, "night", inquiry.clock[0], excluded_ids=("capitu",))
+    by_person = {record.npc_id: record for record in night}
+    assert "capitu" not in by_person and "virgilia" in by_person
+    assert all("capitu" not in record.observed_by + record.companion_ids for record in night)
+    for record in night:
+        for companion in record.companion_ids:
+            assert record.npc_id in by_person[companion].companion_ids
+            assert record.location_id == by_person[companion].location_id
 
 
-async def test_alibi_text_template_and_memory_lapse_do_not_identify_role(inquiry):
+async def test_interrogation_reads_stored_table_without_reconsulting_secret_role(inquiry):
     state = await inquiry.turns.sync(inquiry.game.id)
     for npc_id in ("capitu", "bacamarte"):
         civilian_game = inquiry.game.model_copy(update={"characters": tuple(member.model_copy(update={
@@ -213,9 +234,10 @@ async def test_alibi_text_template_and_memory_lapse_do_not_identify_role(inquiry
             "role": "werewolf" if member.character_id == npc_id else "civil"}) for member in inquiry.game.characters)})
         civil = make_interrogation(state, civilian_game, npc_id, 0, "night", inquiry.names, inquiry.clock[0])
         wolf = make_interrogation(state, wolf_game, npc_id, 0, "night", inquiry.names, inquiry.clock[0])
-        assert civil.activity == wolf.activity
-        if npc_id == "bacamarte":
-            assert civil.location_id is wolf.location_id is None and civil.text == wolf.text
+        assert civil.activity == wolf.activity and civil.text == wolf.text
+        assert civil.location_id == wolf.location_id
+        assert civil.companion_ids == wolf.companion_ids
+        assert civil.truthful is wolf.truthful is True
         assert all(npc_id not in claim.companion_ids for claim in wolf.observations)
 
 

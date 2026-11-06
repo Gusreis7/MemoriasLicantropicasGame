@@ -154,6 +154,16 @@ def dialogue_transition(
         "dialogue_events": (*state.dialogue_events, record),
         "achievements": discovered_state.achievements,
     }
+    if assessment.table_statements:
+        from src.modules.table.rules import disclose_statements
+        # Only internal rule-generated statements enter the authoritative table.
+        # The model proposal schema has no field through which to provide these.
+        if not outgoing.narrative_authorized or any(
+            item.speaker_id != npc_id or item.recipient_id != incoming.sender_id
+            or item.text not in outgoing.content for item in assessment.table_statements
+        ):
+            raise ValueError('Declaração incompatível com a conversa canônica.')
+        changes['table'] = disclose_statements(state.table, assessment.table_statements)
     events = [
         CaseEvent(
             type="session.exchange_assessed",
@@ -179,6 +189,7 @@ def dialogue_transition(
         )
     if (
         assessment.kind == "alibi"
+        and not assessment.table_statements
         and assessment.own_assertion
         and assessment.quote
         and assessment.quote in outgoing.content

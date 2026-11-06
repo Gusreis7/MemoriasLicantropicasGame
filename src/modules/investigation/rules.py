@@ -57,7 +57,11 @@ def make_initial_investigation(game, now, day_seconds=300) -> InvestigationState
     from src.modules.world.catalog import make_initial_world
     initial = make_crime(game, 0, "bras_cubas", "praca_verde", now)
     from src.modules.investigation.night_story import make_night_story
+    from src.modules.table.rules import make_night_record, append_night
+    from src.contracts.table import TableState
+    table = append_night(TableState(), make_night_record(game, make_initial_world(game.id), 0, now, crimes=(initial,)))
     return InvestigationState(
+        table=table,
         night_story=make_night_story(game), game_id=game.id, phase_ends_at=now + timedelta(seconds=day_seconds), crimes=(initial,),
         activity_records=record_activities(game, make_initial_world(game.id), 0, "night", now,
                                           source="initial_scenario", crime=initial),

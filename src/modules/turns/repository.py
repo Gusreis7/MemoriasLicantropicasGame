@@ -147,6 +147,7 @@ class RedisTurnRepository:
                         if social_update is not None:
                             pipe.set(f"{base}:social", social_update.model_dump_json())
                         pipe.set(case_key, state.model_dump_json())
+                        pipe.set(f"{base}:table", state.table.model_dump_json())
                         pipe.set(game_key, game.model_dump_json())
                         pipe.set(world_key, world.model_dump_json())
                         if encoded_events:

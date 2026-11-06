@@ -11,6 +11,7 @@ import './style.css';
 import {cancelNightAttack, newNightVictim, playNightAttack} from './night-attack';
 import {gameAudio} from './audio';
 import {renderDefeatPhoto} from './defeat-photo';
+import {canSubmitCaseReport, caseReportKind, caseReportStatus} from './table-reports';
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
 app.innerHTML = `
@@ -891,7 +892,16 @@ function renderNotebook() {
   const crimes = $('#crime-list'); crimes.replaceChildren();
   for (const crime of caseState.crimes) addText(crimes, 'p', `${crime.victim_name} · ${locationName(crime.location_id)} · ${crime.remaining_clues ? `${crime.remaining_clues} vestígio(s) por encontrar` : 'busca concluída'}`);
   const alibis = $('#interrogation-list'); alibis.replaceChildren();
-  for (const record of caseState.interrogations ?? []) {
+  for (const record of caseState.case_reports?.filter(report => report.kind === 'alibi') ?? []) {
+    const card = document.createElement('article'); card.className = 'testimony-card useful-report table-report';
+    card.dataset.reportId = record.id; card.dataset.confirmation = record.confirmation_status;
+    addText(card, 'h4', `${record.npc_name} · ${periodLabel(record.day, record.period ?? 'night')}`);
+    addText(card, 'small', caseReportStatus(record), 'table-report-status');
+    addText(card, 'p', record.text);
+    if (record.companion_ids.length) addText(card, 'small', `Companhia: ${record.companion_ids.map(npcName).join(', ')}`);
+    alibis.append(card);
+  }
+  for (const record of (caseState.interrogations ?? []).filter(record => record.period === 'day')) {
     const card = document.createElement('article'); card.className = 'testimony-card';
     addText(card, 'h4', `${record.npc_name} · ${periodLabel(record.day, record.period)}`);
     addText(card, 'p', record.text);
@@ -940,14 +950,25 @@ async function inspectEvidence(evidenceID: string) {
 
 function renderReports() {
   const reports = $('#heard-report-list'); reports.replaceChildren();
+  const canonical = caseState?.case_reports?.filter(report => report.kind !== 'alibi') ?? [];
+  for (const report of canonical) {
+    const card = document.createElement('article'); card.className = 'testimony-card useful-report table-report';
+    card.dataset.reportId = report.id;
+    addText(card, 'h4', `${report.npc_name} · ${caseReportKind(report)}`);
+    addText(card, 'small', `${periodLabel(report.day, report.period ?? 'day')} · ${caseReportStatus(report)}`, 'table-report-status');
+    if (report.subject_id) addText(card, 'small', `Sobre ${npcName(report.subject_id)}`);
+    addText(card, 'p', report.text); reports.append(card);
+  }
+  const knownTexts = new Set(caseState?.case_reports?.map(report => report.text) ?? []);
   for (const report of heardReports) {
+    if (knownTexts.has(report.content)) continue;
     const item = document.createElement('article'); item.className = `testimony-card${report.useful ? ' useful-report' : ''}`;
     if (report.useful) addText(item,'small','✦ Relato útil','useful-report-label');
     addText(item, 'h4', report.speaker_name);
     addText(item, 'small', report.source_name ? `Fonte atribuída: ${report.source_name}` : 'Versão ouvida em conversa');
     addText(item, 'p', report.content); reports.append(item);
   }
-  if (!heardReports.length) addText(reports, 'p', 'As versões que os moradores contarem a Floriano ficarão registradas aqui.', 'empty-case');
+  if (!reports.childElementCount) addText(reports, 'p', 'As versões que os moradores contarem a Floriano ficarão registradas aqui.', 'empty-case');
 }
 
 function renderPresentation() {
@@ -1015,8 +1036,10 @@ function renderAccusation() {
   stackTestimonies(caseState.testimonies, inventorySnapshot).forEach(item => renderChoice(testimonies, 'testimony', item.id, `${item.witness_name}: ${item.text}`, inventorySnapshot.find(evidence => evidence.id === item.evidence_id), item.witness_id));
   for (const report of caseState.case_reports ?? []) {
     const label = document.createElement('label'); label.className = 'proof-choice useful-report';
-    const input = document.createElement('input'); input.type = 'checkbox'; input.name = 'report'; input.value = report.id; input.checked = previousReports.has(report.id);
-    const text = document.createElement('span'); text.textContent = `${report.npc_name} · ${report.kind === 'alibi' ? 'Álibi' : 'Suspeita'}: ${report.text}`;
+    const input = document.createElement('input'); input.type = 'checkbox'; input.name = 'report'; input.value = report.id;
+    input.disabled = !canSubmitCaseReport(report); input.checked = !input.disabled && previousReports.has(report.id);
+    const text = document.createElement('span'); text.textContent = `${report.npc_name} · ${caseReportKind(report)}: ${report.text}`;
+    addText(text, 'small', caseReportStatus(report), 'table-report-status');
     label.append(input, text); testimonies.append(label);
   }
   if (!caseState.testimonies.length) addText(testimonies, 'p', 'Nenhum depoimento sobre objetos registrado.', 'empty-case');

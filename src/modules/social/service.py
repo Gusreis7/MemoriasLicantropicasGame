@@ -1,32 +1,24 @@
 """Encontros limitados: geração fora de reservas do jogador e commit revalidado."""
 
 import asyncio
+import json
 from src.textutils import word_tokens, has_word_start
 import unicodedata
 
 from langsmith import tracing_context
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
+from typing import Literal
+from pydantic import BaseModel, ConfigDict, Field
 
 
 from src.contracts.errors import ConflictError
 from src.contracts.model import ChatMessage
 from src.contracts.social import Encounter, SocialMessage
 from src.modules.agents.guard import DialogueGuard
-from src.modules.agents.service import HarnessService
 from src.infrastructure.usage import usage_scope
 from src.infrastructure.llm.structured import generate_structured
-from src.contracts.generation import SpeechProposal
-from src.prompts.social import social_instructions
-from src.modules.investigation.interrogation import (
-    npc_interrogation_context,
-)
-from src.modules.agents.grounding import grounding_issues
-from src.modules.investigation.catalog import (
-    INVENTORIES,
-    ITEMS_BY_ID,
-    OBSERVED_PEOPLE,
-)
+from src.contracts.generation import NativeUUID
 from src.modules.knowledge.rules import (
     apply_relationship,
     initial_relationships,
@@ -50,6 +42,13 @@ ACTIVE_PHASES = ("travelling", "talking")
 
 class InvalidSocialProposal(Exception):
     """Proposta externa rejeitada pelas regras; erros internos continuam propagando."""
+
+
+class SocialChoice(BaseModel):
+    """Only authorized IDs can be selected; a model never proposes a factual sentence."""
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+    claim_ids: tuple[NativeUUID, ...] = Field(default=(), max_length=2, strict=False)
+    intent: Literal["repeat", "end"] = "repeat"
 
 
 def expresses_claim(text, proposition):
@@ -675,16 +674,9 @@ class SocialService:
             if identifier != actor
         )
         profile = await self._characters.get(actor)
-        member = next(item for item in game.characters if item.character_id == actor)
         if profile is None:
             return False
-        own = tuple(
-            entry
-            for entry in state.knowledge
-            if entry.owner_id == actor
-            and entry.kind != "literal"
-            and can_share(entry, state.relationships, actor, recipient)
-        )
+        own = await self._knowledge.shared_entries(game.id, actor, recipient)
         # No máximo duas alegações por turno; prioridade para o tópico ou a resposta ao encontro.
         topics = sorted(
             own,
@@ -695,29 +687,15 @@ class SocialService:
             ),
             reverse=True,
         )[:8]
-        names = {item.id: item.name for item in await self._characters.list()}
-        names["player"] = "Floriano"
-        context = await self._knowledge.context(game.id, actor, recipient)
-        topic_set = {str(entry.id) for entry in topics}
-        context = {
-            **context,
-            "memorias_relevantes": [
-                item
-                for item in context.get("memorias_relevantes", ())
-                if item.get("claim_id") in topic_set
-            ],
-        }
-        instructions = self._instructions(
-            profile,
-            member,
-            actor,
-            recipient,
-            names,
-            context,
-            topics,
-            encounter,
-            state,
-            case,
+        # A model chooses IDs from an authorized menu. It never sees hidden
+        # biography or produces the factual content persisted or spoken.
+        instructions = (
+            '[task:social_choice] Escolha até dois claim_ids entre as alegações autorizadas. '
+            'Use intent repeat ou end. O servidor compõe a fala canônica. '
+            'Não proponha fatos, fontes, encontros ou segredos novos. Dados: '
+            + json.dumps({"ator": actor, "destinatario": recipient,
+                          "alegacoes_autorizadas": [{"id": str(entry.id), "texto": entry.proposition}
+                                                     for entry in topics]}, ensure_ascii=False)
         )
         try:
             async with asyncio.timeout(
@@ -727,43 +705,20 @@ class SocialService:
                     result = await generate_structured(
                         self._llm,
                         (ChatMessage(role="system", content=instructions),),
-                        SpeechProposal,
+                        SocialChoice,
                         max_attempts=1,
                     )
             if not result.ok:
                 raise InvalidSocialProposal("invalid_social_proposal")
             proposal = result.value
-            if not proposal.fala.strip() or len(set(proposal.claim_ids)) != len(
-                proposal.claim_ids
-            ):
-                raise InvalidSocialProposal("Proposta vazia ou repetida.")
+            if len(set(proposal.claim_ids)) != len(proposal.claim_ids):
+                raise InvalidSocialProposal("IDs repetidos.")
             allowed = {entry.id: entry for entry in topics}
             if any(identifier not in allowed for identifier in proposal.claim_ids):
                 raise InvalidSocialProposal("Alegação inacessível.")
-            if any(
-                not expresses_claim(proposal.fala, allowed[i].proposition)
-                for i in proposal.claim_ids
-            ):
-                raise InvalidSocialProposal(
-                    "A fala não expressa o assunto selecionado."
-                )
-            markers = tuple(
-                m
-                for m in HarnessService._private_markers(profile, member)
-                if m not in context.get("confidencias_autorizadas", ())
-            )
-            if not self._guard.inspect_output(proposal.fala, markers).allowed:
-                raise InvalidSocialProposal("Fala rejeitada pela guarda.")
-            # IDs e cadeia de fontes ficam nos dados; a fala pode parafrasear com voz própria.
-            if grounding_issues(
-                proposal.fala,
-                {
-                    **npc_interrogation_context(case, actor),
-                    "memoria_social": context,
-                },
-                names,
-            ):
-                raise InvalidSocialProposal("ungrounded_social_speech")
+            selected = tuple(allowed[identifier] for identifier in proposal.claim_ids)
+            canonical_speech = " ".join(entry.proposition for entry in selected) or "Por ora, prefiro encerrar esta conversa."
+            canonical_intent = "confide" if any(entry.visibility == "private" for entry in selected) else "repeat" if selected else "end"
         except (TimeoutError, InvalidSocialProposal):
             latest = await self._repository.get(game.id)
             latest_world = await self._world.get(game.id)
@@ -790,15 +745,15 @@ class SocialService:
         message = SocialMessage(
             id=uuid4(),
             sender_id=actor,
-            content=proposal.fala.strip(),
+            content=canonical_speech,
             created_at=self.now(),
-            intent=proposal.intent,
+            intent=canonical_intent,
             claim_ids=proposal.claim_ids,
         )
         candidate = transmit(latest, message, recipient, case.day)
         updated = current.model_copy(update={"messages": (*current.messages, message)})
         candidate = replace_encounter(candidate, updated)
-        finished = len(updated.messages) >= 4 or proposal.intent == "end"
+        finished = len(updated.messages) >= 4 or canonical_intent == "end"
         if finished:
             updated = updated.model_copy(
                 update={
@@ -857,72 +812,3 @@ class SocialService:
             require_player_idle=True,
             events=events,
         )
-
-    def _instructions(
-        self,
-        profile,
-        member,
-        actor,
-        recipient,
-        names,
-        context,
-        topics,
-        encounter,
-        state,
-        case,
-    ):
-        from src.modules.investigation.night_story import (
-            plot_context,
-        )
-
-        observations = {
-            "seu_conflito_privado": plot_context(case, actor, names),
-            **npc_interrogation_context(case, actor),
-            "dia": case.day,
-            "jornal": [
-                {"dia": item.day, "manchete": item.headline, "noticia": item.body}
-                for item in case.journal
-            ],
-            "seus_objetos": [
-                ITEMS_BY_ID[identifier].model_dump()
-                for identifier in INVENTORIES.get(actor, ())
-            ],
-            "posses_que_observou": [
-                {
-                    "pessoa": names.get(person, person),
-                    "tipos": [ITEMS_BY_ID[item].name for item in INVENTORIES[person]],
-                }
-                for person in OBSERVED_PEOPLE.get(actor, ())
-            ],
-            "seus_depoimentos": [
-                item.text for item in case.testimonies if item.witness_id == actor
-            ],
-        }
-        claims = [
-            {
-                "id": str(entry.id),
-                "proposicao": entry.proposition,
-                "fonte_direta": names.get(entry.speaker_id, entry.speaker_id),
-                "fonte_alegada": names.get(
-                    entry.claimed_source_id, entry.claimed_source_id
-                ),
-                "tipo": entry.kind,
-                "certeza": entry.confidence,
-                "postura": entry.stance,
-            }
-            for entry in topics
-        ]
-        transcript = [
-            {"quem": names.get(item.sender_id, item.sender_id), "fala": item.content}
-            for item in encounter.messages
-        ]
-        data = {
-            "sua_ficha_privada": HarnessService._private_context(profile, member),
-            "interlocutor": names.get(recipient, recipient),
-            "tom": social_tone(state, actor, recipient),
-            "memoria_privada": context,
-            "observacoes": observations,
-            "alegacoes_compartilhaveis": claims,
-            "falas_deste_encontro": transcript,
-        }
-        return social_instructions(data)

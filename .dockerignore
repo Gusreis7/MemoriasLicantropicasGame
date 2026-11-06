@@ -22,6 +22,7 @@ infra
 docs
 scripts/*
 !scripts/run_session_simulations.py
+!scripts/smoke_table_api.py
 *.tfstate
 *.tfstate.*
 *.tfvars

@@ -83,7 +83,9 @@ class RedisGameRepository(_RedisRepository):
                         pipe.multi()
                         pipe.set(key, game.model_dump_json())
                         pipe.set(f"{base}:world", make_initial_world(game.id).model_dump_json())
-                        pipe.set(f"{base}:investigation", make_initial_investigation(game, game.created_at).model_dump_json())
+                        case = make_initial_investigation(game, game.created_at)
+                        pipe.set(f"{base}:investigation", case.model_dump_json())
+                        pipe.set(f"{base}:table", case.table.model_dump_json())
                         pipe.zadd(index, {str(game.id): game.created_at.timestamp()})
                         pipe.rpush(f"{base}:events",
                                    event_json("game.created", {"game_id": str(game.id)}),

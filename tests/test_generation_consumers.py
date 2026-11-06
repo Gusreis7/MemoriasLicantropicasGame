@@ -105,7 +105,7 @@ async def test_corrupt_session_outbox_is_preserved_for_recovery_without_exposing
     assert await storage.client.exists(key)
 
 
-async def test_internal_extraction_bug_does_not_advance_the_durable_cursor(
+async def test_unused_extraction_provider_cannot_block_canonical_cursor(
     storage, catalog, game
 ):
     from src.contracts.social import ExchangeRecord
@@ -142,8 +142,9 @@ async def test_internal_extraction_bug_does_not_advance_the_durable_cursor(
         async def complete(self, messages, *, tools=(), tool_choice=None):
             raise TypeError("fixture internal bug")
 
-    with pytest.raises(TypeError, match="fixture internal bug"):
-        await KnowledgeService(repository, catalog, BrokenClient()).process_pending(
-            game.id, 1
-        )
-    assert (await repository.get(game.id)).exchange_cursor == 0
+    assert await KnowledgeService(repository, catalog, BrokenClient()).process_pending(game.id, 1)
+    state = await repository.get(game.id)
+    assert state.exchange_cursor == 1
+    # Extraction cannot invent facts or block the durable cursor any longer.
+    assert any(entry.source_message_id == incoming.id and incoming.content in entry.proposition
+               for entry in state.knowledge)

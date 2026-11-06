@@ -1,5 +1,7 @@
 # Orquestração LLM: arquitetura atual
 
+> A conversa de produção foi substituída pela [mesa determinística](mesa_deterministica.md): `TableDialogueWorkflow` + `TableDelivery`, com conteúdo canônico composto pelo servidor. O grafo de revisão semântica descrito abaixo permanece como referência/teste do fluxo anterior; ele não decide álibis, revelações ou pesos do dossiê na composição atual.
+
 Esta é a referência atual dos agentes e sessões. A geração estruturada usa
 **tool calling nativo**, `ChatModel.with_structured_output` e `PydanticToolsParser`;
 a execução usa grafos LangGraph. O [plano consolidado](plano_refatoracao_llm.md)

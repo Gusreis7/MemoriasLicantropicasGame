@@ -73,7 +73,7 @@ def select_pair(state, eligible_ids, world, day, slot, now):
             if not route:
                 continue
             known_roots = {entry.root_id for entry in state.knowledge if entry.owner_id == recipient}
-            topics = sorted((e for e in owned if can_share(e, state.relationships, actor, recipient)), key=lambda entry: (
+            topics = sorted((e for e in owned if can_share(e, state.relationships, actor, recipient, game_id=state.game_id)), key=lambda entry: (
                 entry.origin == "dialogue",
                 recipient in entry.subject_ids or recipient == entry.claimed_source_id,
                 entry.root_id not in known_roots,
