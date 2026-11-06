@@ -11,6 +11,7 @@ Os guias abaixo descrevem a implementação atual. Planos de entrega e contratos
 | [Orquestração dos agentes](orquestracao_agentes.md) | Personas, mestre, regras, contexto e circulação de conhecimento |
 | [Mesa determinística](mesa_deterministica.md) | Noites, álibis, declarações e invariantes do estado |
 | [Testes](testes.md) | Suítes locais, Redis real e simulações por API |
+| [Créditos de efeitos open source](creditos_efeitos_open_source.md) | Sons distribuídos, fontes, licenças e agradecimentos |
 
 Referências técnicas: [mundo](mundo.md), [turnos e crimes](turnos_crimes.md), [investigação](pistas_delegado.md), [Redis](redis.md), [admin](admin.md), [interface do admin](frontend_admin.md), [interface do jogo](frontend_jogo.md), [consumo LLM](consumo_llm.md) e [relações e noites](relacoes_mestre_noites_v4.md).
 
