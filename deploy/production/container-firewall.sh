@@ -6,6 +6,21 @@ iptables -F ML-CONTAINERS
 # IMDSv2 hop=2 serves only the API's fixed egress address.
 iptables -A ML-CONTAINERS ! -s 172.30.254.2/32 -d 169.254.169.254/32 -j DROP
 iptables -A ML-CONTAINERS -m conntrack --ctstate ESTABLISHED,RELATED -j RETURN
+# Docker encaminha DNS externo pela rede de saída do container. Libere somente
+# os resolvers IPv4 do host e o AmazonProvidedDNS, antes do DROP da rede edge.
+for resolver_file in /etc/resolv.conf /run/systemd/resolve/resolv.conf; do
+    [ -r "$resolver_file" ] || continue
+    while read -r key resolver rest; do
+        if [[ "$key" = nameserver && "$resolver" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            for protocol in udp tcp; do
+                iptables -A ML-CONTAINERS -s 172.30.252.0/28 -d "$resolver/32" -p "$protocol" --dport 53 -j RETURN
+            done
+        fi
+    done < "$resolver_file"
+done
+for protocol in udp tcp; do
+    iptables -A ML-CONTAINERS -s 172.30.252.0/28 -d 169.254.169.253/32 -p "$protocol" --dport 53 -j RETURN
+done
 # Caddy pode obter/renovar certificados, sem acesso a IMDS ou serviços do host.
 iptables -A ML-CONTAINERS -s 172.30.252.0/28 -p tcp -m multiport --dports 80,443 -j RETURN
 iptables -A ML-CONTAINERS -s 172.30.252.0/28 -j DROP

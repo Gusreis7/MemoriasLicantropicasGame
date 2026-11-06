@@ -51,6 +51,7 @@ def verify_image_scan(repository, image_digest, attempts=60):
 
 def verify_public_https(domain, expected_ip, attempts=60):
     url = f"https://{domain}/health"
+    last_error = 'HTTPS health response not ready'
     for attempt in range(attempts):
         try:
             addresses = {item[4][0] for item in socket.getaddrinfo(domain, 443, type=socket.SOCK_STREAM)}
@@ -59,11 +60,12 @@ def verify_public_https(domain, expected_ip, attempts=60):
             with urllib.request.urlopen(url, timeout=15) as response:
                 if response.status == 200 and response.geturl() == url and json.loads(response.read(4096)).get('status') == 'ok':
                     return
-        except (OSError, ValueError):
-            pass
+                last_error = f'Unexpected health response: HTTP {response.status}'
+        except (OSError, ValueError) as error:
+            last_error = f'{type(error).__name__}: {error}'
         if attempt + 1 < attempts:
             time.sleep(10)
-    raise RuntimeError(f"Release installed, but HTTPS is not ready. Check the A record for {domain} -> {expected_ip}, stale AAAA records and Caddy logs.")
+    raise RuntimeError(f"Release installed, but HTTPS is not ready. Last failure: {last_error}. Check DNS for {domain} -> {expected_ip}, Caddy DNS/ACME egress and certificate logs.")
 
 
 def cli(*args, allow_missing=False):

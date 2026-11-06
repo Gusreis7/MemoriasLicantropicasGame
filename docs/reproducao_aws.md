@@ -115,6 +115,8 @@ sudo docker compose --env-file /run/ml-game/images.env -f /etc/ml-game/compose.y
 
 Confira erros ACME, A/AAAA, firewall, portas e persistência de `/srv/ml-data/caddy`. Não apague certificados ou repita emissões em ciclos rápidos. Uma instalação saudável internamente pode ter HTTPS ainda pendente; corrija o DNS e confira novamente.
 
+Na primeira publicação, o A já estava correto, mas o firewall de saída da rede edge bloqueava DNS. O Caddy registrava `lookup ... on 127.0.0.11:53: server misbehaving` ao consultar ACME. A correção libera UDP/TCP 53 somente para os resolvers IPv4 do host e AmazonProvidedDNS, antes do DROP dessa rede. IMDS permanece bloqueado. A regra foi aplicada ao host com backup do script e reinício apenas do Caddy; a resolução ACME e `/health` HTTPS com certificado confiável foram então confirmadas externamente. Não foi necessário alterar o Registro.br, apagar certificados, reiniciar Redis ou recriar EC2.
+
 Teste também uma partida e uma tarefa de inferência: o endpoint de saúde não comprova acesso ao modelo.
 
 ## 5. Admin e preservação
