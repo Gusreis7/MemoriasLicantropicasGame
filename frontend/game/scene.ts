@@ -195,7 +195,33 @@ export class CityScene extends Phaser.Scene {
     const crimes = this.caseState?.crimes.filter(crime => crime.location_id === this.currentLocation && crime.remaining_clues > 0) ?? [];
     for (const x of new Set(crimes.map(crime => crime.x))) {
       const count = crimes.filter(crime => crime.x === x).length;
-      this.caseMarkers.push(this.add.ellipse(x, 301, 55, 12, 0xd9ba79, .18).setStrokeStyle(1, 0xe5c886).setDepth(2));
+      // A flattened, pixel-stepped body silhouette stays legible on every floor.
+      const body = [
+        '          ###                     ',
+        '         #####           #######  ',
+        '        ### ###     ###########   ',
+        ' ###   ###   #############        ',
+        '##### ################            ',
+        '######################            ',
+        '##### ################            ',
+        ' ###       ###############        ',
+        '            ###    ############   ',
+        '             ####        #######  ',
+        '              ###                 ',
+      ];
+      const size = 3;
+      const silhouette = this.add.graphics().setName(`crime-silhouette-${x}`).setDepth(2);
+      const left = Math.round(x - 51), top = this.currentWorld.location.ground_y - 24;
+      silhouette.fillStyle(0x310b17, 1);
+      body.forEach((row, y) => [...row].forEach((pixel, col) => {
+        if (pixel === '#') silhouette.fillRect(left + col * size - 2, top + y * size - 2, size + 4, size + 4);
+      }));
+      body.forEach((row, y) => [...row].forEach((pixel, col) => {
+        if (pixel !== '#') return;
+        silhouette.fillStyle(body[y - 1]?.[col] === '#' ? 0xe63d4b : 0xff8c85, 1);
+        silhouette.fillRect(left + col * size, top + y * size, size, size);
+      }));
+      this.caseMarkers.push(silhouette);
       this.caseMarkers.push(this.add.text(x, 315, count === 1 ? 'Cena do crime' : `${count} cenas · vestígios`, {
         fontFamily: 'Georgia, serif', fontSize: '10px', color: '#fff0c4', backgroundColor: '#1b342cdd', padding: {x: 5, y: 3},
       }).setOrigin(.5, 0).setDepth(4));
