@@ -9,6 +9,7 @@ import {personWords} from '../shared/language';
 import {POPULATION} from './population';
 import './style.css';
 import {cancelNightAttack, newNightVictim, playNightAttack} from './night-attack';
+import {gameAudio} from './audio';
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
 app.innerHTML = `
@@ -144,6 +145,8 @@ function toast(message: string) {
 }
 
 function setModal(next: typeof modal) {
+  if (next !== modal && (next === 'journal' || next === 'notebook')) gameAudio.effect('paper');
+  else if (next === null && (modal === 'journal' || modal === 'notebook')) gameAudio.effect('close');
   if (modal === 'dialogue' && next !== 'dialogue' && world && conversation) {
     dialogueDrafts.set(`${world.game_id}:${conversation.id}`, $<HTMLTextAreaElement>('#message-input').value);
     void api.closeConversation(world.game_id, conversation.id).catch(() => { /* Reserva expira automaticamente. */ });
@@ -172,6 +175,7 @@ function applySnapshot(snapshot: WorldSnapshot) {
 
 async function launch(resume: boolean) {
   if (starting) return;
+  gameAudio.unlock(); gameAudio.start();
   starting = true; casePoller.stop();
   $('#start').setAttribute('disabled', ''); $('#continue').setAttribute('disabled', '');
   status('#launch-status', resume ? 'Reabrindo seu caderno…' : 'Preparando uma nova investigação…');
@@ -191,7 +195,9 @@ async function launch(resume: boolean) {
       dayProgress: () => !caseState ? 0 : caseState.phase === 'day' ? gameDayProgress(caseClock.seconds()) : 1,
       blocked: () => Boolean(modal || activeAssembly() || busy || transitioning || starting || caseClock.blocked() || document.hidden || $('#investigation').hidden),
       frame: (delta, direction) => {
+        const previousX = controller?.x;
         if (!caseClock.blocked() && !transitioning) controller?.update(delta, direction);
+        if (previousX !== undefined && controller && Math.abs(controller.x - previousX) > .1) gameAudio.effect('step');
         if (controller && world) {
           if (!modal && !busy && !transitioning && !starting && !caseClock.blocked()) {
             const boundary = exitBoundary.observe(controller.world, controller.x, direction);
@@ -242,6 +248,7 @@ async function launch(resume: boolean) {
       ? 'Este caso não está disponível nesta edição. Inicie uma nova investigação para continuar.' : explain(error);
     status('#launch-status', message, true);
     $('#continue').hidden = !savedGame();
+    gameAudio.stop();
   } finally {
     starting = false; $('#start').removeAttribute('disabled'); $('#continue').removeAttribute('disabled');
   }
@@ -629,6 +636,7 @@ async function applyCase(next: CasePublic, initial = false) {
   const changed = !previous || previous.day !== next.day || previous.phase !== next.phase || previous.status !== next.status
     || previous.detained_npc_id !== next.detained_npc_id || pendingWorldSync;
   caseState = next; assemblyClockOffset = Date.now() - Date.parse(next.server_time); caseClock.accept(next); renderClock();
+  gameAudio.setNight(next.phase === 'night');
   if (!previous || previous.revision !== next.revision) {
     scene?.setInvestigation(next); renderCase();
   }
@@ -1066,6 +1074,7 @@ async function searchCrime(id?: string) {
     const result = await api.search(world.game_id, crime.id);
     await applyCase(result);
     const found = result.inventory.find(item => !before.has(item.id));
+    if (found) gameAudio.effect('clue');
     const stackCount = found ? result.inventory.filter(item => item.item_id === found.item_id).length : 0;
     toast(found ? `${found.name} recolhido · ${stackCount} ${stackCount === 1 ? 'unidade' : 'unidades'} no caderno.` : 'A busca nesta cena foi concluída.');
   } catch (error) {toast(explain(error));}
@@ -1174,6 +1183,7 @@ $('#continue').hidden = !savedGame();
 $('#continue').addEventListener('click', () => {void launch(true);});
 $('#new-case').addEventListener('click', async () => {
   if (busy) return;
+  gameAudio.stop();
   casePoller.stop(); await settleMovement(); setModal(null); $('#investigation').hidden = true; $('#introduction').hidden = false;
   $('#continue').hidden = !savedGame(); document.body.classList.remove('case-active');
 });
@@ -1225,4 +1235,20 @@ document.addEventListener('keydown', event => {
   }
 });
 window.addEventListener('blur', () => {if (!caseClock.blocked()) void controller?.stop(); else void controller?.suspend();});
-window.addEventListener('pagehide', () => {casePoller.stop(); controller?.dispose();});
+window.addEventListener('pagehide', () => {gameAudio.stop(); casePoller.stop(); controller?.dispose();});
+
+const audioControls = document.createElement('div');
+audioControls.className = 'audio-controls';
+audioControls.innerHTML = '<button id="audio-mute" class="button secondary small" type="button" aria-label="Silenciar áudio">Som ligado</button><label for="audio-volume">Volume <input id="audio-volume" type="range" min="0" max="100" step="5" aria-label="Volume do jogo"/></label>';
+document.querySelector('.masthead')!.append(audioControls);
+const audioMute = document.querySelector<HTMLButtonElement>('#audio-mute')!;
+const audioVolume = document.querySelector<HTMLInputElement>('#audio-volume')!;
+function renderAudioControls() {
+  audioMute.textContent = gameAudio.muted ? 'Som desligado' : 'Som ligado';
+  audioMute.setAttribute('aria-pressed', String(gameAudio.muted));
+  audioMute.setAttribute('aria-label', gameAudio.muted ? 'Ativar áudio' : 'Silenciar áudio');
+  audioVolume.value = String(gameAudio.volume * 100);
+}
+audioMute.addEventListener('click', () => {gameAudio.unlock(); gameAudio.setMuted(!gameAudio.muted); renderAudioControls();});
+audioVolume.addEventListener('input', () => {gameAudio.unlock(); gameAudio.setVolume(Number(audioVolume.value) / 100); renderAudioControls();});
+renderAudioControls();
