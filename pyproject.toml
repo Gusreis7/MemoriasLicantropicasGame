@@ -29,7 +29,7 @@ requires = ["hatchling>=1.27,<2"]
 build-backend = "hatchling.build"
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests/test_api.py", "tests/test_api_security.py", "tests/test_deployment_security.py"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src"]

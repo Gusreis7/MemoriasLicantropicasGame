@@ -23,6 +23,7 @@ docs
 scripts/*
 !scripts/run_session_simulations.py
 !scripts/smoke_table_api.py
+!scripts/smoke_application.py
 *.tfstate
 *.tfstate.*
 *.tfvars

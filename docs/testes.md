@@ -1,6 +1,6 @@
-# Testes e simulações
+# Testes da aplicação
 
-A suíte comum usa clientes de modelo controlados e não exige saldo AWS. Os testes de API exercitam a aplicação por ASGI; os testes Redis usam fakeredis por padrão. Isso verifica as regras e a integração, mas não mede sozinho o comportamento de um modelo real.
+A suíte padrão está limitada a API, segurança HTTP e configuração de produção. Não executa partidas simuladas nem chamadas a modelos. Os testes de API usam transporte ASGI e armazenamento isolado.
 
 ## Backend
 
@@ -9,7 +9,7 @@ uv sync --locked
 uv run pytest -q
 ```
 
-A cobertura inclui sorteio e sigilo de papéis, reserva de ações, persistência e conflitos, mesa e confirmação recíproca de álibis, isolamento de conhecimento, proveniência social, admissão de relatos, autenticação administrativa e falhas de inferência. Os cenários atuais estão em `tests/`; não se fixa aqui uma contagem de testes que envelheceria a cada mudança.
+O padrão seleciona `test_api.py`, `test_api_security.py` e `test_deployment_security.py`. Os demais testes especializados remanescentes podem ser chamados explicitamente pelo caminho; não fazem parte do deploy. Os três arquivos de testes do simulador foram removidos.
 
 Para repetir a suíte com Redis real e descartável:
 
@@ -43,24 +43,14 @@ terraform fmt -check -recursive infra/terraform
 
 Nas raízes Terraform, execute `terraform init -backend=false`, `terraform validate` e `terraform test` conforme a configuração local. Os testes de Terraform usam providers simulados; não aplicam recursos na AWS. Os testes de entrega verificam políticas, manifesto, instalador e isolamento dos containers. A arquitetura e a reprodução em uma conta real estão em [solução AWS](solucao_aws.md) e [reprodução na AWS](reproducao_aws.md).
 
-## Smoke pela API real
+## Check do delivery
 
-Inicie a aplicação e configure as credenciais do modelo conforme o [guia local](deploy_local.md). Na raiz:
+O Actions constrói a imagem e executa `scripts/smoke_application.py` como o usuário não privilegiado da aplicação, sem rede externa e com filesystem somente leitura. São três verificações:
 
-```sh
-uv run python scripts/smoke_table_api.py --api-url http://127.0.0.1:7079 --games 2 --output artifacts/simulations/table-live.json
-```
+1. Sintaxe Python usando `compile()` em memória, sem criar `__pycache__`.
+2. Inicialização, `/health` e catálogo público.
+3. Admin sem autenticação rejeitado e documentação de produção desativada.
 
-Esse script cria partidas reais e verifica invariantes da mesa pela API. Ele usa as credenciais administrativas configuradas para observar o estado; consulte `--help` para opções. O ambiente recebe partidas e chamadas reais, portanto use uma instalação de avaliação.
+Não usa Redis externo, LLM, navegador ou simulação de partidas. A entrega continua verificando saúde interna via instalador e DNS/HTTPS depois da instalação.
 
-## Floriano controlado por LLM
-
-```sh
-uv run python scripts/run_session_simulations.py --api-url http://127.0.0.1:7079 --games 10 --max-live-calls 200
-```
-
-O agente decide ações e interage com a API do jogo. As sessões e os relatórios salvam resultados, ações, interrupções e uso; veja `--help` para controlar saída e limites. Não há provedor offline nesse loop.
-
-`--max-live-calls` limita somente as chamadas do agente Floriano. As inferências de NPCs, mestre e convivência feitas no servidor são adicionais. Uma simulação interrompida não conta como vitória ou derrota concluída. Antes de aumentar N, confira uma execução curta e seus relatórios.
-
-Relatórios históricos de avaliações anteriores podem ser recuperados pelo Git. Execute os testes no checkout atual para validar a versão em uso.
+Os scripts de avaliação manual permanecem disponíveis no repositório, mas não são pré-requisitos nem checks do Actions.

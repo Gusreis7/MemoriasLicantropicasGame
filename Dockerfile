@@ -12,6 +12,7 @@ COPY pyproject.toml uv.lock README.md ./
 COPY src ./src
 COPY scripts/run_session_simulations.py ./scripts/run_session_simulations.py
 COPY scripts/smoke_table_api.py ./scripts/smoke_table_api.py
+COPY scripts/smoke_application.py ./scripts/smoke_application.py
 RUN uv sync --locked --no-dev --no-editable \
     && useradd --create-home app
 
