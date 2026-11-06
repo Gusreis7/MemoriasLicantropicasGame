@@ -77,6 +77,7 @@ defeatPhoto.id='defeat-photo';defeatPhoto.className='press-defeat';defeatPhoto.w
 defeatPhoto.alt='Lobisomem nas sombras da cidade à meia-noite, em fotografia escurecida de jornal';
 $('#victory-paper .press-picture').after(defeatPhoto);
 let defeatEditionID:string|null=null;
+let victoryEditionID:string|null=null;
 let defeatPhotoAbort:AbortController|null=null;
 const STORAGE_KEY = 'memorias-licantropicas:game';
 const PERSONAL_ITEM_ICONS = new Set<string>([
@@ -652,6 +653,14 @@ async function applyCase(next: CasePublic, initial = false) {
   if (!changed) return;
   transitioning = true; pendingWorldSync = true; scene?.setInputEnabled(false);
   try {
+    // The public result already confirms the transformation; scenery refresh must not delay it.
+    if(next.status==='won' && next.ending?.method==='detention') {
+      pendingWorldSync=false;
+      void controller?.suspend();
+      await showCustody(next.ending.werewolf_id,'transformed');
+      if(world?.game_id===next.game_id && caseState?.revision===next.revision)showPhase();
+      return;
+    }
     if (!initial) {
       await controller?.suspend();
       const [snapshot, publicGame] = await Promise.all([api.world(next.game_id), api.game(next.game_id)]);
@@ -665,9 +674,7 @@ async function applyCase(next: CasePublic, initial = false) {
       await playNightAttack(victim, manifest, victim.location_id === nightLocation ? nightWitnesses : []);
       if (caseState?.revision !== next.revision || world?.game_id !== next.game_id) return;
     }
-    if (next.status === 'won' && next.ending?.method === 'detention') {
-      await showCustody(next.ending.werewolf_id,'transformed'); showPhase();
-    } else if (next.phase === 'night' && next.detained_npc_id) {
+    if (next.phase === 'night' && next.detained_npc_id) {
       void showCustody(next.detained_npc_id,'night',previous?.detained_npc_id!==next.detained_npc_id);
     } else if (next.phase !== 'day' || next.status !== 'active') showPhase();
     else if (initial && next.detained_npc_id) {void showCustody(next.detained_npc_id,'waiting');}
@@ -729,6 +736,7 @@ function showPhase() {
   if (!caseState) return;
   const ending = caseState.ending;
   const victorious = ending?.result === 'won';
+  if(victorious && victoryEditionID!==caseState.game_id){victoryEditionID=caseState.game_id;gameAudio.effect('victory');}
   const expelled = caseState.assembly?.outcome === 'player_expelled';
   $('#phase-overlay').classList.toggle('is-night-waiting', caseState.phase === 'night' && !ending);
   $('#victory-paper').hidden = !ending;
