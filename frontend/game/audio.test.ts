@@ -46,4 +46,20 @@ describe('política de áudio', () => {
     expect(sounds).toHaveLength(7); // one background, at most six effects
     gameAudio.stop(); expect(sounds.every(sound => sound.paused)).toBe(true);
   });
+
+  it('cancela uivo e golpes ao pular sem interromper ambiente ou papel', async () => {
+    const {gameAudio} = await import('./audio');
+    gameAudio.unlock(); gameAudio.start(); gameAudio.effect('paper'); gameAudio.effect('howl');
+    gameAudio.effect('impact', 3);
+    expect(sounds[3].src).toContain('werewolf/impact-4.ogg');
+    gameAudio.stopCinematicEffects();
+    expect(sounds[0].paused).toBe(false); expect(sounds[1].paused).toBe(false);
+    expect(sounds[2].paused).toBe(true); expect(sounds[3].paused).toBe(true);
+  });
+
+  it('preserva volume moderado do uivo ao ajustar volume geral', async () => {
+    const {gameAudio} = await import('./audio');
+    gameAudio.unlock(); gameAudio.start(); gameAudio.effect('howl'); gameAudio.setVolume(.5);
+    expect(sounds[1].volume).toBeCloseTo(.2);
+  });
 });
