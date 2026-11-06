@@ -16,6 +16,29 @@ guard = load('plan_guard', 'scripts/check_infrastructure_plan.py')
 
 
 class Publication(unittest.TestCase):
+    def test_scan_waits_for_indexing_and_processing(self):
+        missing = delivery.AWSCommandError('ecr', 'describe-image-scan-findings', 'ScanNotFoundException')
+        with patch.object(delivery, 'cli', side_effect=[missing, '{"imageScanStatus":{"status":"IN_PROGRESS"}}', '{"imageScanStatus":{"status":"COMPLETE"},"imageScanFindings":{"findingSeverityCounts":{}}}']) as api, patch.object(delivery.time, 'sleep'):
+            delivery.verify_image_scan('api', 'sha256:test', attempts=3)
+            self.assertEqual(api.call_count, 3)
+
+    def test_scan_never_bypasses_failures_or_vulnerabilities(self):
+        cases = [
+            '{"imageScanStatus":{"status":"COMPLETE"},"imageScanFindings":{"findingSeverityCounts":{"HIGH":1}}}',
+            '{"imageScanStatus":{"status":"COMPLETE"}}',
+            '{"imageScanStatus":{"status":"UNSUPPORTED_IMAGE"}}',
+            delivery.AWSCommandError('ecr', 'describe-image-scan-findings', 'AccessDeniedException'),
+        ]
+        for result in cases:
+            with self.subTest(result=result), patch.object(delivery, 'cli') as api:
+                if isinstance(result, Exception):
+                    api.side_effect = result
+                else:
+                    api.return_value = result
+                with self.assertRaises(RuntimeError):
+                    delivery.verify_image_scan('api', 'sha256:test', attempts=1)
+                self.assertEqual(api.call_count, 1)
+
     def test_only_matching_dns_and_verified_https_count_as_ready(self):
         response = MagicMock(status=200)
         response.geturl.return_value = 'https://game.example/health'

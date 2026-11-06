@@ -8,6 +8,45 @@ import tempfile
 import time
 import socket
 import urllib.request
+import re
+
+
+class AWSCommandError(RuntimeError):
+    def __init__(self, service, operation, code):
+        self.code = code
+        super().__init__(f'AWS {service} {operation} failed ({code})')
+
+
+def verify_image_scan(repository, image_digest, attempts=60):
+    for attempt in range(attempts):
+        try:
+            result = json.loads(cli('ecr', 'describe-image-scan-findings',
+                                    '--repository-name', repository, '--image-id',
+                                    f'imageDigest={image_digest}', '--output', 'json'))
+        except AWSCommandError as error:
+            if error.code not in ('ScanNotFoundException', 'ImageNotFoundException'):
+                raise
+            result = {}
+        status = result.get('imageScanStatus', {}).get('status', 'PENDING')
+        if status == 'COMPLETE':
+            findings = result.get('imageScanFindings')
+            if not isinstance(findings, dict):
+                raise RuntimeError('ECR scan completed without findings payload; release blocked')
+            counts = findings.get('findingSeverityCounts', {})
+            if counts.get('HIGH', 0) or counts.get('CRITICAL', 0):
+                for finding in findings.get('findings', []):
+                    if finding.get('severity') in ('HIGH', 'CRITICAL'):
+                        attrs = {x['key']: x['value'] for x in finding.get('attributes', [])}
+                        print('Blocked finding:', finding.get('name'), finding['severity'],
+                              attrs.get('package_name', 'unknown'), attrs.get('package_version', 'unknown'), flush=True)
+                raise RuntimeError(f'ECR blocked {repository}: HIGH={counts.get("HIGH", 0)}, CRITICAL={counts.get("CRITICAL", 0)}. Update OS packages/base image; scan is not bypassed.')
+            print(f'ECR scan complete: {repository}', flush=True)
+            return
+        if status not in ('PENDING', 'IN_PROGRESS'):
+            raise RuntimeError(f'ECR scan cannot approve {repository}: status={status}')
+        if attempt + 1 < attempts:
+            time.sleep(5)
+    raise TimeoutError(f'ECR scan still pending for {repository}; retry delivery later')
 
 
 def verify_public_https(domain, expected_ip, attempts=60):
@@ -36,7 +75,8 @@ def cli(*args, allow_missing=False):
     if result.returncode:
         if allow_missing and "ImageNotFoundException" in result.stderr:
             return None
-        raise RuntimeError("AWS command failed: " + args[0] + " " + args[1])
+        match = re.search(r'An error occurred \(([A-Za-z0-9_.-]+)\)', result.stderr)
+        raise AWSCommandError(args[0], args[1], match.group(1) if match else f'exit_{result.returncode}')
     return result.stdout
 
 
@@ -133,35 +173,7 @@ def main():
                 or any(character not in "0123456789abcdef" for character in digest[7:])
             ):
                 raise ValueError("Invalid registry digest")
-            # ECR basic scanning is enabled at repository creation. Fail closed.
-            cli(
-                "ecr",
-                "wait",
-                "image-scan-complete",
-                "--repository-name",
-                name,
-                "--image-id",
-                f"imageDigest={digest}",
-            )
-            findings = json.loads(
-                cli(
-                    "ecr",
-                    "describe-image-scan-findings",
-                    "--repository-name",
-                    name,
-                    "--image-id",
-                    f"imageDigest={digest}",
-                    "--output",
-                    "json",
-                )
-            )
-            counts = findings.get("imageScanFindings", {}).get(
-                "findingSeverityCounts", {}
-            )
-            if counts.get("HIGH", 0) or counts.get("CRITICAL", 0):
-                raise RuntimeError(
-                    "Image blocked by HIGH/CRITICAL vulnerability findings; update base/dependencies"
-                )
+            verify_image_scan(name, digest)
             images[f"{kind}_image"] = repository + "@" + digest
         manifest = Path(temporary) / "release.json"
         manifest.write_text(json.dumps({"schema": 1, "commit": commit, **images}))

@@ -1,5 +1,11 @@
 FROM python:3.13-slim@sha256:ae14d4ce8771606477a81446e7ef429edd6762305fc50c84507c1041fa8285d1
 
+# Apply Debian security fixes without changing the Python dependency lock.
+# Disable APT retries while upgrading the vulnerable APT bundled in the base.
+RUN DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=0 update \
+    && DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=0 upgrade -y \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY --from=ghcr.io/astral-sh/uv:0.13.6@sha256:af22a52f5eafef3d78e551599d405c02df61919d18028f0cea8eda93bc9986d0 /uv /bin/uv
 
 WORKDIR /app

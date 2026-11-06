@@ -99,6 +99,8 @@ curl -I http://memoriaslicantropicasgame.gustavodreis.dev.br
 
 O delivery preserva ECR por digest → manifesto S3 → instalação SSM. Caddy inicia junto da aplicação e solicita o certificado. HTTPS deve ter certificado confiável e HTTP deve redirecionar para HTTPS. O workflow aguarda DNS/HTTPS; não depende de ALB. Não use curl -k para considerar emissão bem-sucedida.
 
+O scan ECR também é assíncrono: o delivery consulta `describe-image-scan-findings`, aguarda indexação/processamento por até cinco minutos e diferencia falha de permissão, status não suportado e vulnerabilidades encontradas. HIGH/CRITICAL continuam bloqueando a instalação e são exibidas com CVE/pacote/versão. A imagem aplica atualizações Debian disponíveis mantendo `uv.lock`; isso não garante scan limpo se o fornecedor ainda não publicou correção. Nessa situação, trocar a base ou aprovar uma exceção específica exige uma decisão separada, sem desligar silenciosamente a verificação.
+
 Em caso de falha, com uma sessão operacional autorizada na EC2, consulte:
 
 ```sh
