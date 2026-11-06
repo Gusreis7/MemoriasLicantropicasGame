@@ -1,0 +1,20 @@
+{
+  "id": "virgilia",
+  "source": "exec-805a26b0-1bbe-420e-954b-09ef20ec04c6.png",
+  "bbox": [
+    0,
+    9,
+    2158,
+    708
+  ],
+  "sha256": "45ef924b646e0e3c9e8350385937f79aa3f31393c0b9148bb854cc7c115af263",
+  "path": "/assets/cinematics/fallen/virgilia.png",
+  "generator": "image_gen built-in",
+  "reference": "/assets/characters/virgilia.png",
+  "prompt": "Use case: identity-preserve. Production single fallen character pose for a 2D pixel art mystery game Rio de Janeiro 1890. Supplied sprite sheet is the exact IDENTITY, COSTUME, COLORS and PIXEL ART STYLE reference. Create ONE new full-body horizontal pose of Virgília, adult 33-year-old woman, fair skin, blonde hair in a low bun, plum long dress, violet shawl, ivory collar/cuffs and brown boots, lying lifeless after a fictional werewolf attack. Entire body lies fully on the ground, HEAD AT LEFT and FEET AT RIGHT, viewed from the side with a slight top-down view so the face and clothing remain legible. Eyes completely closed, mouth relaxed neutral, no smile. Head resting on ground, shoulders/hips relaxed, arms limp, one hand resting near torso and the other near ground; legs extended naturally with slight relaxed bend. This must be a specially drawn prone/fallen pose, not a rotated upright sprite. Preserve facial identity, hairstyle, complete modest period clothing and shoes from the reference. Single whole body and clothing fully within frame with ample transparent margin. Exact same crisp stepped pixel outlines, warm limited earthy palette, slightly enlarged expressive head and clean shading clusters as reference. Horizontal landscape composition around 3:1. Truly transparent background/alpha, no floor, scenery or cast shadow. No blood, wounds, gore, torn clothing, nudity, text, borders, multiple frames, duplicate figures or other characters. Inert respectfully depicted fictional death, no glamour or sleeping smile.",
+  "width": 2172,
+  "height": 724,
+  "mode": "RGBA",
+  "orientation": "head-left-feet-right",
+  "state": "fallen-lifeless-non-graphic"
+}

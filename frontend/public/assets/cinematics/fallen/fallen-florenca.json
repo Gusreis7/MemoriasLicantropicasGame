@@ -1,0 +1,20 @@
+{
+  "id": "florenca",
+  "source": "exec-5079e933-3578-439c-9023-479df9bf584a.png",
+  "bbox": [
+    25,
+    23,
+    2146,
+    707
+  ],
+  "sha256": "33f396f45fe65fb6a92978b3b482ec893cb9c1470f1b9d2c951239d192102edc",
+  "path": "/assets/cinematics/fallen/florenca.png",
+  "generator": "image_gen built-in",
+  "reference": "/assets/characters/florenca.png",
+  "prompt": "Use case: identity-preserve. Production single fallen character pose for a 2D pixel art mystery game Rio de Janeiro 1890. Supplied sprite sheet is the exact IDENTITY, COSTUME, COLORS and PIXEL ART STYLE reference. Create ONE new full-body horizontal pose of Florença, adult 28-year-old Black woman, dark brown skin, curly black hair tied back, mustard jacket, ivory blouse, olive long skirt and brown boots, lying lifeless after a fictional werewolf attack. Entire body lies fully on the ground, HEAD AT LEFT and FEET AT RIGHT, viewed from the side with a slight top-down view so the face and clothing remain legible. Eyes completely closed, mouth relaxed neutral, no smile. Head resting on ground, shoulders/hips relaxed, arms limp, one hand resting near torso and the other near ground; legs extended naturally with slight relaxed bend. This must be a specially drawn prone/fallen pose, not a rotated upright sprite. Preserve facial identity, hairstyle, complete modest period clothing and shoes from the reference. Single whole body and clothing fully within frame with ample transparent margin. Exact same crisp stepped pixel outlines, warm limited earthy palette, slightly enlarged expressive head and clean shading clusters as reference. Horizontal landscape composition around 3:1. Truly transparent background/alpha, no floor, scenery or cast shadow. No blood, wounds, gore, torn clothing, nudity, text, borders, multiple frames, duplicate figures or other characters. Inert respectfully depicted fictional death, no glamour or sleeping smile.",
+  "width": 2172,
+  "height": 724,
+  "mode": "RGBA",
+  "orientation": "head-left-feet-right",
+  "state": "fallen-lifeless-non-graphic"
+}

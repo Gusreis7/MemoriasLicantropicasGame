@@ -1,0 +1,19 @@
+{
+  "id": "capitu",
+  "path": "/assets/cinematics/fallen/capitu.png",
+  "generator": "image_gen built-in",
+  "reference": "/assets/characters/capitu.png",
+  "source": "exec-cf65b422-fe74-41ec-a9c9-4e812f407139.png",
+  "width": 2172,
+  "height": 724,
+  "mode": "RGBA",
+  "bbox": [
+    0,
+    0,
+    2155,
+    724
+  ],
+  "sha256": "eef5ae498e84188ad35693f6ead90466292af698566afcff75ef8028279c3a19",
+  "orientation": "head-left-feet-right",
+  "state": "fallen-lifeless-non-graphic"
+}
