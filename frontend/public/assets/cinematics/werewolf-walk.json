@@ -1,0 +1,184 @@
+{
+  "frames": {
+    "0": {
+      "frame": {
+        "x": 17,
+        "y": 108,
+        "w": 353,
+        "h": 346
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 17,
+        "y": 108,
+        "w": 353,
+        "h": 346
+      },
+      "sourceSize": {
+        "w": 384,
+        "h": 456
+      }
+    },
+    "1": {
+      "frame": {
+        "x": 407,
+        "y": 108,
+        "w": 345,
+        "h": 345
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 23,
+        "y": 109,
+        "w": 345,
+        "h": 345
+      },
+      "sourceSize": {
+        "w": 384,
+        "h": 456
+      }
+    },
+    "2": {
+      "frame": {
+        "x": 787,
+        "y": 108,
+        "w": 349,
+        "h": 345
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 19,
+        "y": 109,
+        "w": 349,
+        "h": 345
+      },
+      "sourceSize": {
+        "w": 384,
+        "h": 456
+      }
+    },
+    "3": {
+      "frame": {
+        "x": 1171,
+        "y": 108,
+        "w": 349,
+        "h": 345
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 19,
+        "y": 109,
+        "w": 349,
+        "h": 345
+      },
+      "sourceSize": {
+        "w": 384,
+        "h": 456
+      }
+    },
+    "4": {
+      "frame": {
+        "x": 20,
+        "y": 621,
+        "w": 348,
+        "h": 344
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 20,
+        "y": 110,
+        "w": 348,
+        "h": 344
+      },
+      "sourceSize": {
+        "w": 384,
+        "h": 456
+      }
+    },
+    "5": {
+      "frame": {
+        "x": 402,
+        "y": 621,
+        "w": 350,
+        "h": 345
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 18,
+        "y": 109,
+        "w": 350,
+        "h": 345
+      },
+      "sourceSize": {
+        "w": 384,
+        "h": 456
+      }
+    },
+    "6": {
+      "frame": {
+        "x": 788,
+        "y": 620,
+        "w": 348,
+        "h": 345
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 20,
+        "y": 109,
+        "w": 348,
+        "h": 345
+      },
+      "sourceSize": {
+        "w": 384,
+        "h": 456
+      }
+    },
+    "7": {
+      "frame": {
+        "x": 1163,
+        "y": 620,
+        "w": 357,
+        "h": 345
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 11,
+        "y": 109,
+        "w": 357,
+        "h": 345
+      },
+      "sourceSize": {
+        "w": 384,
+        "h": 456
+      }
+    }
+  },
+  "meta": {
+    "image": "werewolf-walk.png",
+    "size": {
+      "w": 1536,
+      "h": 1024
+    },
+    "scale": "1",
+    "groundBaseline": 454,
+    "cycle": [
+      "0",
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7"
+    ],
+    "notes": "Alpha bounds measured; no pixels edited. Baseline normalized by spriteSourceSize."
+  }
+}
