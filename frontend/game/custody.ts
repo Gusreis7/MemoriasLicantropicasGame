@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import type {CharacterAsset} from '../shared/api';
+import {custodyPacing,CELL_PACING} from './custody-pacing';
 export type CustodyMode = 'waiting' | 'night' | 'transformed' | 'released';
 export type AdmissionStage = 'entering' | 'closing' | 'held';
 
@@ -11,6 +12,8 @@ export class CustodyScene extends Phaser.Scene {
   private finishTimer?: ReturnType<typeof setTimeout>;
   private admissionTimers: Array<ReturnType<typeof setTimeout>> = [];
   private admissionPending = false;
+  private pacing = false;
+  private pacingElapsed = 0;
   private mode: CustodyMode = 'waiting';
   private done?: () => void;
   private reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -57,20 +60,23 @@ export class CustodyScene extends Phaser.Scene {
   private applyMode() {
     if(!this.human || !this.wolf || !this.gate)return;
     this.clearTimers();
+    this.pacing=false;this.pacingElapsed=0;
     this.tweens.killTweensOf([this.human,this.wolf,this.gate]);
     // A server phase change interrupts admission safely, with the person in custody.
     this.human.setPosition(480,370).setAlpha(1).stop().setFrame(this.character.frameNames?.[0] ?? 0);
     this.wolf.setVisible(false);this.gate.setX(0);
     if(this.mode==='waiting' || this.mode==='night') {
       if(this.admissionPending && !this.reduced) this.admit();
-      else this.onAdmissionStage?.('held');
+      else {this.onAdmissionStage?.('held');this.pacing=!this.reduced;}
       this.admissionPending=false;
     } else if(this.mode==='transformed') {
-      this.wolf.setVisible(true).setAlpha(this.reduced?1:0);
+      // This mode is entered only after the server has confirmed the transformation.
+      // Show its first visible pose immediately rather than leaving a two-second gap.
+      this.wolf.setVisible(true).setAlpha(this.reduced?1:.3);
       if(!this.reduced)this.wolf.play('wolf-breathe');
-      this.tweens.add({targets:this.human,alpha:0,duration:this.reduced?0:1300});
-      this.tweens.add({targets:this.wolf,alpha:1,duration:this.reduced?0:1800});
-      this.finishTimer=setTimeout(()=>this.done?.(),this.reduced?150:3400);
+      this.tweens.add({targets:this.human,alpha:0,duration:this.reduced?0:450});
+      this.tweens.add({targets:this.wolf,alpha:1,duration:this.reduced?0:650});
+      this.finishTimer=setTimeout(()=>this.done?.(),this.reduced?150:1500);
     } else if(this.mode==='released') {
       this.tweens.add({targets:this.gate,x:330,duration:this.reduced?0:800});
       if(!this.reduced)this.human.play('detainee-walk');
@@ -80,10 +86,18 @@ export class CustodyScene extends Phaser.Scene {
     }
   }
   private clearTimers() {
+    this.pacing=false;
     clearTimeout(this.finishTimer);
     this.admissionTimers.forEach(clearTimeout);this.admissionTimers=[];
   }
-  update() {
+  update(_time:number,delta:number) {
+    if(this.pacing && this.human && (this.mode==='waiting' || this.mode==='night')) {
+      this.pacingElapsed+=Math.min(Math.max(delta,0),100);
+      const pose=custodyPacing(this.pacingElapsed);
+      const frames=this.character.walkFrames;
+      this.human.setPosition(Math.round(pose.x),CELL_PACING.ground).setFlipX(pose.facing==='left').stop();
+      if(frames.length)this.human.setFrame(frames[Math.floor(pose.distance/12)%frames.length]);
+    }
     if(!this.gate)return;
     // Clip the native shapes to the doorway in both Canvas and WebGL.
     // Offscreen bars slide behind the wall; rails shorten at the right jamb.
@@ -110,6 +124,7 @@ export class CustodyScene extends Phaser.Scene {
     },1550));
     this.admissionTimers.push(setTimeout(()=>{
       this.tweens.killTweensOf([human,gate]);gate.setX(0);
+      this.pacingElapsed=0;this.pacing=!this.reduced;
       this.onAdmissionStage?.('held');
     },2250));
   }
