@@ -12,6 +12,7 @@ import {cancelNightAttack, newNightVictim, playNightAttack} from './night-attack
 import {gameAudio} from './audio';
 import {renderDefeatPhoto} from './defeat-photo';
 import {canSubmitCaseReport, caseReportKind, caseReportStatus} from './table-reports';
+import {dossierEvidence} from './dossier-selection';
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
 app.innerHTML = `
@@ -143,7 +144,6 @@ function saveGame(id: string) { try { localStorage.setItem(STORAGE_KEY, id); } c
 function status(selector: string, text: string, error = false) {const el = $(selector); el.textContent = text; el.classList.toggle('error', error);}
 function explain(error: unknown) {
   if (error instanceof ApiError) {
-    if (error.status === 409) return 'O estado da investigação mudou. Aguarde um instante e tente novamente.';
     return error.message;
   }
   return 'Algo interrompeu a investigação. Tente novamente em instantes.';
@@ -1144,12 +1144,21 @@ async function presentEvidence() {
   finally {busy = false; setSending(false);}
 }
 
+function selectedDossierEvidence(testimonyIDs: string[]) {
+  const inputs = [...document.querySelectorAll<HTMLInputElement>('#accusation-evidence input')];
+  const selected = inputs.filter(input => input.checked).map(input => input.value);
+  if (!caseState) return selected;
+  const complete = dossierEvidence(caseState.inventory, caseState.testimonies, selected, testimonyIDs);
+  for (const input of inputs) input.checked = complete.includes(input.value);
+  return complete;
+}
+
 async function reviewSelectedAccusation() {
   if (!world || busy || caseClock.blocked() || modal !== 'delegate') return;
   const suspect = $('#accused-npc').querySelector<HTMLInputElement>('input:checked:not(:disabled)')?.value;
   if (!suspect) return;
-  const evidence = [...document.querySelectorAll<HTMLInputElement>('#accusation-evidence input:checked')].map(input=>input.value);
   const testimony = [...document.querySelectorAll<HTMLInputElement>('#accusation-testimonies input[name="testimony"]:checked')].map(input=>input.value);
+  const evidence = selectedDossierEvidence(testimony);
   const reports = [...document.querySelectorAll<HTMLInputElement>('#accusation-testimonies input[name="report"]:checked')].map(input=>input.value);
   busy=true; updateAccusationSelection(); status('#accusation-review','O delegado confere seu dossiê…');
   try {
@@ -1164,9 +1173,8 @@ async function submitAccusation(event: Event) {
   event.preventDefault(); if (!world || busy || modal !== 'delegate' || caseClock.blocked()) return;
   const suspectID = $('#accused-npc').querySelector<HTMLInputElement>('input:checked:not(:disabled)')?.value;
   if (!suspectID) {status('#accusation-status', 'Selecione um suspeito antes de apresentar a acusação.', true); return;}
-  const evidence = [...document.querySelectorAll<HTMLInputElement>('#accusation-evidence input:checked')]
-    .map(input => input.value);
   const testimony = [...document.querySelectorAll<HTMLInputElement>('#accusation-testimonies input[name="testimony"]:checked')].map(input => input.value);
+  const evidence = selectedDossierEvidence(testimony);
   const reports = [...document.querySelectorAll<HTMLInputElement>('#accusation-testimonies input[name="report"]:checked')].map(input => input.value);
   busy = true; $('#submit-accusation').setAttribute('disabled', ''); status('#accusation-status', 'O delegado examina os elementos apresentados…');
   try {
@@ -1198,7 +1206,17 @@ $('#present-button').addEventListener('click', () => {void presentEvidence();});
 $('#present-evidence').addEventListener('change', () => renderPresentation());
 $('#accusation-form').addEventListener('submit', event => {void submitAccusation(event);});
 $('#review-accusation').addEventListener('click',()=>{void reviewSelectedAccusation();});
-for (const id of ['accused-npc','accusation-evidence','accusation-testimonies']) $( `#${id}`).addEventListener('change',()=>{
+for (const id of ['accused-npc','accusation-evidence','accusation-testimonies']) $( `#${id}`).addEventListener('change',event=>{
+  const target = event.target as HTMLInputElement;
+  if (caseState && id === 'accusation-evidence' && !target.checked) {
+    const itemType = caseState.inventory.find(item => item.id === target.value)?.item_id;
+    for (const input of document.querySelectorAll<HTMLInputElement>('#accusation-testimonies input[name="testimony"]:checked')) {
+      const record = caseState.testimonies.find(item => item.id === input.value);
+      if (record && caseState.inventory.find(item => item.id === record.evidence_id)?.item_id === itemType) input.checked = false;
+    }
+  }
+  const testimonyIDs = [...document.querySelectorAll<HTMLInputElement>('#accusation-testimonies input[name="testimony"]:checked')].map(input => input.value);
+  selectedDossierEvidence(testimonyIDs);
   updateAccusationSelection(); $('#accusation-review').removeAttribute('data-ready');
   status('#accusation-review','Seleção alterada. Confira o dossiê antes de pedir a prisão.');
 });

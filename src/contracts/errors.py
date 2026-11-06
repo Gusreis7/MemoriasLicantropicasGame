@@ -13,6 +13,15 @@ class ConflictError(Exception):
     pass
 
 
+class DossierSelectionError(ConflictError):
+    """Fixed public diagnostic; never exposes arbitrary exception text."""
+    code = "dossier_missing_evidence"
+    detail = "Um depoimento precisa acompanhar seu vestígio na acusação."
+
+    def __init__(self):
+        super().__init__(self.detail)
+
+
 class StorageUnavailableError(Exception):
     pass
 

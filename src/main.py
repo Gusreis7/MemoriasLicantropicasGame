@@ -13,6 +13,7 @@ from src.composition import build_services
 from src.contracts.errors import (
     AccessDeniedError,
     ConflictError,
+    DossierSelectionError,
     LLMUnavailableError,
     NotFoundError,
     StorageUnavailableError,
@@ -85,6 +86,8 @@ def create_app() -> FastAPI:
     application.include_router(social_router)
 
     async def domain_error_handler(request: Request, exc: Exception) -> JSONResponse:
+        if isinstance(exc, DossierSelectionError):
+            return JSONResponse(status_code=409, content={"detail": exc.detail, "code": exc.code})
         errors = {
             NotFoundError: (404, "Recurso não encontrado."),
             AccessDeniedError: (403, "Acesso não permitido."),

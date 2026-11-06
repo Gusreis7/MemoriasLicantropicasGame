@@ -1,7 +1,7 @@
 """Peso probatório por espécie, exame e fontes; não consulta culpado ou verdade privada."""
 from dataclasses import dataclass
 
-from src.contracts.errors import ConflictError, NotFoundError
+from src.contracts.errors import ConflictError, DossierSelectionError, NotFoundError
 from src.modules.investigation.catalog import ITEMS_BY_ID
 
 MATERIAL_WEIGHTS = {"common": .25, "singular": 1., "unique": 3.}
@@ -47,7 +47,7 @@ def assess_dossier(state, suspect_id, evidence_ids, testimony_ids, report_ids=()
     statements = tuple(by_id[identifier] for identifier in dict.fromkeys(testimony_ids))
     items_by_statement = {record.id: find_evidence(state, record.evidence_id).item_id for record in statements}
     if any(items_by_statement[record.id] not in selected_types for record in statements):
-        raise ConflictError("Um depoimento precisa acompanhar seu vestígio na acusação.")
+        raise DossierSelectionError()
     linked = tuple(record for record in statements
                    if record.recognition == 'recognizes' and record.claimed_owner_id == suspect_id)
     item_ids = frozenset(items_by_statement[record.id] for record in linked)
