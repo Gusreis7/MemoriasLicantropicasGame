@@ -4,7 +4,7 @@ const files: Record<SoundEffect, string[]> = {
   paper: ['bookFlip1'], close: ['bookClose'], clue: ['handleSmallLeather'],
   step: ['footstep00', 'footstep01'], sneak: ['cloth1'],
   slash: ['knifeSlice', 'knifeSlice2'],
-  impact: ['impact-1', 'impact-2', 'impact-3', 'impact-4'], howl: ['howl'],
+  impact: ['impact-1', 'impact-2', 'impact-3', 'impact-4'], howl: ['howl-long'],
 };
 
 export class GameAudio {

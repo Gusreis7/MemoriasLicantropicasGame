@@ -196,7 +196,7 @@ test('amanhecer retorna à banca e publica a morte sem manter o NPC no cenário'
   await page.addInitScript(() => {
     const play=HTMLMediaElement.prototype.play;
     HTMLMediaElement.prototype.play=function() {
-      if(this.src.includes('/werewolf/howl.ogg')) document.documentElement.dataset.howlBeat=document.querySelector<HTMLElement>('#night-attack-overlay')?.dataset.beat;
+      if(this.src.includes('/werewolf/howl-long.ogg')) document.documentElement.dataset.howlBeat=document.querySelector<HTMLElement>('#night-attack-overlay')?.dataset.beat;
       return play.call(this);
     };
   });
@@ -220,7 +220,7 @@ test('amanhecer retorna à banca e publica a morte sem manter o NPC no cenário'
   await page.screenshot({path:'../artifacts/night-fallen.png',fullPage:true});
   await expect(page.locator('#night-attack-overlay')).toHaveAttribute('data-beat', 'escape');
   await page.screenshot({path:'../artifacts/night-escape.png',fullPage:true});
-  await expect(page.locator('#night-attack-overlay')).toBeHidden({timeout: 5000});
+  await expect(page.locator('#night-attack-overlay')).toBeHidden({timeout: 8000});
   expect(audioFiles.some(url=>url.includes('day-birds'))).toBe(true);
   expect(audioFiles.some(url=>url.includes('night-ominous'))).toBe(true);
   expect(audioFiles.some(url=>url.includes('knifeSlice'))).toBe(true);

@@ -9,6 +9,7 @@ Todos os arquivos são gratuitos sob **CC0 1.0 Universal**: https://creativecomm
 | night-ominous.ogg | Mix original do projeto: graves e vento procedurais + grilos CC0 de syncopika | CC0; síntese sem IA com FFmpeg, reproduzível em scripts/generate_night_soundscape.sh | Arquivo local de 40s, fades de 1s nas bordas |
 | kenney/*.ogg | Kenney Vleugels — RPG Audio | https://kenney.nl/assets/rpg-audio — CC0; licença original em kenney/license.txt | https://opengameart.org/sites/default/files/RPGsounds_Kenney.zip |
 | werewolf/howl-source.mp3, howl.ogg | NaturesTemper — Wolf howl | https://freesound.org/people/NaturesTemper/sounds/398430/ — CC0 | https://cdn.freesound.org/previews/398/398430_3862281-hq.mp3 |
+| werewolf/howl-long.ogg | NaturesTemper — Wolf howl, edição longa | Mesma fonte CC0 acima; recorte de 1,05s por 6,4s, loudnorm I=-20 TP=-4 LRA=7, fade-in 0,12s e fade-out de 5,6s por 0,8s | Derivado local com FFmpeg; substitui a versão curta na sequência |
 | werewolf/impact-{1,2,3,4}.ogg | qubodup — 40 wet towel club/pound/hit/attack sounds | https://opengameart.org/content/40-wet-towel-clubpoundhitattack-sounds — CC0 | https://opengameart.org/sites/default/files/wet_towel_on_body.7z |
 
 Licenças verificadas em 2026-11-05. O espelho OGA foi usado para Kenney porque o download oficial respondeu 403. As gravações de aves e grilos são ambiência genérica, não uma alegação de registro histórico ou de espécies cariocas. Os ambientes são repetidos como fundo discreto; não se acrescentou música moderna.

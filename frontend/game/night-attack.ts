@@ -3,17 +3,19 @@ import {wolfWalkFrame} from './wolf-walk';
 import {gameAudio} from './audio';
 
 export const STRIKES = ['garra lateral', 'golpe descendente', 'bote rasteiro', 'salto de emboscada'] as const;
-/** Stepped pixel clusters, with a dark wine edge and muted red core. */
+/** Three diagonal, torn claw furrows built entirely from square pixel clusters. */
 function drawPixelClaws(ctx:CanvasRenderingContext2D,variant:number,progress:number) {
   ctx.save();ctx.globalAlpha=Math.min(1,(1-progress)*3);
-  const count=Math.min(15,Math.ceil(progress*30));
-  for(let claw=0;claw<3;claw++) for(let step=0;step<count;step++) {
-    const x=variant===1?580+claw*18+Math.floor(step/4)*3:570+(variant===2?0:claw*18)+step*3;
-    const y=variant===1?211+step*4:variant===2?249+claw*14+Math.floor(step/4)*3:235+step*3;
-    const thickness=step<3||step>11?6:9;
-    ctx.fillStyle='#420f21';ctx.fillRect(x-3,y-3,thickness+6,9);
-    ctx.fillStyle='#781b36';ctx.fillRect(x,y,thickness,6);
-    if(step>3&&step<11){ctx.fillStyle='#9b3048';ctx.fillRect(x,y,3,3);}
+  const profile=[1,2,3,4,5,5,3,4,5,4,3,4,5,4,3,4,3,2,2,1,1];
+  const count=Math.min(profile.length,Math.ceil(progress*profile.length*2));
+  for(let claw=0;claw<3;claw++) for(let row=0;row<count-claw;row++) {
+    const notch=(row+claw*3)%8===5?3:0;
+    const x=558+claw*27+row*3+notch;
+    const y=216-claw*3+row*3+(variant%2)*3;
+    const width=profile[row]*3;
+    ctx.fillStyle='#380c1b';ctx.fillRect(x-3,y-3,width+6,9);
+    ctx.fillStyle='#70142e';ctx.fillRect(x,y,width,3);
+    if(width>=9){ctx.fillStyle='#982b43';ctx.fillRect(x+3,y,3,3);}
   }
   ctx.restore();
 }
@@ -113,8 +115,8 @@ export async function playNightAttack(edition:JournalEdition, manifest:Character
         else drawActor(wolf,t>=3900?'3':variant===1?'2':variant===2?'0':variant===3?'3':'1',wx,314+lift,125,145,lunging?(variant-1.5)*.12:0);
         if(lunging&&!reduced) drawPixelClaws(ctx,variant,(t-2900)/600);
         if(t>5100)root.querySelector('[role=status]')!.textContent='O lobisomem foge pelas sombras. A vítima permanece imóvel.';
-        else if(t>3800)root.querySelector('[role=status]')!.textContent='O silêncio retorna. O Clarim trará a notícia ao amanhecer.';
-        if(reduced?elapsed>=1200:t>=7300){finish();return;}raf=requestAnimationFrame(render);
+        else if(t>3800)root.querySelector('[role=status]')!.textContent='O uivo ecoa pela cidade. O Clarim trará a notícia ao amanhecer.';
+        if(reduced?elapsed>=1200:t>=10000){finish();return;}raf=requestAnimationFrame(render);
       };render(start);
     });
   } catch {root.remove();} finally {gameAudio.stopCinematicEffects();gameAudio.setNight(false);clearTimeout(loadTimeout);if(cancel)cancel=undefined;abort.abort();}
