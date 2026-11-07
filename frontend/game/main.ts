@@ -458,7 +458,7 @@ async function openExit(side: ExitSide) {
   await settleMovement();
   exitSide = side;
   setModal('exit');
-  $('#exit-description').textContent = `Na saída à ${side === 'left' ? 'esquerda' : 'direita'} de ${world.location.name}, estes caminhos levam a outros encontros.`;
+  $('#exit-description').textContent = `Na saída à ${side === 'left' ? 'esquerda' : 'direita'} de ${world.location.name}, estes caminhos levam a outros encontros. Use as setas para escolher e Enter para seguir.`;
   status('#exit-status', '');
   renderExits();
   $('#exit-destinations button')?.focus();
@@ -499,7 +499,13 @@ async function travel(target: LocationID, side?: ExitSide) {
     if (error instanceof ApiError && error.status === 409) {
       try {controller.accept(await api.world(world.game_id));} catch { /* mantém erro visível */ }
     }
-  } finally {busy = false; renderMap(); renderExits(); lastNearest = '';}
+  } finally {
+    busy = false; renderMap(); renderExits(); lastNearest = '';
+    if (modal === 'exit') {
+      const buttons = [...document.querySelectorAll<HTMLButtonElement>('#exit-destinations button')];
+      (buttons.find(button => button.dataset.destination === target) ?? buttons[0])?.focus();
+    }
+  }
 }
 
 async function approach() {
@@ -1277,6 +1283,23 @@ $('#open-map').addEventListener('click', () => {void openMap();});
 $('#close-map').addEventListener('click', () => {if (!busy) setModal(null);});
 $('#close-exit').addEventListener('click', () => {if (!busy) setModal(null);});
 $('#stay-here').addEventListener('click', () => {if (!busy) setModal(null);});
+$('#exit-overlay').addEventListener('keydown', event => {
+  if (event.altKey || event.ctrlKey || event.metaKey) return;
+  const step = event.key === 'ArrowDown' || event.key === 'ArrowRight' ? 1
+    : event.key === 'ArrowUp' || event.key === 'ArrowLeft' ? -1 : 0;
+  if (step) {
+    event.preventDefault();
+    // A walking key held when the menu opens must not cycle the destinations.
+    if (busy || event.repeat) return;
+    const buttons = [...document.querySelectorAll<HTMLButtonElement>('#exit-destinations button:not(:disabled), #stay-here:not(:disabled)')];
+    if (!buttons.length) return;
+    const index = buttons.findIndex(button => button === document.activeElement);
+    buttons[index < 0 ? 0 : (index + step + buttons.length) % buttons.length].focus();
+  } else if (event.key === 'Enter' && (busy || event.repeat)) {
+    event.preventDefault();
+  }
+  // Enter on the focused native button activates the same action as a click.
+});
 $('#approach').addEventListener('click', () => {void approach();});
 for (const [id, direction] of [['walk-left', 'left'], ['walk-right', 'right']] as const) {
   const button = $(`#${id}`);
