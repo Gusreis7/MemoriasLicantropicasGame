@@ -67,8 +67,9 @@ async def test_signed_editorial_uses_actual_deaths_and_method(
                 model="fake",
             )
 
-    master = SessionMasterService(None, None, None, LLM())
-    result = await master.publish_victory(state, game)
+    from src.modules.session_master.editorial import victory_article
+    edition = await victory_article(state, names, 'bentinho', LLM())
+    result = state.model_copy(update={'journal': (*state.journal[:-1], edition)})
     body = result.journal[-1].body
     assert "Bentinho era o lobisomem" in body
     assert "Capitu (1)" in body

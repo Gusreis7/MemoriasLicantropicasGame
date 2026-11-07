@@ -25,11 +25,19 @@ class LocationPublic(Contract):
     exits: tuple[LocationExit, ...] = ()
 
 
+class MovementInput(Contract):
+    seq: int = Field(strict=True, ge=1)
+    direction: Direction
+    duration_ms: float = Field(ge=0, le=50, allow_inf_nan=False)
+
+
 class MoveRequest(Contract):
     direction: Direction
     seq: int = Field(strict=True, ge=1)
     location_id: LocationID
     revision: int = Field(strict=True, ge=0)
+    inputs: tuple[MovementInput, ...] | None = Field(default=None, min_length=1, max_length=128)
+    movement_epoch: str | None = Field(default=None, max_length=64)
 
 
 class TravelRequest(Contract):
@@ -43,6 +51,15 @@ class PlayerPublic(Contract):
     x: float
     facing: Literal["left", "right"]
     movement_seq: int
+    input_seq: int = 0
+    movement_epoch: str | None = None
+
+
+class MovementAck(Contract):
+    kind: Literal["movement_ack"] = "movement_ack"
+    game_id: UUID
+    revision: int
+    player: PlayerPublic
 
 
 class VisibleNPC(Contract):

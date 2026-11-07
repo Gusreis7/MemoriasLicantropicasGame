@@ -59,6 +59,7 @@ class Services:
     social_clients: tuple[BedrockMantleClient | MeteredLLMClient, ...] = ()
     usage: RedisUsageRepository | None = None
     telemetry: TelemetryService | None = None
+    session_master: SessionMasterService | None = None
 
     async def aclose(self) -> None:
         try:
@@ -66,10 +67,14 @@ class Services:
                 await self.social_worker.stop()
         finally:
             try:
-                for client in (*self.social_clients, self.llm):
-                    await client.aclose()
+                if self.session_master is not None:
+                    await self.session_master.aclose()
             finally:
-                await self.redis.aclose()
+                try:
+                    for client in (*self.social_clients, self.llm):
+                        await client.aclose()
+                finally:
+                    await self.redis.aclose()
 
 
 def build_services(settings: Settings) -> Services:
@@ -138,6 +143,7 @@ def build_services(settings: Settings) -> Services:
     social_clients = (*social_clients, master_llm)
     master = SessionMasterService(turns, games, memory, master_llm, redis, settings.redis_prefix)
     turns._victory_editor = master.publish_victory
+    turns._detention_editor = master.prepare_detention_editorial
     from src.modules.table.service import GameTableService
     table_service = GameTableService(turns, characters, knowledge)
     harness = HarnessService(characters, games, memory, dialogue_llm, history_limit=settings.llm_history_limit,
@@ -151,6 +157,7 @@ def build_services(settings: Settings) -> Services:
         harness=harness,
         redis=redis,
         telemetry=TelemetryService(redis, settings.redis_prefix),
+        session_master=master,
         llm=llm,
         conversations=ConversationService(
             characters, games, memory, harness,

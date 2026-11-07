@@ -44,14 +44,34 @@ test('cinco locais usam manhã e pôr do sol; Floriano alterna o ciclo e para na
     const {assetURL} = await import('/shared/assets.ts');
     return ['praca_verde', 'cabana_capitu', 'casa_verde', 'cafe_largo', 'cais_lanternas'].map(id => assetURL(`/assets/locations/${id}-00h.png`));
   });
-  expect(midnightRequests.get(nightURLs[0])).toBe(1);
-  for (const url of nightURLs.slice(1)) expect(midnightRequests.get(url) ?? 0).toBe(0);
-  const nightTexture = await page.evaluate(() => {
+  for (const url of nightURLs) expect(midnightRequests.get(url) ?? 0).toBe(0);
+  const initialTextures = await page.evaluate(() => {
     const scene = (window as any).__visual.scene;
-    return {key: scene.children.getByName('background-midnight').texture.key,
-      duplicate: scene.textures.exists('midnight-praca_verde')};
+    return {player: scene.textures.exists('player'), capitu: scene.textures.exists('capitu'),
+      midnight: scene.textures.exists('location-praca_verde-00h'), sunset: scene.textures.exists('location-praca_verde-18h')};
   });
-  expect(nightTexture).toEqual({key: 'location-praca_verde-00h', duplicate: false});
+  expect(initialTextures).toEqual({player:true, capitu:false, midnight:false, sunset:false});
+  const capituURL = await page.evaluate(async () => {
+    // @ts-expect-error Browser imports the actual Vite module.
+    const {assetURL} = await import('/shared/assets.ts');
+    return assetURL('/assets/characters/capitu.png');
+  });
+  let releaseCapitu!: () => void;
+  const capituReady = new Promise<void>(resolve => {releaseCapitu = resolve;});
+  await page.route(`**${capituURL}`, async route => {await capituReady; await route.continue();});
+  await page.evaluate(location => {
+    const state = (window as any).__visual;
+    state.scene.apply({game_id:'visual-cycle', world_version:'1', revision:1, location,
+      player:{location_id:location.id,x:160,facing:'right',movement_seq:0},
+      visible_npcs:[{npc_id:'capitu',name:'Capitu',sprite_id:'capitu',x:440,can_approach:false}],travel_targets:[]});
+    state.scene.setTouchDirection('right');
+  }, places[0]);
+  try {
+    await expect.poll(() => page.evaluate(() => (window as any).__visual.x)).toBeGreaterThan(170);
+    expect(await page.evaluate(() => (window as any).__visual.scene.loading)).toBe(false);
+  } finally {releaseCapitu();}
+  await expect.poll(() => page.evaluate(() => Boolean((window as any).__visual.scene.children.getByName('npc-sprite-capitu')))).toBe(true);
+  await page.evaluate(() => {const state = (window as any).__visual; state.scene.setTouchDirection('idle'); state.x=160;});
   for (const location of places) {
     for (const [hour, progress] of [['09h', 0], ['18h', 1]] as const) {
       await page.evaluate(({location, progress}) => {
@@ -59,16 +79,16 @@ test('cinco locais usam manhã e pôr do sol; Floriano alterna o ciclo e para na
         state.scene.apply({game_id: 'visual-cycle', world_version: '1', revision: 0, location,
           player: {location_id: location.id, x: state.x, facing: 'right', movement_seq: 0}, visible_npcs: [], travel_targets: []});
       }, {location, progress});
-      await expect.poll(() => page.evaluate(() => (window as any).__visual.scene.children.getByName('background-sunset').alpha)).toBe(progress);
+      await expect.poll(() => page.evaluate(() => (window as any).__visual.scene.children.getByName('background-sunset')?.alpha ?? 0)).toBe(progress);
       await expect.poll(() => page.evaluate(() => (window as any).__visual.scene.loading)).toBe(false);
       const layers = await page.evaluate(() => {
         const scene = (window as any).__visual.scene;
-        return ['background-morning', 'background-sunset'].map(name => {
+        return ['background-morning', 'background-sunset'].filter(name => scene.children.getByName(name)).map(name => {
           const layer = scene.children.getByName(name);
           return {key: layer.texture.key, x: layer.x, y: layer.y, width: layer.displayWidth, height: layer.displayHeight};
         });
       });
-      expect(layers.map(layer => layer.key)).toEqual([`location-${location.id}-09h`, `location-${location.id}-18h`]);
+      expect(layers.map(layer => layer.key)).toEqual(progress ? [`location-${location.id}-09h`, `location-${location.id}-18h`] : [`location-${location.id}-09h`]);
       expect(layers.every(layer => layer.x === 0 && layer.y === 0 && layer.width === 960 && layer.height === 360)).toBe(true);
       await page.locator('canvas').screenshot({path: `../artifacts/lighting-${location.id}-${hour}.png`});
     }
@@ -84,7 +104,7 @@ test('cinco locais usam manhã e pôr do sol; Floriano alterna o ciclo e para na
   await expect.poll(() => page.evaluate(() => (window as any).__visual.scene.children.getByName('player').flipX)).toBe(true);
   await page.evaluate(() => {(window as any).__visual.blocked = true;});
   await expect.poll(() => page.evaluate(() => (window as any).__visual.scene.children.getByName('player').anims.isPlaying)).toBe(false);
-  for (const url of nightURLs) expect(midnightRequests.get(url)).toBe(1);
+  for (const url of nightURLs) expect(midnightRequests.get(url) ?? 0).toBe(0);
   expect(errors).toEqual([]);
   await page.evaluate(() => {(window as any).__visual.game.destroy(true);});
 });

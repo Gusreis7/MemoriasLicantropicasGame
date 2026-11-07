@@ -16,6 +16,9 @@ class WorldPlayer(Contract):
     x: float = Field(default=160, ge=32, le=928)
     facing: Literal["left", "right"] = "right"
     movement_seq: int = Field(default=0, ge=0)
+    input_seq: int = Field(default=0, ge=0)
+    pose_epoch: int = Field(default=0, ge=0)
+    movement_credit_ms: float = Field(default=0, ge=0, le=1000)
     direction: Direction = "idle"
     last_updated_at: AwareDatetime
 

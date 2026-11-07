@@ -1,4 +1,4 @@
-import {assetMarkup, assetURL} from '../shared/assets';
+import {assetMarkup, assetURL, portraitSources} from '../shared/assets';
 import {trackVisits} from './visits';
 import {api, ApiError, type CasePublic, type CaseEvidence, type CaseTestimony, type GamePublic, type CharacterManifest, type Conversation, type ExitSide, type Location, type LocationID, type Message, type HeardReport, type WorldSnapshot} from '../shared/api';
 import {closestNPC, MovementController} from './movement';
@@ -178,7 +178,9 @@ function setModal(next: typeof modal) {
 
 async function settleMovement() {
   busy = true;
-  try { await controller?.stop(); } finally { busy = false; }
+  try {await controller?.stop(); return true;}
+  catch (error) {toast(explain(error)); return false;}
+  finally {busy = false;}
 }
 
 function applySnapshot(snapshot: WorldSnapshot) {
@@ -227,7 +229,8 @@ async function launch(resume: boolean) {
           }
           const crime = !modal && !busy && !caseClock.blocked() ? closestCrime(caseState, world, controller.x) : undefined;
           if (inspectCrimeButton.hidden !== !crime) inspectCrimeButton.hidden = !crime;
-          const nearest = !crime && !modal && !busy && !caseClock.blocked() ? closestNPC(world, controller.x) : undefined;
+          const candidate = !crime && !modal && !busy && !caseClock.blocked() ? closestNPC(world, controller.x) : undefined;
+          const nearest = candidate && scene?.textures.exists(candidate.sprite_id) ? candidate : undefined;
           if ((nearest?.npc_id ?? '') !== lastNearest) {
             lastNearest = nearest?.npc_id ?? '';
             approachButton.hidden = !nearest;
@@ -235,7 +238,7 @@ async function launch(resume: boolean) {
           }
         }
         return {x: controller?.x ?? snapshot.player.x,
-          facing: direction === 'left' ? 'left' : direction === 'right' ? 'right' : controller?.world.player.facing ?? 'right'};
+          facing: controller?.facing ?? snapshot.player.facing};
       },
       approach: () => {void approach();}, inspect: crimeID => {void searchCrime(crimeID);}, map: () => {void openMap();},
       loading: () => {$('#scene-loading').hidden = false; $('#scene-loading').textContent = 'Carregando este caminho…';},
@@ -280,7 +283,7 @@ async function launch(resume: boolean) {
 async function openMap() {
   if (!world || !controller || busy || modal || activeAssembly() || caseClock.blocked() || transitioning) return;
   busy = true;
-  await settleMovement();
+  if (!await settleMovement()) return;
   setModal('map');
   renderMap(); status('#map-status', '');
   renderMapResidents(); $('#close-map').focus();
@@ -305,7 +308,7 @@ function renderMapResidents() {
   const panel = $('#map-residents'); panel.replaceChildren();
   for (const npc of world?.npc_presences ?? []) {
     const row = document.createElement('div'); const img = document.createElement('img');
-    img.src = portraitPath(npc.npc_id); img.alt = ''; row.append(img);
+    setPortrait(img, npc.npc_id); img.alt = ''; row.append(img);
     addText(row, 'span', `${npc.name} · ${locationName(npc.location_id)}${npc.destination_id ? ` → ${locationName(npc.destination_id)}` : npc.activity === 'talking' ? ' · Conversando' : ''}`);
     panel.append(row);
   }
@@ -342,7 +345,7 @@ function renderAssemblyChoices() {
     const label = document.createElement('label'); label.className = 'suspect-card';
     const radio = document.createElement('input'); radio.type = 'radio'; radio.name = 'assembly-suspect'; radio.value = member.character.id;
     radio.checked = radio.value === draft.suspect;
-    const image = document.createElement('img'); image.src = portraitPath(member.character.id); image.alt = ''; image.width = 72; image.height = 80;
+    const image = document.createElement('img'); setPortrait(image, member.character.id); image.alt = ''; image.width = 72; image.height = 80;
     label.append(radio, image); addText(label, 'strong', member.character.name); suspects.append(label);
   }
   const evidence = $('#assembly-evidence'), testimony = $('#assembly-testimonies'); evidence.replaceChildren(); testimony.replaceChildren();
@@ -382,7 +385,7 @@ function renderAssemblyPanel() {
       for (const message of transcript) {
         const row = document.createElement('article'); row.className = `assembly-message${message.speaker_id === 'player' ? ' is-floriano' : ''}`;
         const portrait = message.speaker_id === 'player' ? document.createElement('span') : document.createElement('img');
-        if (portrait instanceof HTMLImageElement) {portrait.src = portraitPath(message.speaker_id); portrait.alt = '';}
+        if (portrait instanceof HTMLImageElement) {setPortrait(portrait, message.speaker_id); portrait.alt = '';}
         else {portrait.className = 'assembly-player-mark'; portrait.textContent = 'F'; portrait.setAttribute('aria-hidden', 'true');}
         const body = document.createElement('div'); addText(body, 'strong', npcName(message.speaker_id)); addText(body, 'p', message.text);
         row.append(portrait, body); chat.append(row);
@@ -430,7 +433,7 @@ function renderAssemblyClock() {
 
 async function openAssemblyPanel() {
   if (!world || busy || modal || (caseClock.blocked() && !activeAssembly())) return;
-  await settleMovement();
+  if (!await settleMovement()) return;
   renderAssemblyChoices(); renderAssemblyPanel(); status('#assembly-status', '');
   setModal('assembly'); $('#close-assembly').focus();
 }
@@ -466,7 +469,7 @@ async function finishAssembly() {
 async function openExit(side: ExitSide) {
   if (!world || !controller || busy || modal || activeAssembly() || caseClock.blocked() || transitioning) return;
   busy = true;
-  await settleMovement();
+  if (!await settleMovement()) return;
   exitSide = side;
   setModal('exit');
   $('#exit-description').textContent = `Na saída à ${side === 'left' ? 'esquerda' : 'direita'} de ${world.location.name}, estes caminhos levam a outros encontros. Use as setas para escolher e Enter para seguir.`;
@@ -524,13 +527,13 @@ async function approach() {
   const npc = closestNPC(world, controller.x);
   if (!npc) {toast('Aproxime-se de um morador para conversar.'); return;}
   busy = true;
-  await settleMovement();
+  if (!await settleMovement()) return;
   busy = true; dialogueUnavailable = false; dialogueNPC = npc; conversation = null; conversationMessages = []; historyReady = false;
   $<HTMLTextAreaElement>('#message-input').value = ''; renderPresentation(); status('#presentation-status', '');
   setModal('dialogue');
   $('#dialogue-name').textContent = npc.name;
   const image = $('#persona-portrait') as HTMLImageElement;
-  image.src = portraitPath(npc.npc_id);
+  setPortrait(image, npc.npc_id, '(max-width: 600px) 96px, 240px');
   image.alt = `Retrato de ${npc.name}`;
   $('#messages').replaceChildren(); status('#dialogue-status', 'Abrindo o caderno desta conversa…');
   setSending(true);
@@ -616,16 +619,22 @@ function addText(parent: HTMLElement, tag: string, text: string, className?: str
 
 function locationName(id: string) {return locations.find(location => location.id === id)?.name ?? id;}
 function npcName(id: string) {if (id === 'player') return 'Floriano'; return cast.find(member => member.character.id === id)?.character.name ?? id;}
-function portraitPath(id: string) {return assetURL(manifest?.characters.find(asset => asset.id === id)?.portraitPath ?? `/assets/portraits/${id}.png`);}
+function setPortrait(image: HTMLImageElement, id: string, sizes = '96px') {
+  const raw = manifest?.characters.find(asset => asset.id === id)?.portraitPath ?? `/assets/portraits/${id}.png`;
+  const sources = portraitSources(raw);
+  if (image.getAttribute('src') === sources.src && image.srcset === sources.srcset && image.sizes === sizes) return false;
+  image.decoding = 'async';
+  image.sizes = sizes;
+  image.srcset = sources.srcset;
+  image.src = sources.src;
+  return true;
+}
 
 function prepareJournalPortrait(victimID: string | null | undefined) {
   const image = $<HTMLImageElement>('#journal-victim-image');
-  if (!victimID) {image.removeAttribute('src'); return;}
-  const path = portraitPath(victimID);
-  if (image.getAttribute('src') === path) return;
-  image.decoding = 'async';
+  if (!victimID) {image.removeAttribute('srcset'); image.removeAttribute('src'); return;}
   image.fetchPriority = 'high';
-  image.src = path;
+  if (!setPortrait(image, victimID, '(max-width: 600px) calc(100vw - 80px), 220px')) return;
   // Fetch and decode as soon as the public edition is known, including while
   // the scene or night animation is loading. Failed art must not block reading.
   void image.decode().catch(() => {});
@@ -865,7 +874,7 @@ function renderNotebookSuspects() {
     card.className = `notebook-suspect${deceased ? ' is-deceased' : ''}`;
     card.setAttribute('aria-label', `${member.character.name} · ${deceased ? 'falecido' : 'sob suspeita'}`);
     const imageFrame = document.createElement('div'); imageFrame.className = 'notebook-suspect-portrait';
-    const portrait = document.createElement('img'); portrait.src = portraitPath(member.character.id);
+    const portrait = document.createElement('img'); setPortrait(portrait, member.character.id);
     portrait.alt = ''; portrait.loading = 'lazy'; portrait.decoding = 'async';
     imageFrame.append(portrait);
     if (deceased) imageFrame.append(deadSuspectMark());
@@ -1045,7 +1054,7 @@ function renderAccusation() {
     const input = document.createElement('input'); input.type = 'radio'; input.name = 'accused-npc';
     input.value = member.character.id; input.required = true; input.disabled = !member.alive || detained || Boolean(expelled);
     input.checked = !input.disabled && input.value === selected;
-    const portrait = document.createElement('img'); portrait.src = portraitPath(member.character.id);
+    const portrait = document.createElement('img'); setPortrait(portrait, member.character.id);
     portrait.alt = ''; portrait.width = 88; portrait.height = 96;
     const name = document.createElement('strong'); name.textContent = member.character.name;
     const words=personWords(member.character);
@@ -1058,7 +1067,7 @@ function renderAccusation() {
     const title = document.createElement('span'); title.textContent = text; label.append(checkbox);
     if (witnessID) {
       const portrait = document.createElement('img'); portrait.className = 'witness-portrait';
-      portrait.src = portraitPath(witnessID); portrait.alt = ''; portrait.width = 36; portrait.height = 42;
+      setPortrait(portrait, witnessID); portrait.alt = ''; portrait.width = 36; portrait.height = 42;
       label.append(portrait);
     }
     if (item) label.append(itemArt(item.item_id, item.kind));
@@ -1112,10 +1121,10 @@ async function openCasePanel(panel: 'journal' | 'notebook' | 'delegate') {
     setModal(panel); $('#close-journal').focus();
     // The newspaper is already public: display it immediately while confirming
     // the stop. busy keeps movement/actions blocked even if it is closed early.
-    await settleMovement();
+    if (!await settleMovement()) return;
     return;
   }
-  await settleMovement();
+  if (!await settleMovement()) return;
   if (caseClock.blocked()) return;
   if (panel === 'delegate') {renderAccusation(); status('#accusation-status', '');}
   setModal(panel); $(`#close-${panel}`).focus();
@@ -1288,7 +1297,7 @@ $('#continue').addEventListener('click', () => {void launch(true);});
 $('#new-case').addEventListener('click', async () => {
   if (busy) return;
   gameAudio.stop();
-  casePoller.stop(); await settleMovement(); setModal(null); $('#investigation').hidden = true; $('#introduction').hidden = false;
+  if (!await settleMovement()) return; casePoller.stop(); setModal(null); $('#investigation').hidden = true; $('#introduction').hidden = false;
   $('#continue').hidden = !savedGame(); document.body.classList.remove('case-active');
 });
 $('#open-map').addEventListener('click', () => {void openMap();});
@@ -1355,7 +1364,10 @@ document.addEventListener('keydown', event => {
     else if (!event.shiftKey && document.activeElement === last) {event.preventDefault(); first.focus();}
   }
 });
-window.addEventListener('blur', () => {if (!caseClock.blocked()) void controller?.stop(); else void controller?.suspend();});
+window.addEventListener('blur', () => {
+  const stopping = !caseClock.blocked() ? controller?.stop() : controller?.suspend();
+  void stopping?.catch(error => toast(explain(error)));
+});
 window.addEventListener('pagehide', () => {gameAudio.stop(); casePoller.stop(); controller?.dispose();});
 
 const audioControls = document.createElement('div');

@@ -24,11 +24,13 @@ O usuário e a senha do admin ficam em `ADMIN_USERNAME` e `ADMIN_PASSWORD` no `.
 
 ## Recursos e desempenho
 
-Ao construir a interface ou iniciar o Vite, o Sharp gera cópias WebP sem perda dos PNGs. As dimensões, a transparência e as coordenadas usadas pelas animações são mantidas. Os originais continuam no projeto, e as cópias menores ficam em `frontend/public/assets/optimized/`, fora do Git. O processo reaproveita conversões existentes e salva um resumo dos tamanhos em `report.json` nessa pasta.
+Ao construir a interface ou iniciar o Vite, o Sharp gera cópias WebP sem perda dos PNGs. Os atlas preservam dimensões e coordenadas das animações. Os retratos também recebem versões de 320, 640 e 960 pixels, escolhidas pelo navegador conforme o tamanho exibido e a densidade da tela. Os originais continuam no projeto, e as cópias menores ficam em `frontend/public/assets/optimized/`, fora do Git. O processo reaproveita conversões existentes e salva um resumo dos tamanhos em `report.json` nessa pasta.
 
 O nome de cada imagem otimizada depende do seu conteúdo. Assim, o navegador pode guardá-la por um ano e buscar outro arquivo quando a arte mudar. O mesmo vale para os scripts e estilos versionados. HTML, manifestos e imagens sem versão são revalidados; CSS, JavaScript e JSON também usam gzip. Essas configurações fazem parte da imagem web e chegam à AWS pelo deploy normal.
 
-A cena carrega inicialmente as três iluminações do local atual. Os outros locais são carregados na primeira visita e reutilizados depois. Durante essa primeira carga, o indicador bloqueia a caminhada até os recursos estarem disponíveis. Recarregue a página após atualizar a aplicação para receber o novo código.
+A cena começa com Floriano, os personagens visíveis e o cenário da manhã. A ambientação e as demais iluminações entram conforme forem necessárias, em uma fila que evita preparar todas as texturas de uma vez. Chegar um novo NPC não interrompe a caminhada para carregar sua imagem. Na primeira visita a outro local, o indicador aguarda o cenário; os arquivos ficam disponíveis para as visitas seguintes. Recarregue a página após atualizar a aplicação para receber o novo código.
+
+A API pública informa seu tempo de processamento no cabeçalho `Server-Timing`. Nas ferramentas de rede do navegador, ele ajuda a separar o tempo gasto na aplicação do tempo de conexão e transferência. A medição não grava identificadores de visitantes.
 
 ## KPIs do administrador
 

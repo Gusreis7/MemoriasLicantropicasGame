@@ -20,10 +20,11 @@ from src.modules.world.model import WorldState
 class TurnService:
     def __init__(self, redis, prefix, games, characters, world_repository, player_gate,
                  clock: Callable[[], datetime] | None = None,
-                 day_seconds: float = 300, night_seconds: float = 8, victory_editor=None):
+                 day_seconds: float = 300, night_seconds: float = 8, victory_editor=None, detention_editor=None):
         if day_seconds <= 0 or night_seconds <= 0:
             raise ValueError("As durações das fases devem ser positivas.")
         self._victory_editor = victory_editor
+        self._detention_editor = detention_editor
         self._repository = RedisTurnRepository(redis, prefix)
         self._games = games
         self._characters = characters
@@ -37,6 +38,12 @@ class TurnService:
         if previous.status != 'won' and state.status == 'won' and self._victory_editor:
             return await self._victory_editor(state, game)
         return state
+
+    def _prepare_detention_editorial(self, previous, state, game):
+        if (self._detention_editor and state.status == 'active' and state.phase == 'night'
+                and state.detained_npc_id is not None
+                and (previous.phase != 'night' or previous.detained_npc_id != state.detained_npc_id)):
+            self._detention_editor(state, game)
 
     def now(self) -> datetime:
         now = self._clock()
@@ -116,6 +123,7 @@ class TurnService:
                 previous=state, state=updated, previous_game=game, game=next_game,
                 previous_world=world, world=updated_world, events=events, occurred_at=boundary,
             )
+            self._prepare_detention_editorial(state, updated, next_game)
             state, game, world = updated, next_game, updated_world
         raise StorageUnavailableError("O ciclo ultrapassou o limite de recuperação.")
 
@@ -325,6 +333,7 @@ class TurnService:
             previous=state, state=updated, previous_game=game, game=updated_game,
             previous_world=world, world=updated_world, events=events, occurred_at=occurred_at,
         )
+        self._prepare_detention_editorial(state, updated, updated_game)
         return updated
 
     @staticmethod

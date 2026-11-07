@@ -18,7 +18,7 @@ from src.modules.world.catalog import LOCATIONS, make_initial_world
 from src.modules.world.gate import RedisPlayerGate
 from src.modules.world.repository import RedisWorldRepository
 from src.modules.world.router import get_world_service, router
-from src.modules.world.schema import MoveRequest, TravelRequest
+from src.modules.world.schema import MoveRequest, TravelRequest, MovementInput
 from src.modules.world.service import WorldService
 
 pytestmark = pytest.mark.anyio
@@ -373,3 +373,105 @@ async def test_public_router_and_command_validation(world_context):
 async def test_move_schema_rejects_invalid_commands(data):
     with pytest.raises(ValidationError):
         MoveRequest.model_validate(data)
+
+
+def input_command(snapshot, inputs, direction='right'):
+    return command(snapshot, direction).model_copy(update={'inputs': tuple(
+        MovementInput(**item) for item in inputs), 'movement_epoch': getattr(snapshot.player, 'movement_epoch', None)})
+
+
+async def test_input_prefix_ack_has_no_idle_time_bank_and_no_social_snapshot(world_context):
+    context = world_context
+    service = context.service
+    service._social_repository = SimpleNamespace(get=AsyncMock(side_effect=AssertionError('movement must not load social history')))
+    snapshot = await context.repository.get(context.game.id)
+    # A full day standing still cannot buy a single pixel of movement.
+    context.clock[0] += timedelta(hours=24)
+    result = await service.move(context.game.id, input_command(snapshot, [
+        {'seq':1,'direction':'right','duration_ms':0}, {'seq':2,'direction':'right','duration_ms':50}]))
+    assert result.kind == 'movement_ack' and result.player.x == 160 and result.player.input_seq == 1
+    context.clock[0] += timedelta(milliseconds=50)
+    result = await service.move(context.game.id, input_command(result, [
+        {'seq':2,'direction':'right','duration_ms':50}, {'seq':3,'direction':'idle','duration_ms':0}], 'idle'))
+    assert result.player.x == 170.5 and result.player.input_seq == 3
+    context.clock[0] += timedelta(hours=24)
+    result = await service.move(context.game.id, input_command(result, [
+        {'seq':4,'direction':'left','duration_ms':0}, {'seq':5,'direction':'left','duration_ms':50}], 'left'))
+    assert result.player.x == 170.5 and result.player.input_seq == 4
+    service._social_repository.get.assert_not_awaited()
+
+
+async def test_input_acknowledges_only_creditable_prefix_and_preserves_stop(world_context):
+    context = world_context
+    snapshot = await context.service.get(context.game.id)
+    result = await context.service.move(context.game.id, input_command(snapshot, [{'seq':1,'direction':'right','duration_ms':0}]))
+    inputs = [{'seq':seq,'direction':'right','duration_ms':50} for seq in range(2,14)]
+    for seq, expected_x in [(5,202),(9,244),(13,286)]:
+        context.clock[0] += timedelta(milliseconds=200)
+        result = await context.service.move(context.game.id, input_command(result, inputs))
+        assert result.player.input_seq == seq and result.player.x == expected_x
+        inputs = [item for item in inputs if item['seq'] > seq]
+    result = await context.service.move(context.game.id, input_command(result, [{'seq':14,'direction':'idle','duration_ms':0}], 'idle'))
+    assert result.player.x == 286 and result.player.input_seq == 14
+    stored = await context.repository.get(context.game.id)
+    assert stored.player.direction == 'idle' and stored.player.movement_credit_ms == 0
+
+
+async def test_input_gap_replay_and_missing_direction_marker_are_rejected(world_context):
+    context = world_context
+    snapshot = await context.service.get(context.game.id)
+    for item in [ {'seq':2,'direction':'right','duration_ms':0}, {'seq':1,'direction':'right','duration_ms':50} ]:
+        with pytest.raises(ConflictError):
+            await context.service.move(context.game.id, input_command(snapshot,[item]))
+    result = await context.service.move(context.game.id, input_command(snapshot,[{'seq':1,'direction':'right','duration_ms':0}]))
+    with pytest.raises(ConflictError):
+        await context.service.move(context.game.id, input_command(result,[{'seq':1,'direction':'right','duration_ms':0}]))
+    with pytest.raises(ConflictError):
+        await context.service.move(context.game.id, input_command(snapshot,[{'seq':1,'direction':'right','duration_ms':0}]))
+
+
+async def test_input_protocol_discards_disconnect_credit_and_clamps_boundary(world_context):
+    context = world_context
+    state = context.initial.model_copy(update={'player':context.initial.player.model_copy(update={'x':927})})
+    # Replace the fixture once via its insert-only repository's backing client.
+    await context.repository._client.set(context.repository._key(context.game.id),state.model_dump_json())
+    snapshot = await context.service.get(context.game.id)
+    result = await context.service.move(context.game.id,input_command(snapshot,[{'seq':1,'direction':'right','duration_ms':0}]))
+    context.clock[0] += timedelta(hours=1)
+    result = await context.service.move(context.game.id,input_command(result,[{'seq':2,'direction':'right','duration_ms':50}]))
+    assert result.player.input_seq == 1 and result.player.x == 927
+    context.clock[0] += timedelta(milliseconds=50)
+    result = await context.service.move(context.game.id,input_command(result,[{'seq':2,'direction':'right','duration_ms':50},{'seq':3,'direction':'idle','duration_ms':0}],'idle'))
+    assert result.player.x == 928 and result.player.input_seq == 3
+
+
+async def test_npc_revision_change_does_not_invalidate_player_input(world_context):
+    context = world_context
+    snapshot = await context.service.get(context.game.id)
+    changed = context.initial.model_copy(update={'revision':1,'npcs':tuple(
+        npc.model_copy(update={'x':450}) if npc.npc_id=='rubiao' else npc for npc in context.initial.npcs)})
+    assert await context.repository.save(changed, expected_revision=0)
+    response = await context.service.move(context.game.id, input_command(snapshot,[{'seq':1,'direction':'right','duration_ms':0}]))
+    assert response.revision == 2 and response.player.input_seq == 1
+    assert (await context.repository.get(context.game.id)).npcs[0].x == changed.npcs[0].x
+
+
+async def test_travel_epoch_invalidates_input_even_for_same_location(world_context):
+    context = world_context
+    changed = context.initial.model_copy(update={'revision':1,'player':context.initial.player.model_copy(update={'x':32})})
+    assert await context.repository.save(changed, expected_revision=0)
+    snapshot = await context.service.get(context.game.id)
+    traveled = await context.service.travel(context.game.id, TravelRequest(target_location_id=snapshot.location.id, revision=snapshot.revision, exit_side='left'))
+    assert traveled.player.movement_seq == snapshot.player.movement_seq
+    assert traveled.player.movement_epoch != snapshot.player.movement_epoch
+    with pytest.raises(ConflictError):
+        await context.service.move(context.game.id, input_command(snapshot,[{'seq':1,'direction':'right','duration_ms':0}]))
+
+
+async def test_phase_epoch_invalidates_pending_input_without_changing_position(world_context):
+    context = world_context
+    case = SimpleNamespace(day=1,phase='day',detained_npc_id=None,expelled_npc_ids=())
+    snapshot = await context.service._snapshot(context.game,context.initial,case)
+    context.service._day_policy = SimpleNamespace(require_day_locked=AsyncMock(return_value=SimpleNamespace(day=2,phase='day')))
+    with pytest.raises(ConflictError):
+        await context.service.move(context.game.id,input_command(snapshot,[{'seq':1,'direction':'right','duration_ms':0}]))

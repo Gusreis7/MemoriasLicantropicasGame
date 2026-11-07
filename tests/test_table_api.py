@@ -126,6 +126,10 @@ async def test_api_stalled_delivery_cannot_block_canonical_alibi(table_api, stor
         await asyncio.Event().wait()
 
     llm.complete = stalled
+    calls_before = len(llm.calls)
+    message = await asyncio.wait_for(ask(client, gid, cid, 'Onde passou a noite 0?'), timeout=.15)
+    assert len(llm.calls) == calls_before
+    assert message['useful']
     message = await ask(client, gid, cid, 'Onde passou a noite 0?')
     assert message['useful'] and 'Na noite 0' in message['content']
     reports = (await client.get(f'/api/v1/games/{gid}/investigation')).json()['case_reports']

@@ -7,10 +7,10 @@ O servidor decide fatos, permissões e consequências. Cada NPC tem uma identida
 1. A API valida partida, interlocutor, posição e disponibilidade. As reservas Redis de conversa e de ação do jogador impedem operações incompatíveis ao mesmo tempo.
 2. O `HarnessService`, composto em `src/composition.py`, usa `TableDialogueWorkflow` nas conversas de produção.
 3. `GameTableService.prepare` interpreta a consulta e consulta a mesa e o conhecimento autorizado. O ator e o destinatário vêm do servidor.
-4. O modelo recebe um pedido estruturado `TableDelivery`: escolhe apenas um tom do catálogo. O renderer combina esse tom com a resposta canônica. Não recebe a biografia secreta inteira nem pode fornecer fatos livres nessa etapa.
+4. O tom da fala vem de uma escolha local por personagem e é combinado com a resposta canônica. Essa escolha cosmética não faz uma chamada de IA nem mantém o jogador esperando por ela.
 5. O mestre da sessão persiste as declarações verificadas e o par de mensagens por um outbox idempotente. A admissibilidade e a força do relato seguem regras de tipo, fonte e cobertura.
 
-O prazo da escolha de tom é de até cinco segundos, limitado também a um terço do prazo do turno. Em indisponibilidade, atraso ou resposta inválida do modelo, o diálogo usa o tom direto e preserva os fatos. Isso não torna todas as tarefas narrativas independentes do provedor: circulação social, assembleia e editoriais têm fluxos próprios.
+Circulação social, assembleia e editoriais continuam tendo seus próprios usos de IA. Separar esses fluxos evita que uma escolha de apresentação atrase uma resposta que a mesa já pode fornecer pelas regras.
 
 ## Identidade e acesso
 
@@ -37,6 +37,8 @@ O `SocialWorker` agenda encontros em janelas de 60, 120, 180 e 240 segundos, com
 ## Mestre, delegado e persistência
 
 O mestre coordena a aplicação das declarações e a narrativa das consequências já autorizadas. Ele não pode conceder um álibi porque uma frase parece convincente. O delegado considera as declarações estruturadas selecionadas para o caso, destinadas ao jogador, e suas fontes. Um álibi confirmado vale para a noite coberta; não elimina evidências relativas a outras noites. A interface apresenta os relatos úteis com o tratamento visual roxo e dourado e seu estado de confirmação.
+
+Depois que uma prisão é gravada, o mestre pode preparar o editorial em segundo plano durante o suspense da animação. Ele usa a informação privada que a mesa já possui, sem esperar um sinal do navegador. O texto preparado fica separado da resposta pública e só pode ser aproveitado quando o motor confirmar o resultado e os fatos ainda corresponderem à mesma prisão. Se a geração atrasar, falhar ou for interrompida por um reinício, o jogo publica a edição canônica de fallback e segue sem esperar pelo modelo.
 
 | Estado | Responsabilidade |
 | --- | --- |

@@ -3,6 +3,7 @@ import {assetURL} from '../shared/assets';
 import type {CasePublic, CharacterAsset, CharacterManifest, Direction, Location, LocationID, WorldSnapshot} from '../shared/api';
 import {POPULATION} from './population';
 import {locationLighting, sunsetOpacity} from './daylight';
+import {ambientResourceIDs, criticalCharacterIDs, lightingPeriod} from './scene-resources';
 
 interface SceneHooks {
   frame: (delta: number, direction: Direction) => {x: number; facing: 'left' | 'right'};
@@ -18,6 +19,7 @@ interface SceneHooks {
 
 type AmbientFrame = 'tree' | 'dog' | 'cat' | 'bird';
 interface AmbientPlacement {frame: AmbientFrame; x: number; y: number; width: number; height: number; drift?: number}
+interface SceneResource {key: string; path: string; atlasPath?: string; character?: CharacterAsset; priority: number}
 const AMBIENT: Record<LocationID, AmbientPlacement[]> = {
   praca_verde: [
     {frame: 'tree', x: 90, y: 279, width: 132, height: 170}, {frame: 'tree', x: 820, y: 285, width: 124, height: 158},
@@ -68,6 +70,11 @@ export class CityScene extends Phaser.Scene {
   private touchDirection: Direction = 'idle';
   loading = false;
   private queuedImages = new Set<string>();
+  private resourceQueue: SceneResource[] = [];
+  private activeResource: SceneResource | null = null;
+  private resourceCooldown = false;
+  private walking = false;
+  private decorationSignature = '';
   private reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   constructor(private manifest: CharacterManifest, private locations: Location[], world: WorldSnapshot, private hooks: SceneHooks) {
@@ -77,28 +84,23 @@ export class CityScene extends Phaser.Scene {
   }
 
   preload() {
-    for (const asset of this.manifest.characters) {
+    const critical = criticalCharacterIDs(this.currentWorld);
+    for (const asset of this.manifest.characters.filter(asset => critical.has(asset.id))) {
       if (asset.type === 'atlas' && asset.atlasPath) this.load.atlas(asset.id, assetURL(asset.path), asset.atlasPath);
       else if (asset.type === 'image') this.load.image(asset.id, assetURL(asset.path));
       else this.load.spritesheet(asset.id, assetURL(asset.path), {frameWidth: asset.frameWidth, frameHeight: asset.frameHeight});
     }
-    for (const layer of Object.values(locationLighting(this.currentWorld.location.id))) this.load.image(layer.key, layer.path);
-    this.load.atlas('animals-walk',assetURL('/assets/ambient/animals-walk.png'),'/assets/ambient/animals-walk.json');
-    this.load.atlas('scene-life', assetURL('/assets/ambient/scene-life.png'), '/assets/ambient/scene-life.json');
-    this.load.atlas('citizens', assetURL('/assets/ambient/citizens.png'), '/assets/ambient/citizens.json');
-    this.load.atlas('capoeira', assetURL('/assets/ambient/capoeira.png'), '/assets/ambient/capoeira.json');
-    this.load.atlas('clarim', assetURL('/assets/ambient/clarim.png'), '/assets/ambient/clarim.json');
-    this.load.on('loaderror', () => {this.assetsFailed = true; this.hooks.failed();});
+    const morning = locationLighting(this.currentWorld.location.id).morning;
+    this.load.image(morning.key, morning.path);
+    this.load.on('loaderror', (file: Phaser.Loader.File) => {
+      if (!this.ready || (this.loading && file.key === locationLighting(this.currentWorld.location.id).morning.key)) {
+        this.assetsFailed = true; this.hooks.failed();
+      }
+    });
   }
 
   create() {
-    for (const asset of this.manifest.characters) {
-      if (this.textures.exists(asset.id)) this.textures.get(asset.id).setFilter(Phaser.Textures.FilterMode.NEAREST);
-      if (asset.walkFrames.length) {
-        this.anims.create({key: `${asset.id}-walk`, frames: asset.walkFrames.map(frame => ({key: asset.id, frame})), frameRate: asset.id === 'player' ? 12 : 7, repeat: -1});
-      }
-    }
-    for(const kind of ['dog','cat','bird']) this.anims.create({key:`${kind}-move`,frames:[0,1,2,3].map(i=>({key:'animals-walk',frame:`${kind}-${i}`})),frameRate:kind==='bird'?8:6,repeat:-1});
+    this.registerAnimations();
     this.cursors = this.input.keyboard?.createCursorKeys();
     this.keys = this.input.keyboard?.addKeys('A,D,E,M') as Record<string, Phaser.Input.Keyboard.Key>;
     this.input.keyboard?.on('keydown-E', () => {
@@ -117,9 +119,61 @@ export class CityScene extends Phaser.Scene {
       this.anims.create({key: 'capoeira-roda', frames: ['0', '1', '2', '3'].map(frame => ({key: 'capoeira', frame})), frameRate: 3, repeat: -1});
     }
     this.ready = true;
+    this.resourceCooldown = true;
+    this.time.delayedCall(150, () => {this.resourceCooldown = false; this.pumpResources();});
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {this.resourceQueue = []; this.ready = false;});
     this.apply(this.currentWorld);
     if (this.assetsFailed) this.hooks.failed();
     else if (!this.loading) this.hooks.loaded();
+  }
+
+  private registerAnimations() {
+    for (const asset of this.manifest.characters) {
+      if (!this.textures.exists(asset.id)) continue;
+      this.textures.get(asset.id).setFilter(Phaser.Textures.FilterMode.NEAREST);
+      if (asset.walkFrames.length && !this.anims.exists(`${asset.id}-walk`)) {
+        this.anims.create({key: `${asset.id}-walk`, frames: asset.walkFrames.map(frame => ({key: asset.id, frame})), frameRate: asset.id === 'player' ? 12 : 7, repeat: -1});
+      }
+    }
+    if (this.textures.exists('animals-walk')) for (const kind of ['dog','cat','bird']) {
+      if (!this.anims.exists(`${kind}-move`)) this.anims.create({key:`${kind}-move`,frames:[0,1,2,3].map(i=>({key:'animals-walk',frame:`${kind}-${i}`})),frameRate:kind==='bird'?8:6,repeat:-1});
+    }
+    if (this.textures.exists('capoeira') && !this.anims.exists('capoeira-roda')) {
+      this.textures.get('capoeira').setFilter(Phaser.Textures.FilterMode.NEAREST);
+      this.anims.create({key:'capoeira-roda',frames:['0','1','2','3'].map(frame=>({key:'capoeira',frame})),frameRate:3,repeat:-1});
+    }
+  }
+
+  private queueResource(resource: SceneResource) {
+    if (this.textures.exists(resource.key) || this.queuedImages.has(resource.key)) return;
+    this.queuedImages.add(resource.key); this.resourceQueue.push(resource);
+    this.resourceQueue.sort((a, b) => a.priority - b.priority);
+    this.pumpResources();
+  }
+
+  private pumpResources() {
+    if (!this.ready || this.resourceCooldown || this.activeResource || this.load.isLoading()) return;
+    if (this.walking && this.resourceQueue[0]?.priority === 3) return;
+    const resource = this.resourceQueue.shift();
+    if (!resource) return;
+    this.activeResource = resource;
+    this.load.once('complete', () => {
+      this.activeResource = null; this.queuedImages.delete(resource.key);
+      this.resourceCooldown = true;
+      if (!this.ready) return;
+      if (this.textures.exists(resource.key)) {
+        this.registerAnimations(); this.npcSignature = '\0';
+        this.apply(this.currentWorld);
+      } else if (this.loading && resource.key === locationLighting(this.currentWorld.location.id).morning.key) {this.hooks.failed();}
+      // Spread decoding/upload over separate turns; never flood the critical
+      // movement requests with every character, place and period at once.
+      this.time.delayedCall(32, () => {this.resourceCooldown = false; this.pumpResources();});
+    });
+    if (resource.character?.type === 'spritesheet') {
+      this.load.spritesheet(resource.key, assetURL(resource.path), {frameWidth: resource.character.frameWidth, frameHeight: resource.character.frameHeight});
+    } else if (resource.atlasPath) this.load.atlas(resource.key, assetURL(resource.path), resource.atlasPath);
+    else this.load.image(resource.key, assetURL(resource.path));
+    this.load.start();
   }
 
   private sprite(id: string, x: number, y: number) {
@@ -143,10 +197,9 @@ export class CityScene extends Phaser.Scene {
 
   private dressLocation(id: LocationID, groundY: number) {
     this.ambient.forEach(object => object.destroy()); this.ambient = []; this.wanderers = [];
-    if (!this.textures.exists('scene-life')) return;
-    this.textures.get('scene-life').setFilter(Phaser.Textures.FilterMode.NEAREST);
-    this.textures.get('citizens').setFilter(Phaser.Textures.FilterMode.NEAREST);
-    for(const placement of POPULATION[id]) {
+    if (this.textures.exists('scene-life')) this.textures.get('scene-life').setFilter(Phaser.Textures.FilterMode.NEAREST);
+    if (this.textures.exists('citizens')) this.textures.get('citizens').setFilter(Phaser.Textures.FilterMode.NEAREST);
+    for(const placement of this.textures.exists('citizens') ? POPULATION[id] : []) {
       const sprite=this.add.sprite(placement.x,groundY,'citizens',`${placement.occupation}-0`)
         .setName(`citizen-${placement.id}`).setOrigin(.5,260/280).setDisplaySize(64,86).setDepth(0);
       sprite.setData('occupation',placement.occupation);
@@ -158,6 +211,7 @@ export class CityScene extends Phaser.Scene {
     }
     for (const placement of AMBIENT[id]) {
       const animal=['dog','cat','bird'].includes(placement.frame);
+      if (!this.textures.exists(animal ? 'animals-walk' : 'scene-life')) continue;
       const image = (animal ? this.add.sprite(placement.x,placement.y,'animals-walk',`${placement.frame}-0`) : this.add.image(placement.x,placement.y,'scene-life',placement.frame))
         .setOrigin(.5,1).setDepth(placement.frame==='tree'?-3:-1);
       image.setName(`ambient-${placement.frame}-${placement.x}`);
@@ -206,25 +260,20 @@ export class CityScene extends Phaser.Scene {
   apply(world: WorldSnapshot) {
     this.currentWorld = world;
     if (!this.ready) return;
-    const layers = Object.values(locationLighting(world.location.id));
-    if (layers.some(layer => !this.textures.exists(layer.key))) {
-      if (!this.loading) {
-        this.loading = true; this.setInputEnabled(false); this.hooks.loading?.();
-        this.load.once('complete', () => {
-          this.queuedImages.clear();
-          const current = Object.values(locationLighting(this.currentWorld.location.id));
-          if (current.some(layer => !this.textures.exists(layer.key))) {this.hooks.failed(); return;}
-          this.loading = false;
-          this.apply(this.currentWorld); this.hooks.loaded();
-        });
-      }
-      for (const layer of layers) {
-        if (!this.textures.exists(layer.key) && !this.queuedImages.has(layer.key)) {
-          this.queuedImages.add(layer.key); this.load.image(layer.key, layer.path);
-        }
-      }
-      if (!this.load.isLoading()) this.load.start();
+    const lighting = locationLighting(world.location.id);
+    if (!this.textures.exists(lighting.morning.key)) {
+      if (!this.loading) {this.loading = true; this.setInputEnabled(false); this.hooks.loading?.();}
+      this.queueResource({...lighting.morning, priority: 0});
       return;
+    }
+    const wasLoading = this.loading;
+    this.loading = false;
+    for (const id of criticalCharacterIDs(world)) {
+      const character = this.assets.get(id);
+      if (character && !this.textures.exists(id)) this.queueResource({key:id, path:character.path, atlasPath:character.atlasPath, character, priority:1});
+    }
+    for (const id of ambientResourceIDs(world.location.id)) {
+      this.queueResource({key:id, path:`/assets/ambient/${id}.png`, atlasPath:`/assets/ambient/${id}.json`, priority:3});
     }
     // The backdrop and decorations are built once per location, never per movement snapshot.
     if (world.location.id !== this.currentLocation) {
@@ -235,12 +284,8 @@ export class CityScene extends Phaser.Scene {
       const lighting = locationLighting(world.location.id);
       this.background = this.add.image(0, 0, lighting.morning.key).setName('background-morning').setOrigin(0)
         .setDisplaySize(world.location.width, world.location.height).setDepth(-10).setScrollFactor(0);
-      this.sunsetBackground = this.add.image(0, 0, lighting.sunset.key).setName('background-sunset').setOrigin(0)
-        .setDisplaySize(world.location.width, world.location.height).setDepth(-9).setScrollFactor(0)
-        .setAlpha(sunsetOpacity(this.hooks.dayProgress?.() ?? 0));
-      this.midnightBackground = this.add.image(0, 0, lighting.midnight.key).setName('background-midnight').setOrigin(0)
-        .setDisplaySize(world.location.width, world.location.height).setDepth(-8).setScrollFactor(0).setAlpha(this.caseState?.phase === 'night' ? 1 : 0);
-      this.dressLocation(world.location.id, world.location.ground_y);
+      this.sunsetBackground = undefined; this.midnightBackground = undefined;
+      this.decorationSignature = '';
       this.npcSignature = '\0';
       this.drawCaseMarkers();
       if (!this.player) {
@@ -253,11 +298,17 @@ export class CityScene extends Phaser.Scene {
       this.cameras.main.setBounds(0, 0, world.location.width, world.location.height);
       this.cameras.main.setScroll(0, 0);
     }
-    const signature = world.visible_npcs.map(npc => `${npc.npc_id}:${npc.name}:${npc.activity}:${npc.social_partner_id}:${npc.speech ?? ""}`).join('|');
+    this.syncLighting();
+    const decorationSignature = world.location.id + ':' + ambientResourceIDs(world.location.id).filter(id => this.textures.exists(id)).join(',');
+    if (decorationSignature !== this.decorationSignature) {
+      this.decorationSignature = decorationSignature; this.dressLocation(world.location.id, world.location.ground_y);
+    }
+    const visible = world.visible_npcs.filter(npc => this.textures.exists(npc.sprite_id));
+    const signature = visible.map(npc => `${npc.npc_id}:${npc.name}:${npc.activity}:${npc.social_partner_id}:${npc.speech ?? ""}`).join('|');
     if (signature !== this.npcSignature) {
       this.npcSignature = signature;
       this.npcs.forEach(npc => {this.tweens.killTweensOf(npc); npc.destroy();}); this.npcs = [];
-      for (const npc of world.visible_npcs) {
+      for (const npc of visible) {
         const previousX = this.npcPositions.get(npc.npc_id) ?? npc.x;
         this.npcPositions.set(npc.npc_id, npc.x);
         const shadow = this.add.ellipse(previousX, world.location.ground_y + 1, 34, 7, 0x173e31, .3).setName(`npc-shadow-${npc.npc_id}`);
@@ -279,7 +330,8 @@ export class CityScene extends Phaser.Scene {
       }
       this.addExitSigns(world);
     }
-    for (const npc of world.visible_npcs) {
+    if (wasLoading) this.hooks.loaded();
+    for (const npc of visible) {
       const sprite = this.children.getByName(`npc-sprite-${npc.npc_id}`) as Phaser.GameObjects.Sprite | null;
       const targets = ['sprite','shadow','label'].map(kind => this.children.getByName(`npc-${kind}-${npc.npc_id}`)).filter(Boolean);
       if (this.npcPositions.get(npc.npc_id) !== npc.x) {
@@ -289,6 +341,26 @@ export class CityScene extends Phaser.Scene {
         this.npcPositions.set(npc.npc_id,npc.x);
       }
       if (sprite && npc.activity === 'travelling' && !this.reducedMotion && this.anims.exists(`${npc.sprite_id}-walk`)) sprite.anims.play(`${npc.sprite_id}-walk`,true);
+    }
+  }
+
+  private syncLighting() {
+    if (!this.currentLocation) return;
+    const world = this.currentWorld;
+    const layers = locationLighting(this.currentLocation as LocationID);
+    const progress = this.hooks.dayProgress?.() ?? 0;
+    const period = lightingPeriod(this.caseState?.phase, progress);
+    // A small lead time prepares sunset before it becomes visible. Midnight is
+    // fetched only when the public phase says it is needed.
+    if (period === 'midnight') this.queueResource({...layers.midnight, priority:2});
+    else if (progress >= .55) this.queueResource({...layers.sunset, priority:2});
+    if (!this.sunsetBackground && this.textures.exists(layers.sunset.key)) {
+      this.sunsetBackground = this.add.image(0,0,layers.sunset.key).setName('background-sunset').setOrigin(0)
+        .setDisplaySize(world.location.width,world.location.height).setDepth(-9).setScrollFactor(0);
+    }
+    if (!this.midnightBackground && this.textures.exists(layers.midnight.key)) {
+      this.midnightBackground = this.add.image(0,0,layers.midnight.key).setName('background-midnight').setOrigin(0)
+        .setDisplaySize(world.location.width,world.location.height).setDepth(-8).setScrollFactor(0);
     }
   }
 
@@ -304,7 +376,9 @@ export class CityScene extends Phaser.Scene {
   }
 
   update(time: number, delta: number) {
+    this.pumpResources();
     if (this.loading) return;
+    this.syncLighting();
     this.midnightBackground?.setAlpha(this.caseState?.phase === 'night' ? 1 : 0);
     this.sunsetBackground?.setAlpha(sunsetOpacity(this.hooks.dayProgress?.() ?? 0));
     const blocked = this.hooks.blocked();
@@ -315,6 +389,7 @@ export class CityScene extends Phaser.Scene {
       direction = left && !right ? 'left' : right && !left ? 'right' : 'idle';
     }
     const position = this.hooks.frame(delta, direction);
+    this.walking = direction !== 'idle';
     if (this.player) {
       const moving = direction !== 'idle' && Math.abs(position.x - this.player.x) > .01;
       this.player.x = Math.round(position.x);

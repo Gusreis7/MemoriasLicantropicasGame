@@ -16,7 +16,7 @@ from src.modules.world.gate import RedisPlayerGate
 from src.modules.world.model import WorldState
 from src.modules.world.repository import RedisWorldRepository
 from src.modules.world.schema import (
-    MoveRequest, PlayerPublic, TravelRequest, VisibleNPC, WorldSnapshot,
+    MoveRequest, PlayerPublic, TravelRequest, VisibleNPC, WorldSnapshot, MovementAck,
 )
 
 WALK_SPEED = 210
@@ -52,6 +52,10 @@ class WorldService:
         if world is None:
             raise ConflictError("Esta partida não possui mundo visual; crie uma nova partida.")
         return game, world
+
+    @staticmethod
+    def _movement_epoch(world, case):
+        return f"{world.player.pose_epoch}:{case.day if case else 0}:{case.phase if case else 'day'}"
 
     async def _snapshot(self, game: GameState, world: WorldState,
                         case: InvestigationState | None = None) -> WorldSnapshot:
@@ -105,7 +109,8 @@ class WorldService:
             game_id=world.game_id, world_version=world.world_version, revision=world.revision,
             location=LOCATIONS_BY_ID[world.player.location_id],
             player=PlayerPublic(location_id=world.player.location_id, x=world.player.x,
-                                facing=world.player.facing, movement_seq=world.player.movement_seq),
+                                facing=world.player.facing, movement_seq=world.player.movement_seq,
+                                input_seq=world.player.input_seq, movement_epoch=self._movement_epoch(world, case)),
             visible_npcs=tuple(visible), npc_presences=tuple(presences),
             travel_targets=tuple(location.id for location in LOCATIONS if location.id != world.player.location_id),
         )
@@ -115,16 +120,59 @@ class WorldService:
         game, world = await self._load(game_id)
         return await self._snapshot(game, world, case)
 
-    async def move(self, game_id: UUID, body: MoveRequest) -> WorldSnapshot:
+    async def move(self, game_id: UUID, body: MoveRequest) -> WorldSnapshot | MovementAck:
         async with self._gate.hold(game_id):
             case = await self._day_policy.require_day_locked(game_id) if self._day_policy else None
             game, world = await self._load(game_id)
-            if body.revision != world.revision or body.location_id != world.player.location_id:
+            modern = body.inputs is not None and body.movement_epoch is not None
+            same_pose = modern and body.movement_epoch == self._movement_epoch(world, case) and body.seq == world.player.movement_seq + 1
+            if (body.location_id != world.player.location_id or body.revision > world.revision
+                    or (modern and not same_pose) or (not modern and body.revision != world.revision)):
                 raise ConflictError("Local ou revisão desatualizado; consulte o mundo atual.")
             if body.seq <= world.player.movement_seq:
                 raise ConflictError("Sequência de movimento já processada ou desatualizada.")
             now = self._clock()
             elapsed = min(MAX_MOVEMENT_SECONDS, max(0, (now - world.player.last_updated_at).total_seconds()))
+            if body.inputs is not None:
+                # Only active, previously accepted input earns time. Idle hours
+                # cannot be banked and spent as a burst. Acknowledging a prefix
+                # lets delayed clients replay the remainder without guessing RTT.
+                gap = (now - world.player.last_updated_at).total_seconds()
+                credit = (min(1000., world.player.movement_credit_ms + elapsed * 1000)
+                          if world.player.direction != "idle" and 0 <= gap <= 1.5 else 0.)
+                x, direction, input_seq = world.player.x, world.player.direction, world.player.input_seq
+                facing = world.player.facing
+                width = LOCATIONS_BY_ID[world.player.location_id].width
+                expected = input_seq + 1
+                for item in body.inputs:
+                    if item.seq != expected:
+                        raise ConflictError("Sequência de entrada desatualizada ou incompleta.")
+                    expected += 1
+                for item in body.inputs:
+                    if item.duration_ms == 0:
+                        direction = item.direction
+                        if direction == "idle":
+                            credit = 0.
+                    else:
+                        if item.direction != direction or direction == "idle":
+                            raise ConflictError("Entrada exige uma mudança de direção confirmada.")
+                        if item.duration_ms > credit + 1e-6:
+                            break
+                        credit = max(0., credit - item.duration_ms)
+                        x = min(width - 32, max(32, x + (-1 if direction == "left" else 1) * WALK_SPEED * item.duration_ms / 1000))
+                    if direction != "idle":
+                        facing = direction
+                    input_seq = item.seq
+                player = world.player.model_copy(update={"x": x, "direction": direction,
+                    "facing": facing, "movement_seq": body.seq, "input_seq": input_seq,
+                    "movement_credit_ms": credit, "last_updated_at": now})
+                updated = world.model_copy(update={"revision": world.revision + 1, "player": player})
+                if not await self._repository.save(updated, expected_revision=world.revision):
+                    raise ConflictError("O mundo mudou; consulte a revisão atual.")
+                return MovementAck(game_id=game_id, revision=updated.revision,
+                    player=PlayerPublic(location_id=player.location_id, x=player.x, facing=player.facing,
+                        movement_seq=player.movement_seq, input_seq=player.input_seq,
+                        movement_epoch=self._movement_epoch(updated, case)))
             direction = -1 if world.player.direction == "left" else 1 if world.player.direction == "right" else 0
             location = LOCATIONS_BY_ID[world.player.location_id]
             x = min(location.width - 32, max(32, world.player.x + direction * WALK_SPEED * elapsed))
@@ -132,6 +180,7 @@ class WorldService:
                 "x": x, "direction": body.direction, "movement_seq": body.seq,
                 "facing": body.direction if body.direction != "idle" else world.player.facing,
                 "last_updated_at": now,
+                "movement_credit_ms": 0.,
             })
             updated = world.model_copy(update={"revision": world.revision + 1, "player": player})
             if not await self._repository.save(updated, expected_revision=world.revision):
@@ -168,6 +217,7 @@ class WorldService:
             now = self._clock()
             player = world.player.model_copy(update={
                 "location_id": body.target_location_id, "x": spawn_x, "direction": "idle",
+                "pose_epoch": world.player.pose_epoch + 1, "movement_credit_ms": 0.,
                 "facing": "right" if arrival_side == "left" else "left", "last_updated_at": now,
             })
             updated = world.model_copy(update={"revision": world.revision + 1, "player": player})

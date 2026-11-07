@@ -115,15 +115,16 @@ test('Clarim prepara o retrato cedo e abre e fecha durante uma confirmação de 
   const worldReady = new Promise<void>(resolve => {releaseWorld = resolve;});
   await page.route('**/api/v1/games/*/world', async route => {await worldReady; await route.fallback();});
   let portraitRequests = 0;
-  let portraitURL = '';
+  let portraitURLs: string[] = [];
   page.on('request', request => {
-    if (new URL(request.url()).pathname === portraitURL) portraitRequests++;
+    if (portraitURLs.includes(new URL(request.url()).pathname)) portraitRequests++;
   });
   await page.goto('/');
-  portraitURL = await page.evaluate(async () => {
+  portraitURLs = await page.evaluate(async () => {
     // @ts-expect-error Browser imports the actual Vite module.
-    const {assetURL} = await import('/shared/assets.ts');
-    return assetURL('/assets/portraits/bras_cubas.png');
+    const {portraitSources} = await import('/shared/assets.ts');
+    const sources = portraitSources('/assets/portraits/bras_cubas.png');
+    return [sources.src, ...sources.srcset.split(',').filter(Boolean).map((entry: string) => entry.trim().split(' ')[0])];
   });
   await page.locator('#start').click();
   // Portrait loading starts before the world/manifest batch has completed.

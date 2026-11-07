@@ -37,6 +37,7 @@ from src.modules.investigation.router import router as investigation_router
 from src.modules.social.router import router as social_router
 from src.settings import Settings
 from src.infrastructure.api_security import ApiSecurityMiddleware
+from src.infrastructure.response_timing import ResponseTimingMiddleware
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +74,7 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
     application.add_middleware(ApiSecurityMiddleware, trusted_proxies=settings.security_trusted_proxies)
+    application.add_middleware(ResponseTimingMiddleware)
     application.add_middleware(
         TrustedHostMiddleware,
         allowed_hosts=[host.strip() for host in settings.allowed_hosts.split(",") if host.strip()],

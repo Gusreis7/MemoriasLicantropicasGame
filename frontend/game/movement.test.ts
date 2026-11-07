@@ -1,184 +1,76 @@
 import {describe, expect, it, vi} from 'vitest';
-import {ApiError, type WorldSnapshot} from '../shared/api';
+import {ApiError, type WorldSnapshot, type Direction, type MovementInput} from '../shared/api';
 import {clampX, closestNPC, MovementController, WALK_SPEED} from './movement';
-
-function snapshot(x = 160): WorldSnapshot {
-  return {
-    game_id: 'game', world_version: '1', revision: 0,
-    location: {id: 'praca_verde', name: 'Praça Verde', width: 960, height: 360, ground_y: 300, background: '/scene.png', exits: []},
-    player: {location_id: 'praca_verde', x, facing: 'right', movement_seq: 0},
-    visible_npcs: [{npc_id: 'rubiao', name: 'Rubião', x: 440, sprite_id: 'rubiao', can_approach: false}],
-    travel_targets: ['cabana_capitu'],
-  };
+function snapshot(x=160):WorldSnapshot{return {game_id:'game',world_version:'1',revision:0,location:{id:'praca_verde',name:'Praça',width:960,height:360,ground_y:300,background:'/scene.png',exits:[]},player:{location_id:'praca_verde',x,facing:'right',movement_seq:0,input_seq:0},visible_npcs:[{npc_id:'rubiao',name:'Rubião',x:440,sprite_id:'rubiao',can_approach:false}],travel_targets:[]};}
+function network(delays:number[]){
+ let now=0,requests=0,last=0,credit=0,accepted=0;let canonical=snapshot(),direction:Direction='idle';
+ const events:Array<{at:number;run:()=>void}>=[],failed=vi.fn();
+ const send=vi.fn((world:WorldSnapshot,_desired:Direction,inputs:MovementInput[]=[])=>new Promise<WorldSnapshot>(resolve=>{
+  const rtt=delays[requests++%delays.length];events.push({at:now+rtt/2,run:()=>{
+   credit=direction==='idle'?0:Math.min(1000,credit+now-last);last=now;let x=canonical.player.x;
+   for(const input of inputs){
+    if(input.seq!==accepted+1)throw Error('input gap');if(input.duration_ms>credit+.000001)break;
+    if(input.duration_ms===0){direction=input.direction;if(direction==='idle')credit=0;}
+    else{credit-=input.duration_ms;x=clampX(x+(direction==='left'?-1:1)*WALK_SPEED*input.duration_ms/1000,960);}
+    accepted=input.seq;
+   }
+   canonical={...world,revision:world.revision+1,player:{...world.player,x,input_seq:accepted,movement_seq:world.player.movement_seq+1}};
+   const reply=canonical;events.push({at:now+rtt/2,run:()=>resolve(reply)});
+  }});
+ }));
+ const controller=new MovementController(snapshot(),send,async()=>canonical,vi.fn(),failed,()=>now);
+ async function frame(desired:Direction,delta=10){now+=delta;let i;while((i=events.findIndex(e=>e.at<=now))>=0){events.splice(i,1)[0].run();for(let j=0;j<8;j++)await Promise.resolve();}controller.update(delta,desired);}
+ return {controller,send,failed,frame,get canonical(){return canonical;}};
 }
-
-describe('movimento e abordagem', () => {
-  it('respeita limites e só seleciona um morador ao alcance', () => {
-    expect(clampX(-100, 1920)).toBe(32);
-    expect(clampX(3000, 1920)).toBe(1888);
-    expect(closestNPC(snapshot(), 160)).toBeUndefined();
-    expect(closestNPC(snapshot(), 400)?.npc_id).toBe('rubiao');
-  });
-
-  it('mantém apenas um comando em andamento e confirma parada antes de abordar', async () => {
-    let resolve: (world: WorldSnapshot) => void = () => {};
-    const send = vi.fn().mockImplementationOnce(() => new Promise<WorldSnapshot>(done => {resolve = done;}))
-      .mockImplementation(async (world, direction) => ({...world, revision: world.revision + 1,
-        player: {...world.player, movement_seq: world.player.movement_seq + 1, x: 202}}));
-    const controller = new MovementController(snapshot(), send, vi.fn(), vi.fn(), vi.fn());
-    controller.update(16, 'right');
-    controller.update(200, 'right');
-    expect(send).toHaveBeenCalledTimes(1);
-    const stopped = controller.stop();
-    resolve({...snapshot(202), revision: 1, player: {...snapshot(202).player, movement_seq: 1}});
-    await stopped;
-    expect(send).toHaveBeenCalledTimes(2);
-    expect(send.mock.calls[1][1]).toBe('idle');
-    expect(controller.world.player.x).toBe(202);
-    for (let frame = 0; frame < 60; frame++) controller.update(16, 'idle');
-    expect(controller.x).toBeCloseTo(202, 1);
-  });
-
-  it('recupera snapshot após conflito de revisão sem reenviar o comando automaticamente', async () => {
-    const refresh = vi.fn().mockResolvedValue({...snapshot(220), revision: 3});
-    const changed = vi.fn();
-    const send = vi.fn().mockRejectedValue(new ApiError(409, 'Conflito'));
-    const controller = new MovementController(snapshot(), send, refresh, changed, vi.fn());
-    controller.update(16, 'right');
-    await controller.stop();
-    expect(refresh).toHaveBeenCalledOnce();
-    expect(send).toHaveBeenCalledOnce();
-    expect(controller.world.revision).toBe(3);
-    expect(controller.x).toBe(220);
-  });
-
-  it('aplica a sequência recebida após viagem em vez de voltar para zero', () => {
-    const controller = new MovementController(snapshot(), vi.fn(), vi.fn(), vi.fn(), vi.fn());
-    const target = {...snapshot(), revision: 4, player: {...snapshot().player, movement_seq: 8}};
-    controller.accept(target);
-    expect(controller.world.player.movement_seq).toBe(8);
-    expect(controller.direction).toBe('idle');
-  });
-
-  it('atualiza a vida dos NPCs sem interromper a caminhada prevista', () => {
-    const changed = vi.fn();
-    const controller = new MovementController(snapshot(), vi.fn(), vi.fn(), changed, vi.fn());
-    controller.x = 207; controller.direction = 'right';
-    const social = {...snapshot(), revision: 2, visible_npcs: []};
-    expect(controller.observe(social)).toBe(true);
-    expect(controller.x).toBe(207);
-    expect(controller.direction).toBe('right');
-    expect(controller.world.visible_npcs).toEqual([]);
-    expect(controller.observe(snapshot())).toBe(false);
-    expect(controller.observe({...social, revision: 3, player: {...social.player, movement_seq: 7}})).toBe(false);
-  });
-
-  it('descarta observação recebida enquanto um comando aguarda confirmação', async () => {
-    let resolve: (world: WorldSnapshot) => void = () => {};
-    const send = vi.fn().mockImplementation(() => new Promise<WorldSnapshot>(done => {resolve = done;}));
-    const controller = new MovementController(snapshot(), send, vi.fn(), vi.fn(), vi.fn());
-    controller.update(16, 'right');
-    expect(controller.observe({...snapshot(), revision: 4, visible_npcs: []})).toBe(false);
-    resolve({...snapshot(), revision: 1});
-    await Promise.resolve(); await Promise.resolve();
-    controller.dispose();
-  });
-
-  it('reaplica entradas e caminha sem saltos com latência variável de 120 a 600 ms', async () => {
-    let now = 0, request = 0, serverX = 160, serverTime = 0;
-    let previousDirection = 'idle';
-    const delays = [120, 320, 180, 450, 200, 600];
-    const events: Array<{at: number; run: () => void}> = [];
-    const corrections: number[] = [];
-    const send = vi.fn((world: WorldSnapshot, direction: string) => new Promise<WorldSnapshot>(resolve => {
-      const rtt = delays[request++ % delays.length];
-      events.push({at: now + rtt / 2, run: () => {
-        serverX += (previousDirection === 'right' ? 1 : 0) * WALK_SPEED * Math.min(1, (now - serverTime) / 1000);
-        serverTime = now; previousDirection = direction;
-        const next = {...world, revision: world.revision + 1,
-          player: {...world.player, x: serverX, movement_seq: world.player.movement_seq + 1}};
-        events.push({at: now + rtt / 2, run: () => {resolve(next);}});
-      }});
-    }));
-    const controller = new MovementController(snapshot(), send, vi.fn(), vi.fn(), vi.fn(), () => now);
-    for (now = 0; now <= 2200; now += 10) {
-      const beforeReply = controller.x;
-      let index: number;
-      while ((index = events.findIndex(event => event.at <= now)) >= 0) {
-        events.splice(index, 1)[0].run();
-        for (let flush = 0; flush < 8; flush++) await Promise.resolve();
-      }
-      // Replies update the authoritative/predicted positions, never the sprite.
-      expect(controller.x).toBe(beforeReply);
-      controller.update(10, 'right');
-      corrections.push(controller.x - beforeReply);
-    }
-    expect(send.mock.calls.length).toBeGreaterThan(6);
-    expect(Math.min(...corrections)).toBeGreaterThanOrEqual(WALK_SPEED * .01 / 2 - .001);
-    expect(Math.max(...corrections)).toBeLessThanOrEqual(WALK_SPEED * .01 * 1.5 + .001);
-    expect(controller.x).toBeCloseTo(controller.world.player.x, -2);
-    controller.dispose();
-  });
-
-  it('limita previsão na desconexão e serializa inversão e parada sem comandos extras', async () => {
-    let now = 0;
-    let resolve: (world: WorldSnapshot) => void = () => {};
-    const send = vi.fn().mockImplementationOnce(() => new Promise<WorldSnapshot>(done => {resolve = done;}))
-      .mockImplementation(async (world: WorldSnapshot) => ({...world, revision: world.revision + 1,
-        player: {...world.player, movement_seq: world.player.movement_seq + 1, x: 181}}));
-    const controller = new MovementController(snapshot(), send, vi.fn(), vi.fn(), vi.fn(), () => now);
-    controller.update(10, 'right');
-    for (now = 10; now <= 2000; now += 10) controller.update(10, 'right');
-    expect(controller.x).toBeLessThanOrEqual(160 + WALK_SPEED * 1.01 + .001);
-    const beforeReverse = controller.x;
-    controller.update(10, 'left');
-    expect(controller.x).toBe(beforeReverse); // No further prediction while disconnected.
-    const stopped = controller.stop();
-    expect(controller.stop()).toBe(stopped);
-    controller.update(10, 'right');
-    expect(controller.direction).toBe('idle');
-    resolve({...snapshot(160), revision: 1, player: {...snapshot().player, movement_seq: 1}});
-    await stopped;
-    expect(send.mock.calls.map(call => call[1])).toEqual(['right', 'idle']);
-    const before = controller.x;
-    now += 16; controller.update(16, 'idle');
-    expect(Math.abs(controller.x - before)).toBeLessThanOrEqual(WALK_SPEED / 2 * .016 + .001);
-    expect(controller.world.player.x).toBe(181);
-    controller.dispose();
-  });
-
-  it('reaplica a inversão feita enquanto a primeira intenção aguarda resposta', async () => {
-    let now = 0;
-    let resolve: (world: WorldSnapshot) => void = () => {};
-    const send = vi.fn((_world: WorldSnapshot, _direction: string) => new Promise<WorldSnapshot>(done => {resolve = done;}));
-    const controller = new MovementController(snapshot(), send, vi.fn(), vi.fn(), vi.fn(), () => now);
-    controller.update(0, 'right');
-    now = 100; controller.update(50, 'right');
-    now = 150; controller.update(50, 'left');
-    now = 200; controller.update(50, 'left');
-    const before = controller.x;
-    resolve({...snapshot(), revision: 1, player: {...snapshot().player, movement_seq: 1}});
-    for (let flush = 0; flush < 8; flush++) await Promise.resolve();
-    expect(controller.x).toBe(before);
-    now += 16; controller.update(16, 'left');
-    // The unconfirmed left input is replayed, pulling the correction left too.
-    expect(controller.x).toBeLessThan(before - WALK_SPEED * .016);
-    expect(send.mock.calls.map(call => call[1])).toEqual(['right', 'left']);
-    controller.dispose();
-  });
-
-  it('não recua na borda quando chega uma posição confirmada atrás do sprite', async () => {
-    let now = 0;
-    let resolve: (world: WorldSnapshot) => void = () => {};
-    const send = vi.fn((_world: WorldSnapshot, _direction: string) => new Promise<WorldSnapshot>(done => {resolve = done;}));
-    const controller = new MovementController(snapshot(927), send, vi.fn(), vi.fn(), vi.fn(), () => now);
-    controller.update(16, 'right');
-    expect(controller.x).toBe(928);
-    now = 200;
-    resolve({...snapshot(900), revision: 1, player: {...snapshot(900).player, movement_seq: 1}});
-    for (let flush = 0; flush < 8; flush++) await Promise.resolve();
-    now += 16; controller.update(16, 'right');
-    expect(controller.x).toBe(928);
-    controller.dispose();
-  });
+describe('entradas confirmadas',()=>{
+ it('respeita limites e alcance',()=>{expect(clampX(-1,960)).toBe(32);expect(clampX(999,960)).toBe(928);expect(closestNPC(snapshot(),160)).toBeUndefined();expect(closestNPC(snapshot(),400)?.npc_id).toBe('rubiao');});
+ for(const delays of [[200],[120,320,180,450,200,600]])it(`não desliza ao soltar com RTT ${delays}`,async()=>{
+  const n=network(delays);for(let i=0;i<18;i++)await n.frame('right');const x=n.controller.x;expect(x).toBeCloseTo(197.8);
+  for(let i=0;i<220;i++){await n.frame('idle');expect(n.controller.x).toBeCloseTo(x,7);}
+  expect(n.canonical.player.x).toBeCloseTo(x,7);expect(n.failed).not.toHaveBeenCalled();n.controller.dispose();
+ });
+ it('confirma inversões rápidas e um frame longo na ordem certa',async()=>{
+  const n=network([600,180,320]);for(let i=0;i<10;i++)await n.frame('right');for(let i=0;i<4;i++)await n.frame('left');await n.frame('right',180);
+  const x=n.controller.x;expect(x).toBeCloseTo(160+WALK_SPEED*(.1-.04+.18));
+  for(let i=0;i<260;i++){await n.frame('idle');expect(n.controller.x).toBeCloseTo(x,7);}expect(n.canonical.player.x).toBeCloseTo(x,7);expect(n.failed).not.toHaveBeenCalled();n.controller.dispose();
+ });
+ it('drena a parada antes de ações sem acrescentar entradas nem deslocar sprite',async()=>{
+  vi.useFakeTimers();try{const n=network([200]);for(let i=0;i<18;i++)await n.frame('right');const x=n.controller.x;
+   let done=false;const stopped=n.controller.stop().then(()=>{done=true;});
+   n.controller.update(10,'right');expect(n.controller.x).toBeCloseTo(x,7);
+   for(let i=0;i<180&&!done;i++){await n.frame('idle');await vi.advanceTimersByTimeAsync(10);expect(n.controller.x).toBeCloseTo(x,7);}await stopped;
+   expect(n.canonical.player.x).toBeCloseTo(x,7);expect(n.send.mock.calls.at(-1)?.[1]).toBe('idle');expect(n.failed).not.toHaveBeenCalled();n.controller.dispose();
+  }finally{vi.useRealTimers();}
+ });
+ it('limita previsão durante desconexão',()=>{const send=vi.fn(()=>new Promise<WorldSnapshot>(()=>{}));const c=new MovementController(snapshot(),send,vi.fn(),vi.fn(),vi.fn());for(let i=0;i<300;i++)c.update(10,'right');expect(c.x).toBeLessThanOrEqual(160+WALK_SPEED+.00001);expect(send).toHaveBeenCalledTimes(1);c.dispose();});
+ it('ressincroniza conflito e aplica sequência após viagem',async()=>{const fresh={...snapshot(220),revision:3},refresh=vi.fn(async()=>fresh);const c=new MovementController(snapshot(),vi.fn(async()=>{throw new ApiError(409,'Conflito');}),refresh,vi.fn(),vi.fn());c.update(16,'right');for(let i=0;i<8;i++)await Promise.resolve();expect(refresh).toHaveBeenCalledOnce();expect(c.world.revision).toBe(3);expect(c.x).toBe(220);c.accept({...snapshot(96),player:{...snapshot(96).player,input_seq:80}});expect(c.world.player.input_seq).toBe(80);expect(c.direction).toBe('idle');c.dispose();});
+ it('mantém a última orientação local após inverter e soltar antes do ACK',async()=>{
+  const n=network([600]);for(let i=0;i<10;i++)await n.frame('right');await n.frame('left');
+  expect(n.controller.facing).toBe('left');
+  for(let i=0;i<180;i++){await n.frame('idle');expect(n.controller.facing).toBe('left');}
+  expect(n.failed).not.toHaveBeenCalled();n.controller.dispose();
+ });
+ it('não confirma parada se não conseguiu obter posição canônica após falha',async()=>{
+  const error=new ApiError(0,'Conexão interrompida');const c=new MovementController(snapshot(),vi.fn(async()=>{throw error;}),vi.fn(async()=>{throw error;}),vi.fn(),vi.fn());
+  c.update(16,'right');await expect(c.stop()).rejects.toBe(error);c.dispose();
+ });
+ it('preserva NPCs observados durante comando em trânsito sem corrigir a pose',async()=>{
+  const n=network([200]);await n.frame('right');const x=n.controller.x;
+  const observed={...n.controller.world,revision:1,visible_npcs:[],player:{...n.controller.world.player,x:500,movement_seq:1,input_seq:1}};
+  expect(n.controller.observe({...observed,player:{...observed.player,movement_seq:2,input_seq:999}})).toBe(false);
+  expect(n.controller.observe(observed)).toBe(true);expect(n.controller.x).toBe(x);
+  expect(n.controller.world.player.movement_seq).toBe(0);
+  expect(n.controller.world.player.x).toBe(160);
+  for(let i=0;i<30;i++)await n.frame('right');
+  expect(n.controller.world.visible_npcs).toEqual([]);
+  expect(n.failed).not.toHaveBeenCalled();n.controller.dispose();
+ });
+ it('suspende a fase sem enviar entradas antigas para o novo dia',async()=>{
+  const n=network([200]);await n.frame('right');let done=false;
+  const suspended=n.controller.suspend().then(()=>{done=true;});
+  for(let i=0;i<30&&!done;i++)await n.frame('right');await suspended;
+  expect(n.send).toHaveBeenCalledTimes(1);expect(n.controller.direction).toBe('idle');
+  n.controller.accept(snapshot(96));expect(n.controller.x).toBe(96);n.controller.dispose();
+ });
+ it('observa NPCs sem interromper previsão',()=>{const c=new MovementController(snapshot(),vi.fn(),vi.fn(),vi.fn(),vi.fn());c.x=207;c.direction='right';expect(c.observe({...snapshot(),revision:2,visible_npcs:[]})).toBe(true);expect(c.x).toBe(207);expect(c.observe(snapshot())).toBe(false);c.dispose();});
 });

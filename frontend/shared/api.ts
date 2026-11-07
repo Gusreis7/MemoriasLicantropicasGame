@@ -1,6 +1,7 @@
 export type Direction = 'left' | 'right' | 'idle';
 export type LocationID = 'praca_verde' | 'cabana_capitu' | 'casa_verde' | 'cafe_largo' | 'cais_lanternas';
 export type ExitSide = 'left' | 'right';
+export interface MovementInput {seq: number; direction: Direction; duration_ms: number}
 export interface LocationExit {side: ExitSide; target_location_id: LocationID; arrival_side: ExitSide}
 
 export interface Location {
@@ -8,7 +9,7 @@ export interface Location {
 }
 export interface WorldSnapshot {
   game_id: string; world_version: string; revision: number; location: Location;
-  player: {location_id: LocationID; x: number; facing: 'left' | 'right'; movement_seq: number};
+  player: {location_id: LocationID; x: number; facing: 'left' | 'right'; movement_seq: number; input_seq?: number; movement_epoch?: string | null};
   visible_npcs: Array<{npc_id: string; name: string; x: number; sprite_id: string; can_approach: boolean;
     activity?: 'idle' | 'talking' | 'travelling'; social_partner_id?: string | null; speech?: string | null}>;
   npc_presences?: Array<{npc_id: string; name: string; location_id: LocationID; activity: string; destination_id: LocationID | null}>;
@@ -72,12 +73,13 @@ export class ApiError extends Error {
   constructor(public status: number, message: string, public code?: string) {super(message); this.name = 'ApiError';}
 }
 
-export async function request<T>(path: string, body?: unknown, method?: string): Promise<T> {
+export async function request<T>(path: string, body?: unknown, method?: string, signal?: AbortSignal): Promise<T> {
   let response: Response;
   try {
     response = await fetch(path, {
       method: method ?? (body === undefined ? 'GET' : 'POST'),
       credentials: 'same-origin',
+      signal,
       headers: body === undefined ? undefined : {'Content-Type': 'application/json'},
       body: body === undefined ? undefined : JSON.stringify(body),
     });
@@ -118,12 +120,17 @@ export const api = {
     suspect_id: suspectID, evidence_ids: evidenceIDs, testimony_ids: testimonyIDs, speech,
   }),
   resolveAssembly: (id: string, reply: string) => request<CasePublic>(`${base(id)}/assembly/resolve`, {reply}),
-  world: (id: string) => request<WorldSnapshot>(`${base(id)}/world`),
+  world: (id: string) => request<WorldSnapshot>(`${base(id)}/world`, undefined, undefined, AbortSignal.timeout(5000)),
   locations: () => request<Location[]>('/api/v1/world/locations'),
   manifest: () => request<CharacterManifest>('/assets/characters/manifest.json'),
-  move: (world: WorldSnapshot, direction: Direction) => request<WorldSnapshot>(`${base(world.game_id)}/movement`, {
-    direction, seq: world.player.movement_seq + 1, location_id: world.player.location_id, revision: world.revision,
-  }),
+  move: async (world: WorldSnapshot, direction: Direction, inputs?: MovementInput[]): Promise<WorldSnapshot> => {
+    const next = await request<WorldSnapshot | {kind: 'movement_ack'; game_id: string; revision: number; player: WorldSnapshot['player']}>(`${base(world.game_id)}/movement`, {
+      direction, inputs, movement_epoch: world.player.movement_epoch, seq: world.player.movement_seq + 1, location_id: world.player.location_id, revision: world.revision,
+    }, undefined, AbortSignal.timeout(5000));
+    if (!('kind' in next)) return next;
+    if (next.game_id !== world.game_id || next.player.location_id !== world.location.id) throw new ApiError(409, 'O local mudou durante o movimento.');
+    return {...world, revision: next.revision, player: next.player};
+  },
   travel: (world: WorldSnapshot, target: LocationID, exitSide?: ExitSide) => request<WorldSnapshot>(`${base(world.game_id)}/travel`, {
     target_location_id: target, revision: world.revision, ...(exitSide ? {exit_side: exitSide} : {}),
   }),

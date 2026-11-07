@@ -4,7 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Request
 
 from src.modules.world.catalog import LOCATIONS
-from src.modules.world.schema import LocationPublic, MoveRequest, TravelRequest, WorldSnapshot
+from src.modules.world.schema import LocationPublic, MoveRequest, TravelRequest, WorldSnapshot, MovementAck
 from src.modules.world.service import WorldService
 
 router = APIRouter(tags=["world"])
@@ -27,7 +27,7 @@ async def get_world(game_id: UUID, service: Service):
     return await service.get(game_id)
 
 
-@router.post("/api/v1/games/{game_id}/movement", response_model=WorldSnapshot)
+@router.post("/api/v1/games/{game_id}/movement", response_model=WorldSnapshot | MovementAck)
 async def move(game_id: UUID, body: MoveRequest, service: Service):
     return await service.move(game_id, body)
 

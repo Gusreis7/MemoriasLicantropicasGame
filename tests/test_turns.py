@@ -335,3 +335,145 @@ async def test_victory_editorial_is_persisted_once(cycle, storage):
     assert calls == ['detention']
     persisted = await cycle.turns._repository.get(cycle.game.id)
     assert persisted.journal == ended.journal
+
+
+async def _accepted_detention(cycle, suspect):
+    from src.contracts.investigation import Accusation
+    def transition(state, _game, _world):
+        record = Accusation(id=uuid4(), day=state.day, suspect_id=suspect,
+            evidence_ids=(), testimony_ids=(), accepted=True, reason='provas confirmadas', created_at=cycle.clock[0])
+        return CaseTransition(state=state.model_copy(update={'detained_npc_id': suspect,
+            'accusations': (*state.accusations, record)}),
+            events=(CaseEvent(type='suspect.detained', data={'suspect_id': suspect}),))
+    return await cycle.turns.act(cycle.game.id, transition, start_night_on_detention=True)
+
+
+async def _deferred_editor(cycle, storage):
+    import asyncio
+    from native_fixtures import respond_to_tools
+    from src.modules.session_master.service import SessionMasterService
+    started, released, cancelled = asyncio.Event(), asyncio.Event(), asyncio.Event()
+    class LLM:
+        calls = 0
+        async def complete(self, messages, *, tools=(), tool_choice=None):
+            self.calls += 1
+            started.set()
+            try:
+                await released.wait()
+            except asyncio.CancelledError:
+                cancelled.set()
+                raise
+            return respond_to_tools({'opinion': 'O esforço de Floriano merece o reconhecimento dos moradores. Que esta vitória nos ensine a cuidar da memória das vítimas e a exigir justiça.'}, tools, tool_choice)
+    llm = LLM()
+    master = SessionMasterService(cycle.turns, storage.games, None, llm, storage.client, storage.prefix)
+    cycle.turns._victory_editor = master.publish_victory
+    cycle.turns._detention_editor = master.prepare_detention_editorial
+    return SimpleNamespace(master=master, llm=llm, started=started, released=released, cancelled=cancelled)
+
+
+async def test_editorial_prepares_during_suspense_and_publishes_only_after_night(cycle, storage):
+    import asyncio
+    editor = await _deferred_editor(cycle, storage)
+    try:
+        night = await asyncio.wait_for(_accepted_detention(cycle, 'bentinho'), .25)
+        await asyncio.wait_for(editor.started.wait(), .25)
+        assert night.phase == 'night' and night.status == 'active'
+        assert 'Bentinho era o lobisomem' not in night.journal[-1].body
+        assert (await cycle.turns._repository.get(cycle.game.id)).journal == night.journal
+        # A pending model has not retained the player's gate.
+        async with cycle.gate.hold(cycle.game.id):
+            pass
+        task = editor.master._editorial_tasks[cycle.game.id]
+        editor.released.set()
+        await asyncio.wait_for(task, .5)
+        private = await storage.client.get(editor.master._editorial_key(cycle.game.id))
+        assert private is not None
+        assert (await cycle.turns.sync(cycle.game.id)).journal == night.journal
+        # A different process can consume the ready cache after restart.
+        from src.modules.session_master.service import SessionMasterService
+        restored = SessionMasterService(cycle.turns, storage.games, None, redis=storage.client, prefix=storage.prefix)
+        cycle.turns._victory_editor = restored.publish_victory
+        cycle.clock[0] += timedelta(seconds=8)
+        ended = await asyncio.wait_for(cycle.turns.sync(cycle.game.id), .25)
+        assert ended.status == 'won'
+        assert 'O esforço de Floriano' in ended.journal[-1].body
+        assert 'Bentinho era o lobisomem' in ended.journal[-1].body
+        assert editor.llm.calls == 1
+        # Cache cannot be reused for a different canonical outcome/day.
+        other = await restored.publish_victory(ended.model_copy(update={'day': ended.day + 1}), cycle.game)
+        assert 'O esforço de Floriano' not in other.journal[-1].body
+        changed_crime = ended.crimes[0].model_copy(update={'victim_id': 'escobar', 'killer_id': 'bentinho', 'cause': 'werewolf'})
+        changed = await restored.publish_victory(ended.model_copy(update={'crimes': (changed_crime, *ended.crimes[1:])}), cycle.game)
+        assert 'O esforço de Floriano' not in changed.journal[-1].body
+        await restored.aclose()
+    finally:
+        await editor.master.aclose()
+
+
+async def test_pending_editorial_never_delays_result_and_shutdown_cancels_provider(cycle, storage):
+    import asyncio
+    editor = await _deferred_editor(cycle, storage)
+    await _accepted_detention(cycle, 'bentinho')
+    await asyncio.wait_for(editor.started.wait(), .25)
+    cycle.clock[0] += timedelta(seconds=8)
+    ended = await asyncio.wait_for(cycle.turns.sync(cycle.game.id), .25)
+    assert ended.status == 'won' and 'Bentinho era o lobisomem' in ended.journal[-1].body
+    assert 'O esforço de Floriano' not in ended.journal[-1].body
+    await asyncio.sleep(0)
+    assert editor.cancelled.is_set()
+    await editor.master.aclose()
+    assert editor.cancelled.is_set() and not editor.master._editorial_tasks
+
+
+@pytest.mark.parametrize('changed', ['innocent', 'revision'])
+async def test_editorial_rejects_innocent_and_stale_detention(cycle, storage, changed):
+    import asyncio
+    editor = await _deferred_editor(cycle, storage)
+    try:
+        night = await _accepted_detention(cycle, 'capitu' if changed == 'innocent' else 'bentinho')
+        if changed == 'innocent':
+            task = editor.master._editorial_tasks.get(cycle.game.id)
+            if task:
+                await task
+            assert editor.llm.calls == 0
+        else:
+            await asyncio.wait_for(editor.started.wait(), .25)
+            task = editor.master._editorial_tasks[cycle.game.id]
+            await storage.client.set(f'{cycle.key}:investigation', night.model_copy(update={'revision': night.revision + 1}).model_dump_json())
+            editor.released.set()
+            await task
+        assert await storage.client.get(editor.master._editorial_key(cycle.game.id)) is None
+    finally:
+        await editor.master.aclose()
+
+
+async def test_editorial_does_not_start_provider_after_waiting_past_night_deadline(cycle, storage):
+    editor = await _deferred_editor(cycle, storage)
+    await editor.master._editorial_slots.acquire()
+    await editor.master._editorial_slots.acquire()
+    try:
+        await _accepted_detention(cycle, 'bentinho')
+        task = editor.master._editorial_tasks[cycle.game.id]
+        cycle.clock[0] += timedelta(seconds=8)
+        editor.master._editorial_slots.release()
+        await task
+        assert editor.llm.calls == 0
+        assert await storage.client.get(editor.master._editorial_key(cycle.game.id)) is None
+    finally:
+        editor.master._editorial_slots.release()
+        await editor.master.aclose()
+
+
+async def test_restart_with_pending_editorial_uses_immediate_fallback(cycle, storage):
+    import asyncio
+    from src.modules.session_master.service import SessionMasterService
+    editor = await _deferred_editor(cycle, storage)
+    await _accepted_detention(cycle, 'bentinho')
+    await asyncio.wait_for(editor.started.wait(), .25)
+    await editor.master.aclose()
+    restored = SessionMasterService(cycle.turns, storage.games, None, redis=storage.client, prefix=storage.prefix)
+    cycle.turns._victory_editor = restored.publish_victory
+    cycle.clock[0] += timedelta(seconds=8)
+    ended = await asyncio.wait_for(cycle.turns.sync(cycle.game.id), .25)
+    assert ended.status == 'won' and 'O esforço de Floriano' not in ended.journal[-1].body
+    await restored.aclose()
