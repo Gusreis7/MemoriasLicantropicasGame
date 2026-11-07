@@ -15,7 +15,7 @@ button,a{-webkit-tap-highlight-color:transparent}
 .masthead{height:122px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #b2bd9529;gap:28px}
 .brand{color:var(--paper);text-decoration:none;display:flex;align-items:center;gap:15px;font-size:14px;letter-spacing:.07em;line-height:1.4}
 .brand strong{font-size:22px;letter-spacing:.02em;font-weight:normal}
-.brand-mark{color:var(--gold);font-size:49px;line-height:1;display:inline-block;transform:rotate(-20deg)}
+.brand-mark{display:inline-block;flex-shrink:0;width:44px;height:44px;font-size:0;line-height:0;background:#d6c597;box-shadow:4px 0 0 #214637;border-radius:50%}
 .edition{text-align:center;font:11px/1.9 Arial,sans-serif;letter-spacing:.23em;color:#d1d5b5}
 .edition span{display:block;font:italic 13px Georgia,serif;letter-spacing:.02em;color:#98aa94}
 .button{display:inline-flex;align-items:center;justify-content:center;gap:22px;padding:15px 22px;border:1px solid transparent;border-radius:3px;font:600 12px/1.3 Arial,sans-serif;letter-spacing:.035em;transition:background .18s,transform .18s}
@@ -161,7 +161,7 @@ kbd{font:10px/1.2 Arial,sans-serif;min-width:21px;padding:4px 5px;border:1px sol
 .masthead{height:92px;gap:15px}
 .brand{font-size:11px;gap:10px}
 .brand strong{font-size:18px}
-.brand-mark{font-size:36px}
+.brand-mark{width:32px;height:32px;font-size:0;box-shadow:3px 0 0 #214637}
 .edition{display:none}
 .button.small{font-size:9px;padding:10px}
 .introduction{grid-template-columns:1fr;gap:28px;padding:30px 0 38px}
