@@ -16,14 +16,22 @@ export async function renderDefeatPhoto(target:HTMLImageElement,location:Locatio
     ]);
     if(signal.aborted)return;
     ctx.imageSmoothingEnabled=false;
-    ctx.filter='grayscale(1) brightness(.45)';ctx.drawImage(background,0,0,600,400);
-    const f=atlas.frames['3'].frame;
-    const height=310,width=height*f.w/f.h;
-    ctx.filter='grayscale(1) brightness(.55) contrast(1.2)';
-    ctx.drawImage(wolf,f.x,f.y,f.w,f.h,300-width/2,68,width,height);
+    ctx.filter='grayscale(1) brightness(.28) blur(2px)';ctx.drawImage(background,0,0,600,400);
+    // An indistinct, warped shadow: no visible fur, face, claws or anatomy study.
+    const f=atlas.frames['0'].frame;
+    const height=235,width=285;
+    ctx.filter='brightness(0) blur(9px)';ctx.globalAlpha=.85;
+    for(let y=0;y<height;y+=10) {
+      const band=Math.min(10,height-y);
+      const warp=Math.sin(y*.041)*16+Math.sin(y*.093)*7;
+      const spread=1+Math.sin(y*.023)*.12;
+      ctx.drawImage(wolf,f.x,f.y+y/height*f.h,f.w,band/height*f.h,
+        300-width*spread/2+warp,137+y,width*spread,band+2);
+    }
+    ctx.globalAlpha=1;
     ctx.filter='none';
     const shade=ctx.createRadialGradient(300,210,65,300,210,350);
-    shade.addColorStop(0,'rgba(2,7,17,0)');shade.addColorStop(1,'rgba(2,7,17,.8)');
+    shade.addColorStop(0,'rgba(2,7,17,.24)');shade.addColorStop(1,'rgba(2,7,17,.9)');
     ctx.fillStyle=shade;ctx.fillRect(0,0,600,400);
     target.src=canvas.toDataURL('image/png');
     await target.decode();
