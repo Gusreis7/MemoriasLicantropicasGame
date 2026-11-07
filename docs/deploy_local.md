@@ -12,7 +12,7 @@ make status
 curl --fail http://127.0.0.1:7079/health
 ```
 
-O launcher cria ou completa `.env`, gera uma senha administrativa quando ausente, ajusta suas permissões e constrói as imagens. Valores já definidos são preservados. Abra:
+O comando prepara o `.env` e gera uma senha administrativa se você ainda não tiver uma. Depois, constrói as imagens e inicia os serviços. Suas configurações existentes são preservadas. Quando terminar, abra:
 
 | Serviço | Endereço |
 | --- | --- |
@@ -24,19 +24,34 @@ O usuário e a senha do admin ficam em `ADMIN_USERNAME` e `ADMIN_PASSWORD` no `.
 
 ## Recursos e desempenho
 
-O build e o servidor Vite geram WebP sem perda com Sharp. Os PNGs originais, dimensões e coordenadas dos atlas são preservados. As cópias menores ficam em `frontend/public/assets/optimized/`, ignoradas pelo Git; conversões existentes são reaproveitadas. O resumo de tamanho fica em `report.json` nessa pasta.
+Ao construir a interface ou iniciar o Vite, o Sharp gera cópias WebP sem perda dos PNGs. As dimensões, a transparência e as coordenadas usadas pelas animações são mantidas. Os originais continuam no projeto, e as cópias menores ficam em `frontend/public/assets/optimized/`, fora do Git. O processo reaproveita conversões existentes e salva um resumo dos tamanhos em `report.json` nessa pasta.
 
-Cada imagem otimizada recebe um nome derivado do conteúdo. No Nginx, imagens e bundles com hash têm cache de um ano; HTML, manifestos e imagens sem versão exigem revalidação. CSS, JavaScript e JSON usam gzip. Essas configurações pertencem à imagem web e chegam também à AWS pelo deploy normal.
+O nome de cada imagem otimizada depende do seu conteúdo. Assim, o navegador pode guardá-la por um ano e buscar outro arquivo quando a arte mudar. O mesmo vale para os scripts e estilos versionados. HTML, manifestos e imagens sem versão são revalidados; CSS, JavaScript e JSON também usam gzip. Essas configurações fazem parte da imagem web e chegam à AWS pelo deploy normal.
 
 A cena carrega inicialmente as três iluminações do local atual. Os outros locais são carregados na primeira visita e reutilizados depois. Durante essa primeira carga, o indicador bloqueia a caminhada até os recursos estarem disponíveis. Recarregue a página após atualizar a aplicação para receber o novo código.
 
 ## KPIs do administrador
 
-O painel mostra partidas iniciadas, vitórias, derrotas e partidas sem desfecho, contando os estados persistidos de todas as páginas do arquivo. “Sem desfecho” inclui partidas em andamento e interrompidas; a consulta administrativa não avança fases nem executa regras do jogo. Os totais são reutilizados por até 15 segundos para evitar releituras desnecessárias.
+Os números no topo do painel consideram todas as partidas armazenadas, mesmo aquelas que não aparecem na página atual da lista. Você pode acompanhar quantas começaram, quantas terminaram em vitória ou derrota e quantas seguem sem desfecho. “Sem desfecho” inclui partidas em andamento e partidas interrompidas. Abrir o painel não avança fases nem executa ações no jogo. Os totais podem levar até 15 segundos para refletir uma mudança.
 
-Conexões são sessões de visita ao jogo, não chamadas HTTP nem pessoas únicas. Um cookie opaco, HttpOnly, é renovado a cada presença e expira após 30 minutos sem atividade. Abas do mesmo navegador compartilham a sessão. A presença é enviada a cada 30 segundos em abas visíveis; ativos são sessões com presença nos últimos 90 segundos. O Redis guarda apenas o hash do identificador, contadores e horários, sem IPs. O Nginx não grava access logs do endpoint de presença.
+Uma conexão representa uma sessão de visita ao jogo. Recarregar a página não cria uma nova visita enquanto a sessão estiver válida, e abas do mesmo navegador compartilham o cookie. Depois de 30 minutos sem atividade, o próximo acesso conta como outra sessão. Isso não é uma contagem de pessoas únicas.
 
-A contagem de conexões começa no primeiro acesso após esta atualização; não existe histórico retroativo de visitas. Contadores sobrevivem a reinícios enquanto o volume Redis for preservado. `GET /admin/api/v1/metrics` exige a sessão administrativa, tem `Cache-Control: no-store` e não aceita operações de escrita. A coleta automática do jogo usa `POST /api/v1/visits`; não disponibiliza métricas públicas nem altera partidas.
+Enquanto a aba está visível, o jogo informa sua presença a cada 30 segundos. O cartão de ativos considera as sessões que enviaram essa informação nos últimos 90 segundos. O cookie é HttpOnly, e o Redis guarda apenas um hash do identificador, contadores e horários. As métricas não armazenam IPs, e o endpoint de presença fica fora do registro de acessos do Nginx.
+
+A contagem de visitas começa no primeiro acesso após instalar essa funcionalidade. Acessos anteriores não são estimados. Os números sobrevivem aos reinícios enquanto o volume Redis for preservado.
+
+Para consultar os indicadores pela API, use `GET /admin/api/v1/metrics` com uma sessão administrativa. A resposta não pode ser armazenada em cache e o endpoint não aceita escrita. A presença enviada pelo jogo usa `POST /api/v1/visits`, sem expor métricas públicas ou alterar partidas.
+
+## Trocar a senha do painel
+
+Para gerar outra senha local, execute na raiz do projeto:
+
+```sh
+python3 scripts/configure_local.py --reset-admin-password
+make up
+```
+
+Consulte `ADMIN_PASSWORD` no `.env` e entre novamente no painel. Essa troca não altera a senha da AWS nem apaga partidas. Para trocar a senha de produção, siga o [guia da AWS](reproducao_aws.md#5-admin-e-preservação).
 
 ## Credenciais do modelo
 

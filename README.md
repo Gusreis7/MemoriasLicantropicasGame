@@ -2,11 +2,11 @@
 
 Um jogo de investigação na Rua do Ouvidor: Floriano interroga personagens de Machado de Assis, reúne provas e tenta identificar o lobisomem antes que a cidade sucumba.
 
-São sete suspeitos por partida, com um lobisomem sorteado pelo servidor. NPCs têm relações, segredos e conhecimento próprio. Noites, álibis, fontes e consequências são determinados pelas regras; os modelos participam da expressão das personas e de escolhas narrativas limitadas.
+Cada partida tem sete suspeitos, e o servidor sorteia qual deles será o lobisomem. Os personagens têm relações, segredos e informações que podem compartilhar com Floriano. As regras do jogo definem o que aconteceu durante a noite, quem estava acompanhado e quais relatos podem servir de prova. A IA dá voz aos personagens e participa das escolhas narrativas permitidas pela mesa.
 
 ## Começar localmente
 
-Instale Git, Python 3, Make, Docker e Docker Compose. No checkout:
+Instale Git, Python 3, Make, Docker e Docker Compose. Na pasta do projeto, execute:
 
 ```sh
 make setup
@@ -18,7 +18,7 @@ make setup
 | Painel administrativo | http://127.0.0.1:7078 |
 | Documentação da API local | http://127.0.0.1:7079/docs |
 
-O launcher prepara o `.env`, gera a senha administrativa e inicia os serviços. Consulte `ADMIN_USERNAME` e `ADMIN_PASSWORD` nesse arquivo para entrar no painel. Para inferência, configure um perfil AWS autorizado ou um bearer Bedrock no `.env`, conforme o [guia local](docs/deploy_local.md). O modelo padrão é `qwen.qwen3-32b` via Bedrock Mantle.
+O comando prepara o `.env`, gera uma senha administrativa caso ainda não exista e inicia os serviços. O usuário e a senha do painel ficam em `ADMIN_USERNAME` e `ADMIN_PASSWORD` nesse arquivo. Para conversar com os personagens, configure um perfil AWS ou um token Bedrock seguindo o [guia local](docs/deploy_local.md). O modelo padrão é `qwen.qwen3-32b`, via Bedrock Mantle.
 
 ```sh
 make status
@@ -39,7 +39,15 @@ make up
 6. Na delegacia, selecione as provas e os relatos pertinentes e apresente a acusação. A avaliação considera o conteúdo estruturado e a cobertura dos álibis.
 7. Avance a investigação ou use o botão de pular o dia para chegar à manhã seguinte. O tempo traz novas consequências: quatro mortes do elenco atribuídas à fera encerram a partida em derrota. Brás Cubas, a vítima inicial, não entra nessa contagem.
 
-O painel administrativo permite acompanhar sorteio, eventos, conversas e consumo de modelo para desenvolvimento e avaliação. Ele revela informações privadas da partida; seu acesso é separado do jogo.
+Use as setas ou A/D para caminhar e E para conversar ou examinar uma cena próxima. Ao chegar à borda da rua, escolha o destino com as setas e confirme com Enter. Escape fecha o menu. O mapa também permite mudar de local.
+
+## Acompanhar a aplicação
+
+O painel administrativo reúne os indicadores de uso e permite consultar partidas, conversas, acontecimentos e consumo de IA. Ele mostra sessões de visita acumuladas, jogadores ativos, partidas iniciadas, vitórias, derrotas e partidas sem desfecho. Essa última categoria inclui tanto quem ainda está jogando quanto quem saiu antes do fim.
+
+As visitas são contadas por sessão do navegador, sem guardar IPs nas métricas. A sessão expira após 30 minutos sem atividade; o indicador de ativos considera os últimos 90 segundos. Essa contagem começa com a instalação da funcionalidade. As partidas que já estavam no Redis entram nos totais normalmente.
+
+O painel é somente de leitura: consultar uma partida não avança o tempo nem muda seu resultado. Como ele revela o papel dos personagens, seu acesso fica separado do jogo. Na AWS, a entrada é feita por um [túnel SSM](docs/reproducao_aws.md#5-admin-e-preservação).
 
 ## Como funciona
 
@@ -51,6 +59,8 @@ O painel administrativo permite acompanhar sorteio, eventos, conversas e consumo
 - **Produção:** Terraform, EC2 com Elastic IP, registro A no Registro.br, HTTPS automático com Caddy, EBS, ECR, S3 e entrega por GitHub OIDC/SSM.
 
 A investigação usa formato 2. Dados antigos incompatíveis são recusados; não há migração ou adaptador. O namespace Redis padrão `ml:v1` é independente desse formato.
+
+As imagens recebem versões WebP sem perda durante o build. A cena carrega primeiro o local atual e busca os demais na primeira visita. O Nginx comprime os arquivos de texto e permite guardar imagens e scripts versionados no cache do navegador. Os detalhes estão no [guia local](docs/deploy_local.md#recursos-e-desempenho).
 
 ## Desenvolvimento e validação
 

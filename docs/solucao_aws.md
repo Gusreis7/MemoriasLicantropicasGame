@@ -43,7 +43,15 @@ A rede `edge` dá saída HTTP/HTTPS somente ao Caddy e bloqueia IMDS/host. Nginx
 
 GitHub Actions assume roles por OIDC. O delivery constrói imagens API/web no ECR, com tags imutáveis de commit e referências por digest, verifica o scan e grava `releases/COMMIT.json` no S3. O manifesto contém apenas versão e imagens; não contém senha ou arquivos arbitrários de host.
 
-O documento SSM recebe somente o commit. Cloud-init instala arquivos fixos, prepara EBS/firewall e systemd. O instalador valida o manifesto e os digests, obtém a senha por SecureString, inicia Redis/API/Nginx/admin/Caddy e verifica a saúde interna. Depois o delivery confere se DNS resolve exclusivamente para o EIP e aguarda HTTPS com certificado confiável e resposta de saúde válida.
+O documento SSM recebe o identificador do commit. Na preparação da máquina, o cloud-init instala os arquivos do host, monta o EBS e configura o firewall e o systemd. Durante a entrega, o instalador confere o manifesto e os digests, busca a senha no Parameter Store e inicia os serviços. Por fim, o workflow verifica o DNS e aguarda uma resposta de saúde por HTTPS com certificado válido.
+
+## Interface e acompanhamento
+
+A imagem web inclui as versões WebP sem perda e as configurações de compressão e cache do Nginx. Imagens e scripts com hash no nome podem ficar no navegador por um ano; HTML e arquivos sem versão são revalidados. Os cenários são carregados conforme o jogador visita os locais. Uma atualização dessas otimizações segue a mesma entrega das demais mudanças no jogo.
+
+O admin mostra sessões de visita, jogadores ativos e os resultados das partidas. As consultas usam os registros já salvos no Redis e não avançam o tempo do jogo. As visitas são identificadas por um cookie anônimo, cujo hash é armazenado sem IPs nas métricas. O Nginx também deixa de registrar acessos ao endpoint de presença. Os critérios de contagem estão no [guia local](deploy_local.md#kpis-do-administrador) e são os mesmos em produção.
+
+O painel continua acessível apenas pelo túnel SSM e exige login. A coleta de presença feita pelo jogo não oferece acesso público aos indicadores nem às informações privadas das partidas.
 
 Se DNS/certificado ainda não estiver pronto, o delivery falha com indicação da configuração pendente; a instalação interna pode já ter terminado. Consulte os logs antes de repetir. Rollback de imagens não reverte dados ou certificados.
 

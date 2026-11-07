@@ -14,7 +14,7 @@ uv run python scripts/bootstrap_aws.py plan --account-id 681835981654
 terraform -chdir=infra/terraform/bootstrap show ../../../artifacts/aws-bootstrap/reviewed.tfplan
 ```
 
-Confira que o plano preserva o EBS, buckets/state, rede e recursos legados. A mudança esperada para a base já existente é adicionar um EIP e atualizar IAM/outputs; não substituir o volume ou a VPC. Depois de revisar:
+Leia o plano e confira se ele contém apenas as mudanças que você pretende aplicar. O EBS, os buckets, o state e a rede existentes devem ser preservados. Depois da revisão:
 
 ```sh
 uv run python scripts/bootstrap_aws.py apply --account-id 681835981654
@@ -71,9 +71,9 @@ Se a interface pedir o nome completo, use `memoriaslicantropicasgame.gustavodrei
 
 Alocação confirmada na AWS: `eipalloc-0802363bb84135383`. Para futuras recriações, confira novamente `terraform output -raw public_ip`; esse output é a referência operacional.
 
-Nesta implantação a associação foi confirmada com a EC2 `i-00079ff6f9b0e7b08`, SSM Online e security group expondo somente 80/443 TCP. O volume `vol-07cb5703329d861d8` foi preservado. A base aplicou 1 criação/2 atualizações e a aplicação 8 criações, sem destruições. A emissão do certificado e a verificação externa de HTTPS aguardam o registro A e o delivery do código novo; ainda não são resultados confirmados.
+Na implantação original, o EIP foi associado à EC2 `i-00079ff6f9b0e7b08`, com acesso por SSM e entrada pública apenas nas portas 80/443. O volume preservado foi `vol-07cb5703329d861d8`. Esses identificadores servem como referência daquela implantação; confira os outputs antes de operar uma instalação recriada. A emissão do certificado foi confirmada depois da correção de DNS descrita na seção de diagnóstico abaixo.
 
-O diagnóstico remoto via SSM também confirmou cloud-init concluído, Docker ativo, EBS montado em `/srv/ml-data` com ext4 e diretórios de dados/configuração do Caddy existentes, privados e pertencentes a UID/GID 1000. Os testes locais incluem validação do Caddyfile na imagem oficial fixada, 26 testes Python de bootstrap/deploy e os dois testes Terraform com provider simulado.
+O diagnóstico dessa implantação confirmou o EBS montado em `/srv/ml-data` e os diretórios privados do Caddy pertencentes a UID/GID 1000. Em outra instalação, confira novamente a montagem do disco, o término do cloud-init e o estado do Docker antes de publicar.
 
 Se o subdomínio já estiver delegado por NS à zona Route53, o registro A no pai será ignorado enquanto a delegação existir. Revise essa delegação no provedor de DNS, mantendo a zona AWS preservada até decidir sua limpeza. Se o DNS autoritativo do domínio pai não for o Registro.br, edite o registro no provedor autoritativo efetivo.
 
@@ -128,6 +128,20 @@ aws ssm start-session --profile SEU_PERFIL_OPERADOR --region us-east-1 --target 
 ```
 
 Abra http://127.0.0.1:7078 e faça login. O painel não passa pelo Caddy público.
+
+Mantenha a porta local 7078 ao seguir esse comando, pois ela faz parte das origens permitidas para o login. Se você escolher outra porta, será necessário ajustar também `ADMIN_ALLOWED_ORIGINS` na configuração da API e publicar essa alteração.
+
+O painel permite acompanhar sessões de visita, jogadores ativos e os resultados das partidas, além de consultar os detalhes de cada caso. Ele é somente de leitura: abrir uma partida não avança fases nem muda o resultado. A contagem de visitas começa quando a funcionalidade é instalada; as partidas já armazenadas entram nos totais.
+
+Para trocar a senha de produção, execute na sua máquina, na raiz do projeto:
+
+```sh
+uv run python scripts/configure_aws_admin.py --profile terraform --region us-east-1 --overwrite
+```
+
+O script pede a nova senha e a confirmação, sem mostrar o que você digita. Use pelo menos 24 caracteres. A senha será salva como SecureString no Parameter Store. Faça essa troca antes de publicar o próximo commit: o instalador busca o valor atualizado e recria a API durante o deploy. Alterar somente o parâmetro não muda a senha que a API já carregou.
+
+O painel local usa a senha do `.env`; a produção usa o Parameter Store. Trocar uma não altera a outra.
 
 A zona Route53, o CNAME de validação e o certificado ACM antigos continuam no bootstrap. Sua remoção não faz parte deste deploy. Uma proposta de limpeza deve listar IDs, dependências e plano separado, preservando a zona pai e o DNS de outros serviços. ALB/alias presentes em um state app antigo também exigem revisão separada: o workflow bloqueia sua destruição no apply comum.
 

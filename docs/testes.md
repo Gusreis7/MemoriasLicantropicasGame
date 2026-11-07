@@ -1,6 +1,6 @@
 # Testes da aplicação
 
-A suíte padrão está limitada a API, segurança HTTP e configuração de produção. Não executa partidas simuladas nem chamadas a modelos. Os testes de API usam transporte ASGI e armazenamento isolado.
+A suíte padrão verifica a API, a proteção HTTP e a configuração de produção. Ela usa armazenamento isolado e não chama os modelos de IA. Os testes de navegador e as avaliações de partidas são executados separadamente.
 
 ## Backend
 
@@ -9,7 +9,11 @@ uv sync --locked
 uv run pytest -q
 ```
 
-O padrão seleciona `test_api.py`, `test_api_security.py` e `test_deployment_security.py`. Os demais testes especializados remanescentes podem ser chamados explicitamente pelo caminho; não fazem parte do deploy. Os três arquivos de testes do simulador foram removidos.
+Esse comando executa `test_api.py`, `test_api_security.py` e `test_deployment_security.py`. Para investigar uma mudança específica, você pode selecionar os arquivos relacionados. Por exemplo, os testes dos KPIs verificam os resultados das partidas, a autenticação, a contagem de sessões e a leitura sem alterar o jogo:
+
+```sh
+uv run pytest -q tests/test_admin.py tests/test_telemetry.py
+```
 
 Para repetir a suíte com Redis real e descartável:
 
@@ -29,10 +33,26 @@ Na pasta `frontend`:
 npm ci
 npm test
 npm run build
-npm run test:e2e
 ```
 
-O E2E usa Brave em `/usr/bin/brave-browser`; ajuste `BRAVE_PATH` se necessário. Confira a configuração Playwright para portas e inicialização do servidor. O build verifica TypeScript e gera os recursos servidos pelas imagens.
+O build verifica o TypeScript e prepara os arquivos que serão servidos pelo Nginx, incluindo as imagens WebP sem perda. As conversões existentes são reaproveitadas.
+
+Para testar no navegador, inicie o Redis descartável a partir da raiz do projeto e depois execute o Playwright:
+
+```sh
+docker compose -p ml-test-suits -f compose.test.yaml up -d --wait
+cd frontend
+npm run test:e2e -- admin-kpis.spec.ts
+```
+
+O exemplo testa o painel com a API real e um modelo substituto de teste. Ele confere os seis indicadores e a proteção dos endpoints. Para percorrer as demais verificações de interface, use `npm run test:e2e` sem selecionar um arquivo. O Playwright inicia seus próprios servidores e usa Brave em `/usr/bin/brave-browser`; ajuste `BRAVE_PATH` se o navegador estiver em outro caminho.
+
+Ao terminar, volte à raiz e encerre o Redis de testes:
+
+```sh
+cd ..
+docker compose -p ml-test-suits -f compose.test.yaml down
+```
 
 ## Infraestrutura e entrega
 
@@ -53,4 +73,13 @@ O Actions constrói a imagem e executa `scripts/smoke_application.py` como o usu
 
 Não usa Redis externo, LLM, navegador ou simulação de partidas. A entrega continua verificando saúde interna via instalador e DNS/HTTPS depois da instalação.
 
-Os scripts de avaliação manual permanecem disponíveis no repositório, mas não são pré-requisitos nem checks do Actions.
+## Avaliação manual de partidas
+
+Os scripts `scripts/smoke_table_api.py` e `scripts/run_session_simulations.py` continuam disponíveis para investigar o comportamento do jogo pela API. Consulte as opções antes de executá-los:
+
+```sh
+uv run python scripts/smoke_table_api.py --help
+uv run python scripts/run_session_simulations.py --help
+```
+
+O simulador pode usar o modelo real para interpretar Floriano e gerar custos. Use um ambiente de avaliação separado, com seu próprio namespace Redis. Essas avaliações são opcionais e não fazem parte das verificações do Actions.
