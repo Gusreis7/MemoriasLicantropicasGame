@@ -50,8 +50,14 @@ export function formatClock(seconds: number) {
 
 export function closestCrime(state: CasePublic | null, world: WorldSnapshot, x: number): CaseCrime | undefined {
   if (!state || state.phase !== 'day' || state.status !== 'active') return undefined;
-  return state.crimes.filter(crime => crime.location_id === world.location.id && crime.remaining_clues > 0 && Math.abs(crime.x - x) <= 90)
-    .sort((a, b) => Math.abs(a.x - x) - Math.abs(b.x - x))[0];
+  let nearest: CaseCrime | undefined;
+  let distance = 90;
+  for (const crime of state.crimes) {
+    if (crime.location_id !== world.location.id || crime.remaining_clues <= 0) continue;
+    const next = Math.abs(crime.x - x);
+    if (next <= distance && (!nearest || next < distance)) {nearest = crime; distance = next;}
+  }
+  return nearest;
 }
 
 /** Recursive scheduling: one request at a time, including slow responses and retries. */

@@ -14,6 +14,8 @@ export class GameAudio {
   private night = false;
   private loop: HTMLAudioElement | null = null;
   private effects = new Set<HTMLAudioElement>();
+  private effectPool = new Map<string, HTMLAudioElement[]>();
+  private playbacks = new WeakMap<HTMLAudioElement, object>();
   private cinematicEffects = new Set<HTMLAudioElement>();
   private effectGains = new WeakMap<HTMLAudioElement, number>();
   private lastStep = 0;
@@ -78,14 +80,23 @@ export class GameAudio {
     const cinematic = name === 'howl' || name === 'impact' || name === 'sneak' || name === 'slash' || name === 'victory';
     const folder = name === 'victory' ? 'music' : name === 'howl' || name === 'impact' ? 'werewolf' : 'kenney';
     const index = Number.isFinite(variant) ? Math.abs(Math.trunc(variant)) % options.length : 0;
-    const sound = new Audio(`/assets/audio/${folder}/${options[index]}.ogg`);
+    const path = `/assets/audio/${folder}/${options[index]}.ogg`;
+    const pool = this.effectPool.get(path) ?? [];
+    let sound = pool.find(item => !this.effects.has(item));
+    if (!sound) {sound = new Audio(path); pool.push(sound); this.effectPool.set(path, pool);}
+    sound.currentTime = 0;
+    const playback = {}; this.playbacks.set(sound, playback);
     const gain = name === 'step' ? .24 : name === 'howl' ? .85 : .55;
     sound.volume = this.volume * gain; this.effectGains.set(sound, gain);
     this.effects.add(sound);
     if (cinematic) this.cinematicEffects.add(sound);
-    const release = () => {this.effects.delete(sound); this.cinematicEffects.delete(sound);};
-    sound.addEventListener('ended', release, {once: true});
-    sound.addEventListener('error', release, {once: true});
+    const active = sound;
+    const release = () => {
+      if (this.playbacks.get(active) !== playback) return;
+      this.effects.delete(active); this.cinematicEffects.delete(active);
+    };
+    sound.onended = release;
+    sound.onerror = release;
     void sound.play().catch(release);
   }
   /** Cancel cinematic sounds and victory music on skip, close, or a new case. */

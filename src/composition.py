@@ -34,6 +34,8 @@ from src.modules.social.worker import SocialWorker
 from src.modules.social.views import SocialReadService
 from src.infrastructure.usage import MeteredLLMClient, RedisUsageRepository, UsagePricing
 
+from src.modules.telemetry.service import TelemetryService
+
 logger = logging.getLogger(__name__)
 
 
@@ -56,6 +58,7 @@ class Services:
     social_reads: SocialReadService | None = None
     social_clients: tuple[BedrockMantleClient | MeteredLLMClient, ...] = ()
     usage: RedisUsageRepository | None = None
+    telemetry: TelemetryService | None = None
 
     async def aclose(self) -> None:
         try:
@@ -147,6 +150,7 @@ def build_services(settings: Settings) -> Services:
         games=GameService(characters, games, day_policy=turns),
         harness=harness,
         redis=redis,
+        telemetry=TelemetryService(redis, settings.redis_prefix),
         llm=llm,
         conversations=ConversationService(
             characters, games, memory, harness,

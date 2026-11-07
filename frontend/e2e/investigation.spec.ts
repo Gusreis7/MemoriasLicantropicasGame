@@ -115,10 +115,17 @@ test('Clarim prepara o retrato cedo e abre e fecha durante uma confirmação de 
   const worldReady = new Promise<void>(resolve => {releaseWorld = resolve;});
   await page.route('**/api/v1/games/*/world', async route => {await worldReady; await route.fallback();});
   let portraitRequests = 0;
+  let portraitURL = '';
   page.on('request', request => {
-    if (new URL(request.url()).pathname === '/assets/portraits/bras_cubas.png') portraitRequests++;
+    if (new URL(request.url()).pathname === portraitURL) portraitRequests++;
   });
-  await page.goto('/'); await page.locator('#start').click();
+  await page.goto('/');
+  portraitURL = await page.evaluate(async () => {
+    // @ts-expect-error Browser imports the actual Vite module.
+    const {assetURL} = await import('/shared/assets.ts');
+    return assetURL('/assets/portraits/bras_cubas.png');
+  });
+  await page.locator('#start').click();
   // Portrait loading starts before the world/manifest batch has completed.
   try {await expect.poll(() => portraitRequests).toBe(1);} finally {releaseWorld();}
   await expect(page.locator('#scene-loading')).toBeHidden({timeout: 30000});

@@ -3,7 +3,7 @@ import {personWords} from '../shared/language';
 import {
   ApiError, request, nameOf, formatDate, locationNames, deathAuthor, eventDetails, eventLabels,
   type Page, type GameSummary, type GameState, type Conversation, type Message,
-  type EventRecord, type Interactions, type SocialState, type UsageSummary, type UsageTotals,
+  type EventRecord, type Interactions, type SocialState, type UsageSummary, type UsageTotals, type ApplicationMetrics,
 } from './api';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string): T => {
@@ -71,7 +71,33 @@ async function authenticated(user: string): Promise<void> {
   $('empty-state').hidden = false;
   $('selected-folio').textContent = 'Selecione uma partida no arquivo';
   status();
-  await Promise.all([loadGames(), loadHealth()]);
+  $('application-kpis').replaceChildren();
+  delete $('application-kpis').dataset.values;
+  await Promise.all([loadGames(), loadHealth(), loadMetrics()]);
+}
+
+async function loadMetrics(): Promise<void> {
+  const requestedUser = username;
+  const metrics = await request<ApplicationMetrics>('/metrics');
+  if (!username || username !== requestedUser) return;
+  const number = (value: number) => value.toLocaleString('pt-BR');
+  const cards = [
+    ['CONEXÕES', metrics.connections, 'Sessões de visita; renovadas após 30 min sem atividade'],
+    ['ATIVOS AGORA', metrics.active_connections, 'Sessões com atividade nos últimos 90 segundos'],
+    ['PARTIDAS INICIADAS', metrics.games, 'Todas as partidas armazenadas na aplicação'],
+    ['VITÓRIAS', metrics.won, 'Partidas encerradas com vitória de Floriano'],
+    ['DERROTAS', metrics.lost, 'Partidas encerradas com derrota de Floriano'],
+    ['SEM DESFECHO', metrics.unfinished, 'Em andamento ou interrompidas, sem resultado registrado'],
+  ] as const;
+  const signature = JSON.stringify(cards);
+  const container = $('application-kpis');
+  if (container.dataset.values !== signature) {
+    container.dataset.values = signature;
+    container.replaceChildren(...cards.map(([label, value, note]) => stat(label, number(value), note)));
+  }
+  $('application-kpi-note').textContent = `Partidas consultadas em ${formatDate(metrics.games_observed_at)}; atualização dos totais em até 15 s. `
+    + (metrics.connections_since ? `Conexões contabilizadas desde ${formatDate(metrics.connections_since)}.`
+      : 'A contagem de conexões começa no primeiro acesso ao jogo; não há estimativa de acessos anteriores.');
 }
 
 function pagination(target: HTMLElement, offset: number, total: number, limit: number, change: (offset: number) => void): void {
@@ -480,7 +506,7 @@ $<HTMLInputElement>('participant-filter').addEventListener('input', renderConver
 $('refresh').addEventListener('click', async () => {
   const button = $<HTMLButtonElement>('refresh'); button.disabled = true;
   try {
-    await Promise.all([loadGames(), loadHealth(), loadOverview(), loadConversations(), loadEvents(), loadMessages()]);
+    await Promise.all([loadGames(), loadHealth(), loadMetrics(), loadOverview(), loadConversations(), loadEvents(), loadMessages()]);
     status('Arquivo atualizado.');
   } catch (error) { handleError(error); }
   finally { button.disabled = false; }
@@ -492,7 +518,7 @@ setInterval(() => {
   if (focus && ['games-list', 'games-pagination', 'graph'].some(id => $(id).contains(focus))) return;
   polling = true;
   // Não recriar transcrição, filtros ou paginação enquanto o operador lê/escreve.
-  void Promise.all([loadGames(), loadHealth(), loadOverview()]).catch(handleError).finally(() => { polling = false; });
+  void Promise.all([loadGames(), loadHealth(), loadMetrics(), loadOverview()]).catch(handleError).finally(() => { polling = false; });
 }, 5000);
 
 void request<{username: string}>('/auth/session').then(session => authenticated(session.username)).catch(error => {

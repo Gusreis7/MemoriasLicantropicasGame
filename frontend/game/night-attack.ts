@@ -1,3 +1,4 @@
+import {assetURL} from '../shared/assets';
 import type {CharacterManifest, JournalEdition, WorldSnapshot} from '../shared/api';
 import {wolfWalkFrame} from './wolf-walk';
 import {gameAudio} from './audio';
@@ -30,7 +31,7 @@ let cancel: (()=>void) | undefined;
 export function cancelNightAttack() {cancel?.();}
 const image = (path:string, signal:AbortSignal) => new Promise<HTMLImageElement>((resolve,reject)=>{
   const img = new Image(); img.onload=()=>resolve(img); img.onerror=()=>reject(new Error('Arte indisponível'));
-  signal.addEventListener('abort',()=>{img.src='';reject(new Error('Cancelado'));},{once:true}); img.src=path;
+  signal.addEventListener('abort',()=>{img.src='';reject(new Error('Cancelado'));},{once:true}); img.src=assetURL(path);
 });
 async function actor(path:string, atlas:string, signal:AbortSignal):Promise<Actor> {
   const [img,data]=await Promise.all([image(path,signal),fetch(atlas,{signal}).then(r=>r.json())]);

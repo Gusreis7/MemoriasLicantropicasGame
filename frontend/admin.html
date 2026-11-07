@@ -48,6 +48,11 @@
       <main class="workspace">
         <header class="topbar"><div><span class="eyebrow">CADERNO DO OBSERVADOR</span><p id="selected-folio">Selecione uma partida no arquivo</p></div><button id="refresh" class="button subtle" type="button"><span aria-hidden="true">↻</span> Atualizar</button></header>
         <div id="status" class="status" role="status" aria-live="polite"></div>
+        <section class="application-summary" aria-labelledby="application-summary-title">
+          <div class="section-heading"><div><span class="eyebrow">ACOMPANHAMENTO DA APLICAÇÃO</span><h2 id="application-summary-title">O movimento da cidade.</h2></div><span class="read-only-stamp">SOMENTE<br /><strong>LEITURA</strong></span></div>
+          <div id="application-kpis" class="application-kpis" aria-live="polite" aria-atomic="true"></div>
+          <p id="application-kpi-note" class="panel-description">Consultando os indicadores…</p>
+        </section>
         <section id="empty-state" class="empty-state"><span class="empty-ornament" aria-hidden="true">⌘</span><span class="eyebrow">O ARQUIVO AGUARDA</span><h1>Nenhuma história selecionada.</h1><p>Escolha uma sessão à esquerda. Se o arquivo estiver vazio, crie uma partida no jogo para começar a observar.</p><a id="start-game-link" class="button primary" href="http://localhost:7077">Ir para o jogo <span aria-hidden="true">↗</span></a></section>
         <div id="game-content" hidden>
           <section class="case-heading"><div><span class="eyebrow">OS FATOS POR TRÁS DOS RELATOS</span><h1>Uma cidade de segredos.</h1><p id="case-meta"></p></div><span class="read-only-stamp">SOMENTE<br /><strong>OBSERVAÇÃO</strong></span></section>

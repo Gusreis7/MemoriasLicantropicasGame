@@ -20,6 +20,13 @@ beforeEach(() => {
 });
 
 describe('política de áudio', () => {
+  it('reutiliza efeitos interrompidos sem criar novos elementos de mídia', async () => {
+    const {gameAudio} = await import('./audio');
+    gameAudio.unlock();
+    for (let i = 0; i < 8; i++) {gameAudio.start(); gameAudio.effect('paper'); gameAudio.stop();}
+    expect(sounds).toHaveLength(2); // ambiente e um efeito reutilizado
+    expect(sounds[1].play).toHaveBeenCalledTimes(8);
+  });
   it('toca vinheta de vitória uma vez e permite interromper ao sair', async () => {
     const {gameAudio} = await import('./audio');
     gameAudio.unlock(); gameAudio.start(); gameAudio.effect('victory');

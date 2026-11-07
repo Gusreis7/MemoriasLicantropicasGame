@@ -3,6 +3,7 @@ import {describe, expect, it} from 'vitest';
 import type {LocationID} from '../shared/api';
 import {gameDayProgress} from './case';
 import {locationLighting, sunsetOpacity} from './daylight';
+import {assetURL} from '../shared/assets';
 
 describe('iluminação dos locais', () => {
   it('mantém manhã até 15h e chega ao pôr do sol às 18h no mesmo relógio', () => {
@@ -21,8 +22,8 @@ describe('iluminação dos locais', () => {
     for (const asset of manifest.assets) {
       const layers = locationLighting(asset.id as LocationID);
       for (const period of ['morning', 'sunset', 'midnight'] as const) {
-        expect(layers[period].path).toBe(asset.lighting[period].path);
-        const png = readFileSync(new URL(layers[period].path.slice(1), `${root}/`));
+        expect(layers[period].path).toBe(assetURL(asset.lighting[period].path));
+        const png = readFileSync(new URL(asset.lighting[period].path.slice(1), `${root}/`));
         expect(png.subarray(1, 4).toString()).toBe('PNG');
         const width = png.readUInt32BE(16), height = png.readUInt32BE(20);
         expect([width, height]).toEqual([asset.lighting[period].width, asset.lighting[period].height]);

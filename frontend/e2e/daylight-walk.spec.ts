@@ -12,7 +12,7 @@ test('cinco locais usam manhã e pôr do sol; Floriano alterna o ciclo e para na
   const midnightRequests = new Map<string, number>();
   page.on('request', request => {
     const path = new URL(request.url()).pathname;
-    if (path.endsWith('-00h.png')) midnightRequests.set(path, (midnightRequests.get(path) ?? 0) + 1);
+    midnightRequests.set(path, (midnightRequests.get(path) ?? 0) + 1);
   });
   // Mount the production scene alone, with controlled time and movement hooks.
   await page.route('**/__visual_cycle__', route => route.fulfill({contentType: 'text/html', body: '<html><body style="margin:0"><main id="scene"></main></body></html>'}));
@@ -39,7 +39,13 @@ test('cinco locais usam manhã e pôr do sol; Floriano alterna o ciclo e para na
     state.game = makeGame(document.querySelector('#scene'), state.scene);
   }, places);
   await expect.poll(() => page.evaluate(() => (window as any).__visual.ready), {timeout: 30000}).toBe(true);
-  for (const location of places) expect(midnightRequests.get(`/assets/locations/${location.id}-00h.png`)).toBe(1);
+  const nightURLs = await page.evaluate(async () => {
+    // @ts-expect-error Browser imports the actual Vite module.
+    const {assetURL} = await import('/shared/assets.ts');
+    return ['praca_verde', 'cabana_capitu', 'casa_verde', 'cafe_largo', 'cais_lanternas'].map(id => assetURL(`/assets/locations/${id}-00h.png`));
+  });
+  expect(midnightRequests.get(nightURLs[0])).toBe(1);
+  for (const url of nightURLs.slice(1)) expect(midnightRequests.get(url) ?? 0).toBe(0);
   const nightTexture = await page.evaluate(() => {
     const scene = (window as any).__visual.scene;
     return {key: scene.children.getByName('background-midnight').texture.key,
@@ -54,6 +60,7 @@ test('cinco locais usam manhã e pôr do sol; Floriano alterna o ciclo e para na
           player: {location_id: location.id, x: state.x, facing: 'right', movement_seq: 0}, visible_npcs: [], travel_targets: []});
       }, {location, progress});
       await expect.poll(() => page.evaluate(() => (window as any).__visual.scene.children.getByName('background-sunset').alpha)).toBe(progress);
+      await expect.poll(() => page.evaluate(() => (window as any).__visual.scene.loading)).toBe(false);
       const layers = await page.evaluate(() => {
         const scene = (window as any).__visual.scene;
         return ['background-morning', 'background-sunset'].map(name => {
@@ -77,6 +84,7 @@ test('cinco locais usam manhã e pôr do sol; Floriano alterna o ciclo e para na
   await expect.poll(() => page.evaluate(() => (window as any).__visual.scene.children.getByName('player').flipX)).toBe(true);
   await page.evaluate(() => {(window as any).__visual.blocked = true;});
   await expect.poll(() => page.evaluate(() => (window as any).__visual.scene.children.getByName('player').anims.isPlaying)).toBe(false);
+  for (const url of nightURLs) expect(midnightRequests.get(url)).toBe(1);
   expect(errors).toEqual([]);
   await page.evaluate(() => {(window as any).__visual.game.destroy(true);});
 });

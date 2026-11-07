@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Query, Request, Response
 from src.modules.admin.auth import AdminAuth, COOKIE_NAME, COOKIE_PATH
 from src.modules.admin.schema import (
     AdminConversation, AdminMessage, AdminState, EventPublic, GameListItem, Interactions,
-    LoginRequest, Page, SessionPublic,
+    LoginRequest, Page, SessionPublic, ApplicationMetrics,
 )
 from src.modules.admin.service import AdminService
 from src.contracts.social import SocialState
@@ -66,6 +66,11 @@ async def logout(request: Request, response: Response, auth: Auth, user: User):
 @router.get("/games", response_model=Page[GameListItem])
 async def games(user: User, service: Service, offset: Offset = 0, limit: Limit = 20):
     return await service.list_games(offset, limit)
+
+
+@router.get("/metrics", response_model=ApplicationMetrics)
+async def metrics(user: User, service: Service):
+    return await service.metrics()
 
 
 @router.get("/games/{game_id}/state", response_model=AdminState)

@@ -1,3 +1,4 @@
+import {assetURL} from '../shared/assets';
 import Phaser from 'phaser';
 import type {CharacterAsset} from '../shared/api';
 import {custodyPacing,CELL_PACING} from './custody-pacing';
@@ -19,10 +20,10 @@ export class CustodyScene extends Phaser.Scene {
   private reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   constructor(private character: CharacterAsset, private onAdmissionStage?: (stage:AdmissionStage)=>void) {super('custody');}
   preload() {
-    this.load.image('jail-room','/assets/cinematics/jail.png');
-    this.load.image('delegate-at-desk','/assets/custody/delegado-sentado.png');
-    this.load.atlas('detainee',this.character.path,this.character.atlasPath!);
-    this.load.atlas('wolf-reveal','/assets/cinematics/werewolf.png','/assets/cinematics/werewolf.json');
+    this.load.image('jail-room',assetURL('/assets/cinematics/jail.png'));
+    this.load.image('delegate-at-desk',assetURL('/assets/custody/delegado-sentado.png'));
+    this.load.atlas('detainee',assetURL(this.character.path),this.character.atlasPath!);
+    this.load.atlas('wolf-reveal',assetURL('/assets/cinematics/werewolf.png'),'/assets/cinematics/werewolf.json');
   }
   create() {
     this.add.image(480,270,'jail-room').setDisplaySize(960,540);

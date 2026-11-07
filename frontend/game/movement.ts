@@ -9,8 +9,13 @@ type PredictedInput = {start: number; end: number; direction: Direction};
 export const clampX = (x: number, width: number) => Math.min(width - 32, Math.max(32, x));
 
 export function closestNPC(world: WorldSnapshot, x: number) {
-  return world.visible_npcs.filter(npc => Math.abs(npc.x - x) <= APPROACH_DISTANCE)
-    .sort((a, b) => Math.abs(a.x - x) - Math.abs(b.x - x))[0];
+  let nearest: WorldSnapshot['visible_npcs'][number] | undefined;
+  let distance = APPROACH_DISTANCE;
+  for (const npc of world.visible_npcs) {
+    const next = Math.abs(npc.x - x);
+    if (next <= distance && (!nearest || next < distance)) {nearest = npc; distance = next;}
+  }
+  return nearest;
 }
 
 export class MovementController {

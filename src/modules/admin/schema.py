@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Generic, Literal, TypeVar
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, SecretStr
+from pydantic import BaseModel, ConfigDict, SecretStr, Field
 
 
 class AdminSchema(BaseModel):
@@ -16,6 +16,17 @@ class LoginRequest(AdminSchema):
 
 class SessionPublic(AdminSchema):
     username: str
+
+
+class ApplicationMetrics(AdminSchema):
+    connections: int = Field(ge=0)
+    active_connections: int = Field(ge=0)
+    connections_since: datetime | None
+    games: int = Field(ge=0)
+    won: int = Field(ge=0)
+    lost: int = Field(ge=0)
+    unfinished: int = Field(ge=0)
+    games_observed_at: datetime
 
 
 T = TypeVar("T")

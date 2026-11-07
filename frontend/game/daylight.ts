@@ -1,11 +1,12 @@
 import type {LocationID} from '../shared/api';
+import {assetURL} from '../shared/assets';
 
 /** Three lighting plates share the same layout and world coordinates. */
 export function locationLighting(id: LocationID) {
   return {
-    morning: {key: `location-${id}-09h`, path: `/assets/locations/${id}-09h.png`},
-    sunset: {key: `location-${id}-18h`, path: `/assets/locations/${id}-18h.png`},
-    midnight: {key: `location-${id}-00h`, path: `/assets/locations/${id}-00h.png`},
+    morning: {key: `location-${id}-09h`, path: assetURL(`/assets/locations/${id}-09h.png`)},
+    sunset: {key: `location-${id}-18h`, path: assetURL(`/assets/locations/${id}-18h.png`)},
+    midnight: {key: `location-${id}-00h`, path: assetURL(`/assets/locations/${id}-00h.png`)},
   };
 }
 

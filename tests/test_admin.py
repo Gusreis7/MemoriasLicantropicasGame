@@ -82,7 +82,7 @@ async def admin_seed(storage, game, conversation):
 
 
 @pytest.mark.parametrize("path", [
-    "/games", "/health", "/auth/session", f"/games/{uuid4()}/state", f"/games/{uuid4()}/events",
+    "/games", "/metrics", "/health", "/auth/session", f"/games/{uuid4()}/state", f"/games/{uuid4()}/events",
     f"/games/{uuid4()}/conversations", f"/games/{uuid4()}/interactions",
     f"/games/{uuid4()}/conversations/{uuid4()}/messages",
 ])
@@ -227,3 +227,27 @@ async def test_corrupt_event_is_sanitized(authorized_client, admin_seed, storage
     response = await authorized_client.get(f"/admin/api/v1/games/{game.id}/events")
     assert response.status_code == 503
     assert "private-corrupt-payload" not in response.text
+
+async def test_application_kpis_count_all_games_without_writing_or_advancing(authorized_client, admin_app, admin_seed, storage):
+    from unittest.mock import AsyncMock
+    game, _ = admin_seed
+    for status in ('won', 'lost', 'active'):
+        other = game.model_copy(update={'id': uuid4(), 'status': status})
+        await storage.games.create(other)
+    turns = SimpleNamespace(sync=AsyncMock())
+    admin_app.state.services.admin._turns = turns
+    async def snapshot():
+        return {key: await storage.client.dump(key) for key in await storage.client.keys(f'{storage.prefix}:*')}
+    before = await snapshot()
+    response = await authorized_client.get('/admin/api/v1/metrics')
+    assert response.status_code == 200
+    result = response.json()
+    assert (result['games'], result['won'], result['lost'], result['unfinished']) == (4, 1, 1, 2)
+    assert result['connections'] == 0 and result['connections_since'] is None
+    assert response.headers['cache-control'] == 'no-store'
+    assert (await authorized_client.get(f'/admin/api/v1/games/{game.id}/state')).status_code == 200
+    assert (await authorized_client.get('/admin/api/v1/metrics')).json() == result
+    turns.sync.assert_not_awaited()
+    assert await snapshot() == before
+    for method in ('POST', 'PUT', 'PATCH', 'DELETE'):
+        assert (await authorized_client.request(method, '/admin/api/v1/metrics')).status_code == 405

@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import {assetURL} from '../shared/assets';
 import type {CasePublic, CharacterAsset, CharacterManifest, Direction, Location, LocationID, WorldSnapshot} from '../shared/api';
 import {POPULATION} from './population';
 import {locationLighting, sunsetOpacity} from './daylight';
@@ -11,6 +12,7 @@ interface SceneHooks {
   blocked: () => boolean;
   loaded: () => void;
   failed: () => void;
+  loading?: () => void;
   dayProgress?: () => number;
 }
 
@@ -64,6 +66,8 @@ export class CityScene extends Phaser.Scene {
   private npcSignature = '';
   private npcPositions = new Map<string, number>();
   private touchDirection: Direction = 'idle';
+  loading = false;
+  private queuedImages = new Set<string>();
   private reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   constructor(private manifest: CharacterManifest, private locations: Location[], world: WorldSnapshot, private hooks: SceneHooks) {
@@ -74,18 +78,16 @@ export class CityScene extends Phaser.Scene {
 
   preload() {
     for (const asset of this.manifest.characters) {
-      if (asset.type === 'atlas' && asset.atlasPath) this.load.atlas(asset.id, asset.path, asset.atlasPath);
-      else if (asset.type === 'image') this.load.image(asset.id, asset.path);
-      else this.load.spritesheet(asset.id, asset.path, {frameWidth: asset.frameWidth, frameHeight: asset.frameHeight});
+      if (asset.type === 'atlas' && asset.atlasPath) this.load.atlas(asset.id, assetURL(asset.path), asset.atlasPath);
+      else if (asset.type === 'image') this.load.image(asset.id, assetURL(asset.path));
+      else this.load.spritesheet(asset.id, assetURL(asset.path), {frameWidth: asset.frameWidth, frameHeight: asset.frameHeight});
     }
-    for (const location of this.locations) {
-      for (const layer of Object.values(locationLighting(location.id))) this.load.image(layer.key, layer.path);
-    }
-    this.load.atlas('animals-walk','/assets/ambient/animals-walk.png','/assets/ambient/animals-walk.json');
-    this.load.atlas('scene-life', '/assets/ambient/scene-life.png', '/assets/ambient/scene-life.json');
-    this.load.atlas('citizens', '/assets/ambient/citizens.png', '/assets/ambient/citizens.json');
-    this.load.atlas('capoeira', '/assets/ambient/capoeira.png', '/assets/ambient/capoeira.json');
-    this.load.atlas('clarim', '/assets/ambient/clarim.png', '/assets/ambient/clarim.json');
+    for (const layer of Object.values(locationLighting(this.currentWorld.location.id))) this.load.image(layer.key, layer.path);
+    this.load.atlas('animals-walk',assetURL('/assets/ambient/animals-walk.png'),'/assets/ambient/animals-walk.json');
+    this.load.atlas('scene-life', assetURL('/assets/ambient/scene-life.png'), '/assets/ambient/scene-life.json');
+    this.load.atlas('citizens', assetURL('/assets/ambient/citizens.png'), '/assets/ambient/citizens.json');
+    this.load.atlas('capoeira', assetURL('/assets/ambient/capoeira.png'), '/assets/ambient/capoeira.json');
+    this.load.atlas('clarim', assetURL('/assets/ambient/clarim.png'), '/assets/ambient/clarim.json');
     this.load.on('loaderror', () => {this.assetsFailed = true; this.hooks.failed();});
   }
 
@@ -117,7 +119,7 @@ export class CityScene extends Phaser.Scene {
     this.ready = true;
     this.apply(this.currentWorld);
     if (this.assetsFailed) this.hooks.failed();
-    else this.hooks.loaded();
+    else if (!this.loading) this.hooks.loaded();
   }
 
   private sprite(id: string, x: number, y: number) {
@@ -204,6 +206,26 @@ export class CityScene extends Phaser.Scene {
   apply(world: WorldSnapshot) {
     this.currentWorld = world;
     if (!this.ready) return;
+    const layers = Object.values(locationLighting(world.location.id));
+    if (layers.some(layer => !this.textures.exists(layer.key))) {
+      if (!this.loading) {
+        this.loading = true; this.setInputEnabled(false); this.hooks.loading?.();
+        this.load.once('complete', () => {
+          this.queuedImages.clear();
+          const current = Object.values(locationLighting(this.currentWorld.location.id));
+          if (current.some(layer => !this.textures.exists(layer.key))) {this.hooks.failed(); return;}
+          this.loading = false;
+          this.apply(this.currentWorld); this.hooks.loaded();
+        });
+      }
+      for (const layer of layers) {
+        if (!this.textures.exists(layer.key) && !this.queuedImages.has(layer.key)) {
+          this.queuedImages.add(layer.key); this.load.image(layer.key, layer.path);
+        }
+      }
+      if (!this.load.isLoading()) this.load.start();
+      return;
+    }
     // The backdrop and decorations are built once per location, never per movement snapshot.
     if (world.location.id !== this.currentLocation) {
       this.currentLocation = world.location.id; this.npcPositions.clear();
@@ -282,6 +304,7 @@ export class CityScene extends Phaser.Scene {
   }
 
   update(time: number, delta: number) {
+    if (this.loading) return;
     this.midnightBackground?.setAlpha(this.caseState?.phase === 'night' ? 1 : 0);
     this.sunsetBackground?.setAlpha(sunsetOpacity(this.hooks.dayProgress?.() ?? 0));
     const blocked = this.hooks.blocked();

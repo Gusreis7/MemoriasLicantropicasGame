@@ -10,10 +10,13 @@
     "test:e2e": "playwright test",
     "test:deployed": "node e2e/deployed.mjs"
   },
-  "dependencies": {"phaser": "^4.2.1"},
+  "dependencies": {
+    "phaser": "^4.2.1"
+  },
   "devDependencies": {
-    "@types/node": "^24.0.0",
     "@playwright/test": "^1.56.1",
+    "@types/node": "^24.0.0",
+    "sharp": "0.35.5",
     "typescript": "^5.9.3",
     "vite": "^7.1.0",
     "vitest": "^5.0.5"

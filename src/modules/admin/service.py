@@ -1,6 +1,9 @@
 """Projeções administrativas de registros existentes, sem alterar o jogo."""
 
 from functools import wraps
+import json
+from time import monotonic
+from datetime import UTC, datetime
 from uuid import UUID
 
 from pydantic import ValidationError
@@ -11,7 +14,7 @@ from src.contracts.model import Conversation, ConversationMessage
 from src.contracts.investigation import InvestigationState
 from src.modules.admin.schema import (
     AdminCharacter, AdminConversation, AdminMessage, AdminState, EventPublic, GameListItem,
-    InteractionEdge, InteractionNode, Interactions, KnownDeath, Page,
+    InteractionEdge, InteractionNode, Interactions, KnownDeath, Page, ApplicationMetrics,
 )
 
 
@@ -43,6 +46,31 @@ class AdminService:
             from src.infrastructure.usage import RedisUsageRepository
             usage_repository = RedisUsageRepository(client, prefix)
         self._usage_repository = usage_repository
+        self._metrics_cache = None
+
+    @storage_errors
+    async def metrics(self):
+        from src.modules.telemetry.service import TelemetryService
+        traffic = await TelemetryService(self._client, self._prefix).summary()
+        if self._metrics_cache is None or monotonic() - self._metrics_cache[0] >= 15:
+            totals = {"active": 0, "won": 0, "lost": 0}
+            # Read existing canonical records in bounded batches. No SCAN of
+            # unrelated keys, no phase synchronization, and no persistent writes.
+            identifiers = await self._client.zrange(f"{self._prefix}:games", 0, -1)
+            for offset in range(0, len(identifiers), 100):
+                ids = [_text(identifier) for identifier in identifiers[offset:offset + 100]]
+                records = await self._client.mget([f"{self._game_prefix(identifier)}:state" for identifier in ids])
+                for identifier, raw in zip(ids, records, strict=True):
+                    if raw is None:
+                        continue
+                    game = json.loads(raw)
+                    if game["id"] != identifier or game["status"] not in totals:
+                        raise ValueError("Registro de partida inválido.")
+                    totals[game["status"]] += 1
+            values = {"games": sum(totals.values()), "won": totals["won"], "lost": totals["lost"],
+                      "unfinished": totals["active"], "games_observed_at": datetime.now(UTC)}
+            self._metrics_cache = (monotonic(), values)
+        return ApplicationMetrics(**traffic, **self._metrics_cache[1])
 
     @storage_errors
     async def usage(self, game_id):
@@ -97,8 +125,6 @@ class AdminService:
 
     @storage_errors
     async def state(self, game_id):
-        if self._turns is not None:
-            await self._turns.sync(game_id)
         game = await self._game(game_id)
         profiles = {profile.id: profile for profile in await self._characters.list()}
         world = await self._world.get(game_id)

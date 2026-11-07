@@ -1,3 +1,4 @@
+import {assetURL} from '../shared/assets';
 import type {LocationID} from '../shared/api';
 
 /** Reuse the public monster and moonlit location, never a suspect's identity. */
@@ -7,7 +8,7 @@ export async function renderDefeatPhoto(target:HTMLImageElement,location:Locatio
   ctx.fillStyle='#080e16';ctx.fillRect(0,0,canvas.width,canvas.height);
   const load=(path:string)=>new Promise<HTMLImageElement>((resolve,reject)=>{
     const img=new Image();img.onload=()=>resolve(img);img.onerror=reject;
-    signal.addEventListener('abort',()=>{img.src='';reject(new Error('Cancelado'));},{once:true});img.src=path;
+    signal.addEventListener('abort',()=>{img.src='';reject(new Error('Cancelado'));},{once:true});img.src=assetURL(path);
   });
   try {
     const [background,wolf,atlas]=await Promise.all([

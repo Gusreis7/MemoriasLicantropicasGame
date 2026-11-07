@@ -32,6 +32,7 @@ from src.modules.games.service import GameService
 from src.modules.conversations.router import router as conversation_router, approach_router
 from src.modules.world.router import router as world_router
 from src.modules.admin.router import router as admin_router
+from src.modules.telemetry.router import router as telemetry_router
 from src.modules.investigation.router import router as investigation_router
 from src.modules.social.router import router as social_router
 from src.settings import Settings
@@ -84,6 +85,7 @@ def create_app() -> FastAPI:
     application.include_router(approach_router)
     application.include_router(world_router)
     application.include_router(admin_router)
+    application.include_router(telemetry_router)
     application.include_router(investigation_router)
     application.include_router(social_router)
 

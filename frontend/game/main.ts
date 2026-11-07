@@ -1,3 +1,5 @@
+import {assetMarkup, assetURL} from '../shared/assets';
+import {trackVisits} from './visits';
 import {api, ApiError, type CasePublic, type CaseEvidence, type CaseTestimony, type GamePublic, type CharacterManifest, type Conversation, type ExitSide, type Location, type LocationID, type Message, type HeardReport, type WorldSnapshot} from '../shared/api';
 import {closestNPC, MovementController} from './movement';
 import {ExitBoundary} from './exits';
@@ -16,7 +18,8 @@ import {canSubmitCaseReport, caseReportKind, caseReportStatus} from './table-rep
 import {dossierEvidence} from './dossier-selection';
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
-app.innerHTML = `
+trackVisits();
+app.innerHTML = assetMarkup(`
   <div class="site-shell">
     <header class="masthead">
       <a class="brand" href="/" aria-label="Memórias Licantropicas, início"><span class="brand-mark" aria-hidden="true">☾</span><span>Memórias<br><strong>Licantropicas</strong></span></a>
@@ -40,12 +43,12 @@ app.innerHTML = `
     <footer class="site-footer"><span>MEMÓRIAS LICANTROPICAS</span><span>Nem toda história é contada por inteiro.</span><span>UMA INVESTIGAÇÃO EM PIXELS</span></footer>
   </div>
 
-  <div id="map-overlay" class="overlay" hidden><section class="map-modal" role="dialog" aria-modal="true" aria-labelledby="map-title"><header class="modal-heading"><div><p class="eyebrow">ESCOLHA SEU PRÓXIMO DESTINO</p><h2 id="map-title">Os caminhos da cidade</h2></div><button class="icon-button" id="close-map" aria-label="Fechar mapa" type="button">×</button></header><div class="city-map"><img src="/assets/map/city.png" alt="Mapa ilustrado do bairro, entre a praça, a cabana, a Casa Verde, o café e o cais."/><div id="map-destinations"></div></div><div id="map-residents" class="map-residents" aria-live="polite"></div><p class="map-caption">Cada encontro pode mudar o rumo desta história.</p><p id="map-status" class="status" role="status" aria-live="polite"></p></section></div>
+  <div id="map-overlay" class="overlay" hidden><section class="map-modal" role="dialog" aria-modal="true" aria-labelledby="map-title"><header class="modal-heading"><div><p class="eyebrow">ESCOLHA SEU PRÓXIMO DESTINO</p><h2 id="map-title">Os caminhos da cidade</h2></div><button class="icon-button" id="close-map" aria-label="Fechar mapa" type="button">×</button></header><div class="city-map"><img loading="lazy" decoding="async" src="/assets/map/city.png" alt="Mapa ilustrado do bairro, entre a praça, a cabana, a Casa Verde, o café e o cais."/><div id="map-destinations"></div></div><div id="map-residents" class="map-residents" aria-live="polite"></div><p class="map-caption">Cada encontro pode mudar o rumo desta história.</p><p id="map-status" class="status" role="status" aria-live="polite"></p></section></div>
 
   <div id="exit-overlay" class="overlay" hidden><section class="exit-modal" role="dialog" aria-modal="true" aria-labelledby="exit-title" aria-describedby="exit-description"><header class="modal-heading"><div><p class="eyebrow">NO FIM DESTA RUA</p><h2 id="exit-title">Por onde seguimos?</h2></div><button class="icon-button" id="close-exit" aria-label="Ficar neste local" type="button">×</button></header><p id="exit-description">Escolha um caminho para continuar a investigação.</p><div id="exit-destinations" class="exit-destinations"></div><p id="exit-status" class="status" role="status" aria-live="polite"></p><button id="stay-here" class="button secondary" type="button">Ficar neste local</button></section></div>
 
   <div id="dialogue-overlay" class="overlay dialogue-overlay" hidden><section class="dialogue-modal" role="dialog" aria-modal="true" aria-labelledby="dialogue-name"><aside class="persona-panel"><div class="persona-frame"><img id="persona-portrait" src="" alt=""/></div><p class="eyebrow">DEPOIMENTO</p><h2 id="dialogue-name"></h2><span class="persona-flourish" aria-hidden="true">— ✦ —</span><p>Nem toda verdade vem à primeira pergunta.</p></aside><div class="conversation-panel"><header class="conversation-heading"><div><span class="conversation-dot"></span><span>Conversa com Floriano</span></div><button id="close-dialogue" class="icon-button" type="button" aria-label="Encerrar conversa">×</button></header><div id="messages" class="messages" role="log" aria-live="polite"></div><div id="dialogue-status" class="status dialogue-status" role="status" aria-live="polite"></div><div id="evidence-presenter" class="evidence-presenter" hidden><label for="present-evidence">Mostrar um vestígio</label><div><select id="present-evidence"></select><button id="present-button" class="button small" type="button">Apresentar</button></div><p id="presentation-status" role="status" aria-live="polite"></p></div><form id="message-form" class="message-form"><label class="sr-only" for="message-input">Sua pergunta</label><textarea id="message-input" rows="2" maxlength="8000" placeholder="Pergunte, retome uma pista ou confronte uma versão…" required></textarea><button id="send-message" class="button primary" type="submit" aria-label="Enviar pergunta">Enviar <span aria-hidden="true">→</span></button></form><p class="form-hint">Pergunte sobre álibis e contradições na conversa. Enter envia · Shift + Enter quebra a linha</p></div></section></div>
-  <div id="journal-overlay" class="overlay" hidden><section class="journal-modal case-modal" role="dialog" aria-modal="true" aria-labelledby="journal-title"><header class="newspaper-masthead"><div class="newspaper-dateline"><span>RIO DE JANEIRO</span><span>EDIÇÃO DA MANHÃ</span><button id="close-journal" class="icon-button" type="button" aria-label="Fechar jornal">×</button></div><h2 id="journal-title">O Clarim do Rio</h2><div class="newspaper-edition"><span>NOTÍCIAS DA CIDADE · 1890</span><span id="journal-day"></span></div></header><article class="newspaper-story"><p class="journal-motto">Os acontecimentos da cidade, à luz do dia.</p><p id="journal-death-toll" class="journal-death-toll"></p><h3 id="journal-headline"></h3><figure id="journal-victim" class="journal-victim" hidden><img id="journal-victim-image" alt=""/><figcaption id="journal-victim-caption"></figcaption></figure><figure id="journal-snapshot" class="journal-snapshot" hidden><img id="journal-image" src="/assets/press/crime-scene-snapshot.png" alt="Registro monocromático de uma rua carioca à noite, com um chapéu caído e pegadas no calçamento."/><figcaption id="journal-snapshot-caption"></figcaption></figure><p id="journal-body"></p><p id="journal-location" class="journal-location"></p></article><button id="read-journal" class="button primary" type="button">Continuar a investigação</button></section></div>
+  <div id="journal-overlay" class="overlay" hidden><section class="journal-modal case-modal" role="dialog" aria-modal="true" aria-labelledby="journal-title"><header class="newspaper-masthead"><div class="newspaper-dateline"><span>RIO DE JANEIRO</span><span>EDIÇÃO DA MANHÃ</span><button id="close-journal" class="icon-button" type="button" aria-label="Fechar jornal">×</button></div><h2 id="journal-title">O Clarim do Rio</h2><div class="newspaper-edition"><span>NOTÍCIAS DA CIDADE · 1890</span><span id="journal-day"></span></div></header><article class="newspaper-story"><p class="journal-motto">Os acontecimentos da cidade, à luz do dia.</p><p id="journal-death-toll" class="journal-death-toll"></p><h3 id="journal-headline"></h3><figure id="journal-victim" class="journal-victim" hidden><img id="journal-victim-image" alt=""/><figcaption id="journal-victim-caption"></figcaption></figure><figure id="journal-snapshot" class="journal-snapshot" hidden><img id="journal-image" loading="lazy" decoding="async" src="/assets/press/crime-scene-snapshot.png" alt="Registro monocromático de uma rua carioca à noite, com um chapéu caído e pegadas no calçamento."/><figcaption id="journal-snapshot-caption"></figcaption></figure><p id="journal-body"></p><p id="journal-location" class="journal-location"></p></article><button id="read-journal" class="button primary" type="button">Continuar a investigação</button></section></div>
   <div id="notebook-overlay" class="overlay notebook-overlay" hidden><section class="case-modal notebook-modal" role="dialog" aria-modal="true" aria-labelledby="notebook-title"><header class="notebook-heading"><div><p class="eyebrow">ANOTAÇÕES DE FLORIANO · 1890</p><h2 id="notebook-title">Caderno de campo</h2></div><button id="close-notebook" class="icon-button" type="button" aria-label="Fechar caderno">×</button></header><div class="notebook-book"><div class="notebook-page-stack" aria-hidden="true"></div><div class="notebook-page-markers" aria-hidden="true"><span class="notebook-page-marker notebook-page-marker-residents">01 · Moradores</span><span class="notebook-page-marker notebook-page-marker-clues">02 · Pistas</span><span class="notebook-page-marker notebook-page-marker-reports">03 · Relatos</span></div><div class="notebook-spread"><aside class="notebook-page notebook-suspect-page" aria-labelledby="notebook-suspects-title"><header class="notebook-page-heading"><span>FOLHA 01</span><h3 id="notebook-suspects-title">Os moradores</h3><p>Sete destinos, uma sombra.</p></header><div id="notebook-suspects" class="notebook-suspects" aria-live="polite"></div></aside><section class="notebook-page notebook-notes-page" aria-label="Anotações do caso"><div class="notebook-tabs" role="tablist" aria-label="Seções do caderno"><button id="notebook-tab-clues" class="notebook-tab" type="button" role="tab" aria-selected="true" aria-controls="notebook-clues" tabindex="0">Pistas <kbd>1</kbd></button><button id="notebook-tab-reports" class="notebook-tab" type="button" role="tab" aria-selected="false" aria-controls="notebook-reports" tabindex="-1">Relatos <kbd>2</kbd></button></div><div id="notebook-clues" class="notebook-tab-panel" role="tabpanel" aria-labelledby="notebook-tab-clues"><header class="notebook-page-heading"><span>FOLHA 02 · INDÍCIOS</span><h3>O que ficou para trás</h3><p>Vestígios, versões e contradições.</p></header><section class="notebook-section"><h4>Vestígios recolhidos</h4><div id="evidence-list" class="evidence-list"></div></section><section id="achievements-section" class="notebook-section discoveries-section"><h4>Descobertas</h4><p id="achievement-progress" class="achievement-progress"></p><div id="achievement-list" class="achievement-list"></div></section><section class="notebook-section"><h4>Depoimentos sobre objetos</h4><div id="testimony-list" class="testimony-list"></div></section><section class="notebook-section"><h4>Álibis e interrogatórios</h4><div id="interrogation-list" class="testimony-list"></div></section><section class="notebook-section"><h4>Confrontos</h4><div id="confrontation-list" class="testimony-list"></div></section><section class="notebook-section"><h4>Cenas conhecidas</h4><div id="crime-list" class="crime-list"></div></section></div><div id="notebook-reports" class="notebook-tab-panel" role="tabpanel" aria-labelledby="notebook-tab-reports" hidden><header class="notebook-page-heading"><span>FOLHA 02 · VOZES DA CIDADE</span><h3>O que dizem pelas ruas</h3><p>Uma notícia conserva a voz e a fonte de quem a contou.</p></header><p id="reports-status" class="status notebook-status" role="status" aria-live="polite"></p><div id="heard-report-list" class="testimony-list"></div></div></section></div></div><footer class="notebook-shortcuts"><span><kbd>C</kbd> guardar o caderno</span><span><kbd>1</kbd> pistas</span><span><kbd>2</kbd> relatos</span><span><kbd>Esc</kbd> fechar</span></footer></section></div>
   <div id="delegate-overlay" class="overlay" hidden>
     <section class="case-modal delegate-modal" role="dialog" aria-modal="true" aria-labelledby="delegate-title">
@@ -71,9 +74,12 @@ app.innerHTML = `
   <div id="custody-overlay" class="overlay custody-overlay" hidden><section class="custody-modal" role="dialog" aria-modal="true" aria-labelledby="custody-title"><header><p class="eyebrow">NA DELEGACIA</p><h2 id="custody-title">Uma noite sob custódia</h2><p id="custody-caption" role="status" aria-live="polite"></p></header><div id="custody-canvas" aria-label="Cena da delegacia com a pessoa detida atrás das grades"></div><footer><span id="custody-clock"></span><button id="leave-custody" class="button secondary" type="button">Voltar à investigação</button></footer></section></div>
   <div id="phase-overlay" class="overlay phase-overlay" hidden><section class="case-modal phase-modal" role="dialog" aria-modal="true" aria-labelledby="phase-title" aria-describedby="phase-description"><article id="victory-paper" class="victory-paper" hidden><header class="newspaper-masthead"><div class="newspaper-dateline"><span>RIO DE JANEIRO · 1890</span><span>EDIÇÃO EXTRAORDINÁRIA</span></div><h2>O Clarim do Rio</h2><div class="newspaper-edition"><span>A VITÓRIA DE FLORIANO</span><span id="victory-day"></span></div></header><h3 id="victory-headline"></h3><div class="press-picture press-victory" role="img" aria-label="Ilustração em preto e branco da cidade celebrando Floriano"></div><p id="victory-body"></p><p class="victory-ending">O caso está encerrado. A cidade volta a respirar.</p></article><span class="phase-moon" aria-hidden="true">☾</span><p class="eyebrow" id="phase-eyebrow">A CIDADE RECOLHE-SE</p><h2 id="phase-title">A noite guarda seus segredos.</h2><p id="phase-description">Floriano aguarda a manhã. Os acontecimentos serão publicados no Clarim do Rio.</p><p id="phase-countdown" role="status" aria-live="polite"></p><button id="ending-new-case" class="button primary" type="button" hidden>Iniciar outro caso</button></section></div>
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
-`;
+`);
 
 const $ = <T extends HTMLElement = HTMLElement>(selector: string) => document.querySelector<T>(selector)!;
+const inspectCrimeButton = $('#inspect-crime');
+const approachButton = $('#approach');
+const approachLabel = $('#approach span');
 const defeatPhoto=document.createElement('img');
 defeatPhoto.id='defeat-photo';defeatPhoto.className='press-defeat';defeatPhoto.width=600;defeatPhoto.height=400;defeatPhoto.hidden=true;
 defeatPhoto.alt='Lobisomem nas sombras da cidade à meia-noite, em fotografia escurecida de jornal';
@@ -176,10 +182,13 @@ async function settleMovement() {
 }
 
 function applySnapshot(snapshot: WorldSnapshot) {
+  const locationChanged = world?.location.id !== snapshot.location.id;
   world = snapshot;
-  $('#location-name').textContent = snapshot.location.name;
-  $('#game-canvas').setAttribute('aria-label',`${snapshot.location.name}. Use as setas para andar e E para conversar. Ao fundo: ${POPULATION[snapshot.location.id].map(person=>`${person.name}, ${person.occupation}`).join('; ')}.`);
-  $('#world-caption').textContent = locationDescription[snapshot.location.id];
+  if (locationChanged) {
+    $('#location-name').textContent = snapshot.location.name;
+    $('#game-canvas').setAttribute('aria-label',`${snapshot.location.name}. Use as setas para andar e E para conversar. Ao fundo: ${POPULATION[snapshot.location.id].map(person=>`${person.name}, ${person.occupation}`).join('; ')}.`);
+    $('#world-caption').textContent = locationDescription[snapshot.location.id];
+  }
   scene?.apply(snapshot);
   if (modal === "map") renderMapResidents();
 }
@@ -205,7 +214,7 @@ async function launch(resume: boolean) {
     controller = new MovementController(snapshot, api.move, () => api.world(id), applySnapshot, error => toast(explain(error)));
     scene = new CityScene(manifest, locations, snapshot, {
       dayProgress: () => !caseState ? 0 : caseState.phase === 'day' ? gameDayProgress(caseClock.seconds()) : 1,
-      blocked: () => Boolean(modal || activeAssembly() || busy || transitioning || starting || caseClock.blocked() || document.hidden || $('#investigation').hidden),
+      blocked: () => Boolean(modal || activeAssembly() || busy || transitioning || starting || scene?.loading || caseClock.blocked() || document.hidden || $('#investigation').hidden),
       frame: (delta, direction) => {
         const previousX = controller?.x;
         if (!caseClock.blocked() && !transitioning) controller?.update(delta, direction);
@@ -217,18 +226,19 @@ async function launch(resume: boolean) {
             if (boundary) void openExit(boundary);
           }
           const crime = !modal && !busy && !caseClock.blocked() ? closestCrime(caseState, world, controller.x) : undefined;
-          $('#inspect-crime').hidden = !crime;
+          if (inspectCrimeButton.hidden !== !crime) inspectCrimeButton.hidden = !crime;
           const nearest = !crime && !modal && !busy && !caseClock.blocked() ? closestNPC(world, controller.x) : undefined;
           if ((nearest?.npc_id ?? '') !== lastNearest) {
             lastNearest = nearest?.npc_id ?? '';
-            $('#approach').hidden = !nearest;
-            $('#approach span').textContent = nearest ? `Conversar com ${nearest.name}` : '';
+            approachButton.hidden = !nearest;
+            approachLabel.textContent = nearest ? `Conversar com ${nearest.name}` : '';
           }
         }
         return {x: controller?.x ?? snapshot.player.x,
           facing: direction === 'left' ? 'left' : direction === 'right' ? 'right' : controller?.world.player.facing ?? 'right'};
       },
       approach: () => {void approach();}, inspect: crimeID => {void searchCrime(crimeID);}, map: () => {void openMap();},
+      loading: () => {$('#scene-loading').hidden = false; $('#scene-loading').textContent = 'Carregando este caminho…';},
       loaded: () => {$('#scene-loading').hidden = true; scene?.setInputEnabled(modal === null && !caseClock.blocked() && !activeAssembly()); if (!modal) $('#game-canvas').focus({preventScroll: true});},
       failed: () => {$('#scene-loading').hidden = false; $('#scene-loading').textContent = 'Não foi possível carregar a arte da cidade. Recarregue para tentar novamente.';},
     });
@@ -239,7 +249,7 @@ async function launch(resume: boolean) {
     game = makeGame($('#game-canvas'), scene);
     await applyCase(investigation, true);
     casePoller.start(async () => {
-      if (!world || world.game_id !== id || $('#investigation').hidden) return;
+      if (!world || world.game_id !== id || document.hidden || $('#investigation').hidden) return;
       try {
         const [next, snapshot] = await Promise.all([api.investigation(id), api.world(id)]);
         await applyCase(next);
@@ -520,7 +530,7 @@ async function approach() {
   setModal('dialogue');
   $('#dialogue-name').textContent = npc.name;
   const image = $('#persona-portrait') as HTMLImageElement;
-  image.src = manifest.characters.find(asset => asset.id === npc.npc_id)?.portraitPath ?? `/assets/portraits/${npc.npc_id}.png`;
+  image.src = portraitPath(npc.npc_id);
   image.alt = `Retrato de ${npc.name}`;
   $('#messages').replaceChildren(); status('#dialogue-status', 'Abrindo o caderno desta conversa…');
   setSending(true);
@@ -606,7 +616,7 @@ function addText(parent: HTMLElement, tag: string, text: string, className?: str
 
 function locationName(id: string) {return locations.find(location => location.id === id)?.name ?? id;}
 function npcName(id: string) {if (id === 'player') return 'Floriano'; return cast.find(member => member.character.id === id)?.character.name ?? id;}
-function portraitPath(id: string) {return manifest?.characters.find(asset => asset.id === id)?.portraitPath ?? `/assets/portraits/${id}.png`;}
+function portraitPath(id: string) {return assetURL(manifest?.characters.find(asset => asset.id === id)?.portraitPath ?? `/assets/portraits/${id}.png`);}
 
 function prepareJournalPortrait(victimID: string | null | undefined) {
   const image = $<HTMLImageElement>('#journal-victim-image');
@@ -645,7 +655,7 @@ function stackTestimonies(testimonies: CaseTestimony[], inventory: CaseEvidence[
 function itemArt(itemId: string, kind: CaseEvidence['kind']) {
   const wrapper = document.createElement('span'); wrapper.className = `item-art item-art-${kind}`; wrapper.setAttribute('aria-hidden', 'true');
   if (itemId !== 'botao' && !PERSONAL_ITEM_ICONS.has(itemId)) {
-    const image = document.createElement('img'); image.src = `/assets/items/detail/${itemId}.png`;
+    const image = document.createElement('img'); image.src = assetURL(`/assets/items/detail/${itemId}.png`);
     image.alt = ''; image.width = 64; image.height = 64; image.decoding = 'async'; wrapper.append(image);
   } else {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('viewBox', '0 0 64 64');

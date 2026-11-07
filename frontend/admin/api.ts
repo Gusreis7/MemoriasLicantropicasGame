@@ -1,5 +1,9 @@
 export interface Page<T> { items: T[]; total: number }
 export interface GameSummary { id: string; created_at: string; status: string }
+export interface ApplicationMetrics {
+  connections: number; active_connections: number; connections_since: string | null;
+  games: number; won: number; lost: number; unfinished: number; games_observed_at: string;
+}
 export interface CharacterState { character_id: string; name: string; grammatical_gender?: 'masculine' | 'feminine'; role: string; alive: boolean; location_id?: string | null; x?: number | null }
 export interface KnownDeath { victim_id: string; victim_name?: string; killer_id: string | null; killer_name?: string | null; attribution: string; source: string }
 export interface GameState {

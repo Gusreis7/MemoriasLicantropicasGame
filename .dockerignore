@@ -13,6 +13,7 @@ dist
 build
 **/node_modules
 frontend/dist
+frontend/public/assets/optimized
 frontend/test-results
 frontend/playwright-report
 artifacts
