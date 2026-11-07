@@ -1,7 +1,7 @@
 @font-face{font-family:'Clarim Baskerville';font-style:normal;font-weight:400 700;font-display:swap;src:url('/assets/fonts/libre-baskerville/latin-normal.woff2') format('woff2')}
 @font-face{font-family:'Clarim Baskerville';font-style:italic;font-weight:400;font-display:swap;src:url('/assets/fonts/libre-baskerville/latin-italic.woff2') format('woff2')}
 :root{font-family:Georgia,'Times New Roman',serif;color:#e9e8d2;background:#102c27;font-synthesis:none;--ink:#173a31;--muted:#9aab99;--paper:#f2ead5;--gold:#d9ba79;--copper:#b77b4d;--line:#3c5845}
-.victory-paper .press-defeat{float:left;width:44%;height:auto;aspect-ratio:1.5;margin:0 18px 8px 0;border:1px solid #807e71;background:#080e16;image-rendering:pixelated}
+.victory-paper .press-defeat{height:auto;aspect-ratio:1.5;object-fit:cover;filter:grayscale(1) contrast(1.08);image-rendering:pixelated}
 .audio-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.audio-controls label{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}.audio-controls input{width:80px;accent-color:var(--gold)}.masthead{flex-wrap:wrap}@media(max-width:700px){.audio-controls{width:100%;justify-content:flex-end;gap:8px}.audio-controls input{width:90px}}
 *{box-sizing:border-box}
 body{margin:0;min-width:360px;background:radial-gradient(ellipse at 50% 0,#254439 0,#15342d 42%,#0d2522 100%);min-height:100vh}
@@ -229,29 +229,29 @@ kbd{font:10px/1.2 Arial,sans-serif;min-width:21px;padding:4px 5px;border:1px sol
 .case-modal .button.secondary{color:var(--ink)}
 .case-modal h3{font-size:23px;font-weight:normal;margin:25px 0 16px}
 .case-note,.empty-case{font:12px/1.75 Arial,sans-serif;color:#768065}
-.journal-modal{width:min(720px,100%);padding:24px 34px 29px;text-align:center;color:#292923;border:4px double #42413a;background-color:#e8e7de;background-image:radial-gradient(circle,#514f4520 .45px,transparent .8px),repeating-linear-gradient(0deg,transparent 0 5px,#514f4508 6px 7px);background-size:5px 5px,100% 7px;box-shadow:inset 0 0 0 5px #f5f3e9,0 25px 100px #031a14aa}
+:is(.journal-modal,.phase-modal.is-victory){width:min(720px,100%);max-width:720px;padding:24px 34px 29px;text-align:center;color:#292923;border:4px double #42413a;background-color:#e8e7de;background-image:radial-gradient(circle,#514f4520 .45px,transparent .8px),repeating-linear-gradient(0deg,transparent 0 5px,#514f4508 6px 7px);background-size:5px 5px,100% 7px;box-shadow:inset 0 0 0 5px #f5f3e9,0 25px 100px #031a14aa}
 .newspaper-masthead{position:relative;color:#24241f;border-bottom:4px double #35352f;padding-bottom:10px}
 .newspaper-dateline,.newspaper-edition{display:flex;align-items:center;justify-content:space-between;font:8px/1.4 Arial,sans-serif;letter-spacing:.15em;color:#4d4d46}
-.newspaper-dateline{padding-right:30px}
+.newspaper-dateline:has(.icon-button){padding-right:30px}
 .newspaper-dateline .icon-button{position:absolute;right:0;top:-10px}
-.newspaper-masthead h2{font:bold 43px/1.15 'Clarim Baskerville',Georgia,serif;letter-spacing:-.045em;margin:11px 0 8px;color:#24241f;text-shadow:1px 1px #fffdf4;text-align:center}
+.newspaper-masthead h2,.phase-modal .newspaper-masthead h2{font:bold 43px/1.15 'Clarim Baskerville',Georgia,serif;letter-spacing:-.045em;margin:11px 0 8px;color:#24241f;text-shadow:1px 1px #fffdf4;text-align:center}
 .newspaper-masthead h2:before,.newspaper-masthead h2:after{content:'✦';display:inline-block;margin:0 15px;font:12px Georgia,serif;vertical-align:middle;color:#56564e}
 .newspaper-edition span:last-child{font-weight:bold}
 .newspaper-story{padding:0 2px;text-align:left;color:#292923}
 .journal-motto{font:italic 11px Georgia,serif;text-align:center;border-bottom:1px solid #77766d;padding:11px 0;color:#5b5a53;margin:0}
 .journal-death-toll{display:inline-block;margin:11px 0 0;padding:5px 11px;border-top:1px solid #77766d;border-bottom:1px solid #77766d;font:bold 8px/1.4 Arial,sans-serif;letter-spacing:.13em;text-transform:uppercase;color:#48473f}
-.journal-modal h3{font:bold 29px/1.08 Georgia,serif;letter-spacing:-.02em;margin:18px 0 13px;text-align:left;color:#22221d}
-.journal-victim{float:right;width:28%;margin:1px 0 12px 15px;padding:4px;background:#f2f1e9;border:1px solid #716f65;box-shadow:2px 3px 0 #34342d30}
+:is(.journal-modal,.victory-paper) h3{font:bold 29px/1.3 'Clarim Baskerville',Georgia,serif;letter-spacing:-.02em;margin:18px 0 13px;text-align:left;color:#22221d}
+.journal-victim{float:right;width:28%;margin:1px 0 12px 15px;padding:4px;background-color:#f2f1e9;border:1px solid #716f65;box-shadow:2px 3px 0 #34342d30}
 .journal-victim img{display:block;width:100%;aspect-ratio:1;object-fit:cover;object-position:top center;filter:grayscale(1) contrast(1.25);image-rendering:pixelated}
 .journal-victim figcaption{font:8px/1.5 Arial,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#4e4e47;padding:5px 2px 1px}
-.journal-snapshot{float:left;width:34%;margin:2px 15px 10px 0;padding:4px;background:#f2f1e9;border:1px solid #716f65;box-shadow:2px 3px 0 #34342d30}
+.journal-snapshot,.victory-paper .press-picture,.victory-paper .press-defeat{float:left;width:34%;margin:2px 15px 10px 0;padding:4px;background-color:#f2f1e9;border:1px solid #716f65;box-shadow:2px 3px 0 #34342d30}
 .journal-snapshot img{display:block;width:100%;aspect-ratio:3/2;object-fit:cover;filter:grayscale(1) contrast(1.08);image-rendering:pixelated}
 .journal-snapshot figcaption{font:8px/1.5 Arial,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#4e4e47;padding:5px 2px 1px}
-#journal-body{font:14px/1.7 Georgia,serif;text-align:justify;margin:0 0 15px;white-space:pre-line;column-rule:1px solid #77766d}
-.journal-location{clear:both;font:9px/1.6 Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#57574f;text-align:left;margin:16px 0 22px;padding-top:8px;border-top:3px double #77766d}
-.journal-modal>#read-journal{margin-top:10px}
-.journal-modal .button.primary{color:#efeee6;background:#383832;border-color:#272721;box-shadow:0 3px 0 #77766d}
-.journal-modal .button.primary:hover:not(:disabled){background:#4b4b43}
+#journal-body,#victory-body{font:15px/1.8 'Clarim Baskerville',Georgia,serif;text-align:justify;margin:0 0 15px;white-space:pre-line;column-rule:1px solid #77766d}
+.journal-location,.victory-paper .victory-ending{clear:both;font:9px/1.6 Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#57574f;text-align:left;margin:16px 0 22px;padding-top:8px;border-top:3px double #77766d}
+:is(.journal-modal,.phase-modal.is-victory)>.button.primary{margin-top:10px}
+:is(.journal-modal,.phase-modal.is-victory) .button.primary{color:#efeee6;background:#383832;border-color:#272721;box-shadow:0 3px 0 #77766d}
+:is(.journal-modal,.phase-modal.is-victory) .button.primary:hover:not(:disabled){background:#4b4b43}
 .notebook-overlay{padding:clamp(10px,2vw,30px);background:#071d18df;backdrop-filter:none}
 .notebook-modal{width:min(1300px,100%);max-height:calc(100dvh - 40px);overflow:auto;padding:clamp(18px,2.4vw,30px);color:#342f25;background:#eee3cb;border:1px solid #a48a61;border-radius:5px;box-shadow:inset 0 0 0 3px #f7efde,0 4px 0 #b19b77,0 8px 0 #786246;position:relative}
 .notebook-modal:before{content:'';position:absolute;inset:8px;border:1px solid #c6b28e;pointer-events:none}
@@ -437,12 +437,12 @@ kbd{font:10px/1.2 Arial,sans-serif;min-width:21px;padding:4px 5px;border:1px sol
 .suspect-card strong{font-size:13px}
 .accusation-records{grid-template-columns:1fr;gap:16px}
 .accusation-records fieldset{max-height:220px}
-.journal-modal{padding:18px 17px 22px}
+:is(.journal-modal,.phase-modal.is-victory){padding:18px 17px 22px}
 .newspaper-masthead h2{font-size:34px}
-.newspaper-dateline{padding-right:30px}
+.newspaper-dateline:has(.icon-button){padding-right:30px}
 .newspaper-dateline .icon-button{right:0;top:-8px}
 .journal-modal h3{font-size:24px}
-.journal-victim,.journal-snapshot{float:none;width:100%;margin:0 0 14px}
+.journal-victim,.journal-snapshot,.victory-paper .press-picture,.victory-paper .press-defeat{float:none;width:100%;margin:0 0 14px}
 #journal-body{font-size:13px}
 .evidence-list{grid-template-columns:1fr}
 .evidence-presenter{margin:0 16px;padding-top:6px}
@@ -451,7 +451,7 @@ kbd{font:10px/1.2 Arial,sans-serif;min-width:21px;padding:4px 5px;border:1px sol
 }
 
 
-.custody-modal{width:min(1000px,100%);max-height:calc(100dvh - 32px);overflow:auto;background:#14372d;border:1px solid #a8905a;color:#eee4ca;box-shadow:0 25px 100px #001b14bb}.custody-modal header{padding:20px 25px 12px}.custody-modal h2{margin:5px 0;font:normal 27px Georgia,serif}.custody-modal header>p:last-child{font:12px/1.6 Georgia,serif;color:#c7cfad}.custody-modal .eyebrow{margin-bottom:5px}.custody-modal footer{padding:14px 25px;display:flex;justify-content:space-between;align-items:center;gap:12px;font:12px Georgia,serif}#custody-canvas{width:100%;aspect-ratio:16/9;overflow:hidden}#custody-canvas canvas{max-width:100%;image-rendering:pixelated}.press-picture{width:100%;aspect-ratio:1.5;background-image:url('/assets/press/editions.png');background-size:200% 200%;image-rendering:pixelated;filter:grayscale(1)}.press-docks{background-position:0 0}.press-garden{background-position:100% 0}.press-capture{background-position:0 100%}.press-victory{background-position:100% 100%}.phase-modal.is-victory{width:min(730px,100%);max-width:730px;background:#e8e6d7;color:#292b27;border-color:#858478;text-align:left;padding:30px}.is-victory>.phase-moon,.is-victory>#phase-eyebrow,.is-victory>#phase-title,.is-victory>#phase-description,.is-victory>#phase-countdown{display:none}.victory-paper h2{font-family:Georgia,serif;font-size:45px}.victory-paper h3{font:normal 30px/1.15 Georgia,serif;margin:18px 0}.victory-paper>p{font:15px/1.8 Georgia,serif}.victory-paper .press-picture{float:left;width:44%;margin:0 18px 8px 0;border:1px solid #807e71}.victory-paper .victory-ending{clear:both;border-top:1px solid #aaa795;padding-top:12px;font-style:italic}.is-victory #ending-new-case{margin-top:10px}@media(max-width:600px){.custody-modal header{padding:14px}.custody-modal h2{font-size:22px}.phase-modal.is-victory{padding:20px}.victory-paper h2{font-size:33px}.victory-paper h3{font-size:24px}.custody-modal footer{padding:12px;flex-wrap:wrap}}
+.custody-modal{width:min(1000px,100%);max-height:calc(100dvh - 32px);overflow:auto;background:#14372d;border:1px solid #a8905a;color:#eee4ca;box-shadow:0 25px 100px #001b14bb}.custody-modal header{padding:20px 25px 12px}.custody-modal h2{margin:5px 0;font:normal 27px Georgia,serif}.custody-modal header>p:last-child{font:12px/1.6 Georgia,serif;color:#c7cfad}.custody-modal .eyebrow{margin-bottom:5px}.custody-modal footer{padding:14px 25px;display:flex;justify-content:space-between;align-items:center;gap:12px;font:12px Georgia,serif}#custody-canvas{width:100%;aspect-ratio:16/9;overflow:hidden}#custody-canvas canvas{max-width:100%;image-rendering:pixelated}.press-picture{width:100%;aspect-ratio:1.5;background-image:url('/assets/press/editions.png');background-size:200% 200%;image-rendering:pixelated;filter:grayscale(1)}.press-docks{background-position:0 0}.press-garden{background-position:100% 0}.press-capture{background-position:0 100%}.press-victory{background-position:100% 100%}.is-victory>.phase-moon,.is-victory>#phase-eyebrow,.is-victory>#phase-title,.is-victory>#phase-description,.is-victory>#phase-countdown{display:none}@media(max-width:600px){.custody-modal header{padding:14px}.custody-modal h2{font-size:22px}.custody-modal footer{padding:12px;flex-wrap:wrap}}
 
 .map-residents{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:12px;max-height:160px;overflow:auto}.map-residents>div{display:flex;align-items:center;gap:6px;font:10px/1.5 Arial,sans-serif}.map-residents img{width:28px;height:30px;object-fit:contain;image-rendering:pixelated}@media(max-width:600px){.map-residents{grid-template-columns:1fr}}
 
@@ -499,9 +499,9 @@ kbd{font:10px/1.2 Arial,sans-serif;min-width:21px;padding:4px 5px;border:1px sol
 .night-attack-overlay{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;background:#020810ed;padding:16px}.night-attack-dialog{width:min(1100px,100%);color:#e9e6d5;text-align:center}.night-attack-dialog canvas{display:block;width:100%;height:auto;image-rendering:pixelated;border:1px solid #7c8f9b;box-shadow:0 0 90px #000}.night-attack-dialog [role=status]{min-height:3em;margin:18px auto;max-width:650px}.night-attack-dialog button{color:#f4e7c7;border-color:#c4ac7c}
 .phase-overlay.is-night-waiting{background:linear-gradient(0deg,#020a13aa,transparent 38%);align-items:end;padding:18px}.is-night-waiting .phase-modal{width:min(960px,100%);max-width:960px;padding:12px 22px;background:#081523df;border:1px solid #718b9a88;box-shadow:0 8px 35px #0006;backdrop-filter:blur(3px)}.is-night-waiting .phase-moon{display:none}.is-night-waiting .phase-modal h2{font-size:23px;margin:5px 0}.is-night-waiting .phase-modal .eyebrow{margin:0;font-size:10px}.is-night-waiting .phase-modal>p:not(.eyebrow){margin:5px 0;font-size:12px;line-height:1.4}@media(max-width:600px){.phase-overlay.is-night-waiting{padding:8px}.is-night-waiting .phase-modal{padding:10px}.is-night-waiting .phase-modal h2{font-size:19px}}
 .phase-overlay.is-night-waiting{backdrop-filter:none}
-/* Shared newspaper type: opening, daily, victory and defeat editions. */
-.newspaper-masthead h2,.victory-paper .newspaper-masthead h2{font-family:'Clarim Baskerville',Georgia,serif;font-weight:700;text-align:center}
-.journal-modal h3,.victory-paper h3{font-family:'Clarim Baskerville',Georgia,serif;font-weight:700;line-height:1.3}
-#journal-body,.victory-paper>p{font-family:'Clarim Baskerville',Georgia,serif;font-size:15px;line-height:1.8}
+/* Opening, daily, victory and defeat editions share the same newspaper rules. */
+.victory-paper{text-align:left}
+.victory-paper .press-picture{background-origin:content-box;background-clip:content-box}
+.victory-paper .victory-ending{font-style:italic}
 .journal-motto{font-family:'Clarim Baskerville',Georgia,serif}
-@media(max-width:600px){.newspaper-masthead h2,.victory-paper .newspaper-masthead h2{font-size:clamp(23px,6.3vw,34px)}.newspaper-masthead h2:before,.newspaper-masthead h2:after{margin:0 7px;font-size:9px}.journal-modal h3,.victory-paper h3{font-size:22px}#journal-body,.victory-paper>p{font-size:14px}}
+@media(max-width:600px){.newspaper-masthead h2,.victory-paper .newspaper-masthead h2{font-size:clamp(23px,6.3vw,34px)}.newspaper-masthead h2:before,.newspaper-masthead h2:after{margin:0 7px;font-size:9px}.journal-modal h3,.victory-paper h3{font-size:22px}#journal-body,#victory-body{font-size:14px}}

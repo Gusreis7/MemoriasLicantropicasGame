@@ -11,6 +11,7 @@ import './style.css';
 import {cancelNightAttack, newNightVictim, playNightAttack} from './night-attack';
 import {gameAudio} from './audio';
 import {renderDefeatPhoto} from './defeat-photo';
+import {notebookResidents} from './notebook-residents';
 import {canSubmitCaseReport, caseReportKind, caseReportStatus} from './table-reports';
 import {dossierEvidence} from './dossier-selection';
 
@@ -847,7 +848,8 @@ function deadSuspectMark() {
 
 function renderNotebookSuspects() {
   const list = $('#notebook-suspects'); list.replaceChildren();
-  for (const member of cast) {
+  const residents=notebookResidents(cast,caseState?.journal ?? []);
+  for (const member of residents) {
     const deceased = !member.alive;
     const card = document.createElement('article');
     card.className = `notebook-suspect${deceased ? ' is-deceased' : ''}`;
@@ -861,7 +863,7 @@ function renderNotebookSuspects() {
     const state = document.createElement('small'); state.textContent = deceased ? 'Falecido · riscado' : 'Sob suspeita';
     card.append(imageFrame, name, state); list.append(card);
   }
-  if (!cast.length) addText(list, 'p', 'Os nomes dos moradores aparecerão quando o caso começar.', 'empty-case');
+  if (!residents.length) addText(list, 'p', 'Os nomes dos moradores aparecerão quando o caso começar.', 'empty-case');
 }
 
 function selectNotebookTab(tab: 'clues' | 'reports', focus = false) {

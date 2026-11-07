@@ -453,3 +453,16 @@ test('movimento reduzido mantém a pessoa dentro da cela sem animação de entra
   await expect(page.locator('#custody-caption')).toContainText('A acusação ainda não confirma a culpa');
   await expect(page.locator('#leave-custody')).toBeVisible();
 });
+
+test('caderno conserva Brás Cubas com a mesma marca dos falecidos',async({page})=>{
+  await cityFixture(page);await begin(page);
+  await page.locator('#open-notebook').click();
+  const memorial=page.locator('.notebook-suspect').filter({hasText:'Brás Cubas'});
+  await expect(memorial).toHaveClass(/is-deceased/);
+  await expect(memorial).toContainText('Falecido · riscado');
+  await expect(memorial.locator('svg')).toBeVisible();
+  await expect.poll(()=>memorial.locator('img').evaluate((img:HTMLImageElement)=>img.complete&&img.naturalWidth>0)).toBe(true);
+  await page.screenshot({path:'../artifacts/notebook-bras-memorial.png',fullPage:true});
+  await page.locator('#close-notebook').click();await page.locator('#open-delegate').click();
+  await expect(page.locator('.suspect-card')).toHaveCount(7);
+});
