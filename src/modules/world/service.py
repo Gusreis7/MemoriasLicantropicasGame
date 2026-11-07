@@ -20,7 +20,9 @@ from src.modules.world.schema import (
 )
 
 WALK_SPEED = 210
-MAX_MOVEMENT_SECONDS = 0.4
+# Allow ordinary WAN jitter while bounding movement credited after a disconnect.
+# The server still integrates its own clock and the previously accepted direction.
+MAX_MOVEMENT_SECONDS = 1.0
 APPROACH_DISTANCE = 64
 EXIT_DISTANCE = 56
 ARRIVAL_INSET = 96

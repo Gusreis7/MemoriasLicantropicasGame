@@ -9,6 +9,11 @@ const places: Location[] = [
 
 test('cinco locais usam manhã e pôr do sol; Floriano alterna o ciclo e para na borda', async ({page}) => {
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
+  const midnightRequests = new Map<string, number>();
+  page.on('request', request => {
+    const path = new URL(request.url()).pathname;
+    if (path.endsWith('-00h.png')) midnightRequests.set(path, (midnightRequests.get(path) ?? 0) + 1);
+  });
   // Mount the production scene alone, with controlled time and movement hooks.
   await page.route('**/__visual_cycle__', route => route.fulfill({contentType: 'text/html', body: '<html><body style="margin:0"><main id="scene"></main></body></html>'}));
   await page.goto('/__visual_cycle__');
@@ -34,6 +39,13 @@ test('cinco locais usam manhã e pôr do sol; Floriano alterna o ciclo e para na
     state.game = makeGame(document.querySelector('#scene'), state.scene);
   }, places);
   await expect.poll(() => page.evaluate(() => (window as any).__visual.ready), {timeout: 30000}).toBe(true);
+  for (const location of places) expect(midnightRequests.get(`/assets/locations/${location.id}-00h.png`)).toBe(1);
+  const nightTexture = await page.evaluate(() => {
+    const scene = (window as any).__visual.scene;
+    return {key: scene.children.getByName('background-midnight').texture.key,
+      duplicate: scene.textures.exists('midnight-praca_verde')};
+  });
+  expect(nightTexture).toEqual({key: 'location-praca_verde-00h', duplicate: false});
   for (const location of places) {
     for (const [hour, progress] of [['09h', 0], ['18h', 1]] as const) {
       await page.evaluate(({location, progress}) => {

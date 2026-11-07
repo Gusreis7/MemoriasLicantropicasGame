@@ -195,6 +195,7 @@ async function launch(resume: boolean) {
     saveGame(id);
     casePoller.stop();
     const investigation = await api.investigation(id);
+    prepareJournalPortrait(investigation.journal.at(-1)?.victim_id);
     const [snapshot, places, characters, publicGame] = await Promise.all([api.world(id), api.locations(), api.manifest(), api.game(id)]);
     caseState = null; heardReports = []; pendingWorldSync = false; transitioning = false; cast = publicGame.characters;
     locations = places; manifest = characters;
@@ -207,7 +208,8 @@ async function launch(resume: boolean) {
       frame: (delta, direction) => {
         const previousX = controller?.x;
         if (!caseClock.blocked() && !transitioning) controller?.update(delta, direction);
-        if (previousX !== undefined && controller && Math.abs(controller.x - previousX) > .1) gameAudio.effect('step');
+        if (direction !== 'idle' && controller?.direction !== 'idle' && previousX !== undefined && controller
+          && Math.abs(controller.x - previousX) > .1) gameAudio.effect('step');
         if (controller && world) {
           if (!modal && !busy && !transitioning && !starting && !caseClock.blocked()) {
             const boundary = exitBoundary.observe(controller.world, controller.x, direction);
@@ -598,6 +600,19 @@ function addText(parent: HTMLElement, tag: string, text: string, className?: str
 function locationName(id: string) {return locations.find(location => location.id === id)?.name ?? id;}
 function npcName(id: string) {if (id === 'player') return 'Floriano'; return cast.find(member => member.character.id === id)?.character.name ?? id;}
 function portraitPath(id: string) {return manifest?.characters.find(asset => asset.id === id)?.portraitPath ?? `/assets/portraits/${id}.png`;}
+
+function prepareJournalPortrait(victimID: string | null | undefined) {
+  const image = $<HTMLImageElement>('#journal-victim-image');
+  if (!victimID) {image.removeAttribute('src'); return;}
+  const path = portraitPath(victimID);
+  if (image.getAttribute('src') === path) return;
+  image.decoding = 'async';
+  image.fetchPriority = 'high';
+  image.src = path;
+  // Fetch and decode as soon as the public edition is known, including while
+  // the scene or night animation is loading. Failed art must not block reading.
+  void image.decode().catch(() => {});
+}
 function periodLabel(day: number, period: 'night' | 'day') {return `${period === 'night' ? 'noite' : 'dia'} ${day}`;}
 function itemKind(evidence: CaseEvidence) {return {unique: 'Exclusivo', singular: 'Singular', common: 'Comum'}[evidence.kind];}
 function stackEvidence(inventory: CaseEvidence[]) {
@@ -780,7 +795,7 @@ function renderJournal() {
   const victimImage = $<HTMLImageElement>('#journal-victim-image');
   victim.hidden = !edition?.victim_id;
   if (edition?.victim_id) {
-    victimImage.src = portraitPath(edition.victim_id);
+    prepareJournalPortrait(edition.victim_id);
     victimImage.alt = `Retrato de ${edition.victim_name ?? 'a vítima'}, reproduzido em preto e branco`;
     $('#journal-victim-caption').textContent = edition.victim_name ? `A vítima · ${edition.victim_name}` : 'A vítima da noite';
   }
@@ -1075,6 +1090,13 @@ function updateAccusationSelection() {
 
 async function openCasePanel(panel: 'journal' | 'notebook' | 'delegate') {
   if (!world || busy || modal || caseClock.blocked()) return;
+  if (panel === 'journal') {
+    setModal(panel); $('#close-journal').focus();
+    // The newspaper is already public: display it immediately while confirming
+    // the stop. busy keeps movement/actions blocked even if it is closed early.
+    await settleMovement();
+    return;
+  }
   await settleMovement();
   if (caseClock.blocked()) return;
   if (panel === 'delegate') {renderAccusation(); status('#accusation-status', '');}
@@ -1229,7 +1251,7 @@ $('#assembly-suspects').addEventListener('change', () => {updateAssemblyControls
 for (const id of ['assembly-evidence', 'assembly-testimonies']) $(`#${id}`).addEventListener('change', saveAssemblyDraft);
 for (const panel of ['journal', 'notebook', 'delegate'] as const) {
   $(`#open-${panel}`).addEventListener('click', () => {void openCasePanel(panel);});
-  $(`#close-${panel}`).addEventListener('click', () => {if (!busy) setModal(null);});
+  $(`#close-${panel}`).addEventListener('click', () => {if (panel === 'journal' || !busy) setModal(null);});
 }
 $('#notebook-tab-clues').addEventListener('click', () => selectNotebookTab('clues'));
 $('#notebook-tab-reports').addEventListener('click', () => selectNotebookTab('reports'));
@@ -1238,7 +1260,7 @@ $('.notebook-tabs').addEventListener('keydown', event => {
     event.preventDefault(); selectNotebookTab(notebookTab === 'clues' ? 'reports' : 'clues', true);
   }
 });
-$('#read-journal').addEventListener('click', () => {if (!busy) setModal(null);});
+$('#read-journal').addEventListener('click', () => {setModal(null);});
 $('#leave-custody').addEventListener('click',()=>{if(caseState?.phase==='day' && caseState.status==='active')setModal(null);});
 $('#ending-new-case').addEventListener('click', () => {setModal(null); void launch(false);});
 

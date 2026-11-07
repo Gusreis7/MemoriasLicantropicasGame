@@ -109,6 +109,44 @@ async function begin(page: import('@playwright/test').Page) {
   await page.locator('#read-journal').click();}
 }
 
+test('Clarim prepara o retrato cedo e abre e fecha durante uma confirmação de movimento lenta', async ({page}) => {
+  const city = await cityFixture(page);
+  let releaseWorld!: () => void;
+  const worldReady = new Promise<void>(resolve => {releaseWorld = resolve;});
+  await page.route('**/api/v1/games/*/world', async route => {await worldReady; await route.fallback();});
+  let portraitRequests = 0;
+  page.on('request', request => {
+    if (new URL(request.url()).pathname === '/assets/portraits/bras_cubas.png') portraitRequests++;
+  });
+  await page.goto('/'); await page.locator('#start').click();
+  // Portrait loading starts before the world/manifest batch has completed.
+  try {await expect.poll(() => portraitRequests).toBe(1);} finally {releaseWorld();}
+  await expect(page.locator('#scene-loading')).toBeHidden({timeout: 30000});
+  await expect.poll(() => page.locator('#journal-victim-image').evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true);
+  await page.locator('#read-journal').click();
+
+  let releaseMove!: () => void;
+  const moveReady = new Promise<void>(resolve => {releaseMove = resolve;});
+  let pendingMovement = false;
+  await page.route('**/api/v1/games/*/movement', async route => {
+    pendingMovement = true; await moveReady; await route.fallback();
+  });
+  await page.locator('canvas').click(); await page.keyboard.down('ArrowRight');
+  try {
+    await expect.poll(() => pendingMovement).toBe(true);
+    await page.locator('#open-journal').click();
+    await expect(page.locator('#journal-overlay')).toBeVisible();
+    await page.keyboard.up('ArrowRight');
+    expect(city.movementCalls()).toBe(0);
+    await page.locator('#read-journal').click();
+    await expect(page.locator('#journal-overlay')).toBeHidden();
+  } finally {releaseMove();}
+  await expect.poll(() => city.movementCalls()).toBe(2);
+  const commands = city.requests.filter(request => request.path.endsWith('/movement'));
+  expect(commands.map(request => (request.body as {direction: string}).direction)).toEqual(['right', 'idle']);
+  expect(portraitRequests).toBe(1);
+});
+
 test('busca, apresenta vestígios e pede detenção antes de aguardar a noite', async ({page}) => {
   const city = await cityFixture(page); await begin(page);
   await expect(page.locator('#case-clock')).toHaveText(/09:[0-2]\d/);

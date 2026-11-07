@@ -122,10 +122,22 @@ async def test_long_disconnect_and_negative_clock_are_bounded(world_context):
     snapshot = await context.service.move(context.game.id, command(await context.service.get(context.game.id)))
     context.clock[0] += timedelta(hours=1)
     snapshot = await context.service.move(context.game.id, command(snapshot))
-    assert snapshot.player.x == 244  # 210 px/s × no máximo 400 ms.
+    assert snapshot.player.x == 370  # 210 px/s × no máximo um segundo.
     context.clock[0] -= timedelta(seconds=1)
     snapshot = await context.service.move(context.game.id, command(snapshot))
-    assert snapshot.player.x == 244
+    assert snapshot.player.x == 370
+
+
+async def test_wan_latency_does_not_discard_valid_walk_time(world_context):
+    context = world_context
+    snapshot = await context.service.move(context.game.id, command(await context.service.get(context.game.id)))
+    context.clock[0] += timedelta(milliseconds=600)
+    snapshot = await context.service.move(context.game.id, command(snapshot))
+    assert snapshot.player.x == 286  # 600 ms inteiros, usando apenas o relógio do servidor.
+    # Vários comandos no mesmo instante não podem multiplicar o deslocamento.
+    for _ in range(3):
+        snapshot = await context.service.move(context.game.id, command(snapshot))
+        assert snapshot.player.x == 286
 
 
 @pytest.mark.parametrize("direction,initial_x,expected", [("left", 33, 32), ("right", 927, 928)])

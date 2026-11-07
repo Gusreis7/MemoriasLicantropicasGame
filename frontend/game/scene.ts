@@ -80,7 +80,6 @@ export class CityScene extends Phaser.Scene {
     }
     for (const location of this.locations) {
       for (const layer of Object.values(locationLighting(location.id))) this.load.image(layer.key, layer.path);
-      this.load.image(`midnight-${location.id}`, `/assets/locations/${location.id}-00h.png`);
     }
     this.load.atlas('animals-walk','/assets/ambient/animals-walk.png','/assets/ambient/animals-walk.json');
     this.load.atlas('scene-life', '/assets/ambient/scene-life.png', '/assets/ambient/scene-life.json');
@@ -217,7 +216,7 @@ export class CityScene extends Phaser.Scene {
       this.sunsetBackground = this.add.image(0, 0, lighting.sunset.key).setName('background-sunset').setOrigin(0)
         .setDisplaySize(world.location.width, world.location.height).setDepth(-9).setScrollFactor(0)
         .setAlpha(sunsetOpacity(this.hooks.dayProgress?.() ?? 0));
-      this.midnightBackground = this.add.image(0, 0, `midnight-${world.location.id}`).setName('background-midnight').setOrigin(0)
+      this.midnightBackground = this.add.image(0, 0, lighting.midnight.key).setName('background-midnight').setOrigin(0)
         .setDisplaySize(world.location.width, world.location.height).setDepth(-8).setScrollFactor(0).setAlpha(this.caseState?.phase === 'night' ? 1 : 0);
       this.dressLocation(world.location.id, world.location.ground_y);
       this.npcSignature = '\0';
