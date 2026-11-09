@@ -1,6 +1,7 @@
 """Bound, read-only queries into the authoritative table for a persona turn."""
 
 from dataclasses import dataclass
+from typing import Literal
 from uuid import NAMESPACE_URL, uuid5
 
 from src.contracts.table import TableStatement
@@ -12,6 +13,7 @@ from src.textutils import normalize, word_tokens
 class PreparedTableTurn:
     statements: tuple[TableStatement, ...]
     text: str
+    topic_status: Literal["information", "unknown", "exhausted"] = "information"
 
 
 @dataclass(frozen=True)
@@ -60,6 +62,16 @@ class GameTableService:
         agent = BoundGameAgent(game_id, npc_id, recipient_id, case, names, now)
         text = normalize(question)
         tokens = set(word_tokens(text))
+        disclosed = {item.id for item in case.table.statements
+                     if item.speaker_id == npc_id and item.recipient_id == recipient_id}
+        repeat_requested = bool(tokens & {'repita', 'repetir', 'relembre', 'recapitule'})
+
+        def deliver(statements):
+            fresh = tuple(item for item in statements if repeat_requested or item.id not in disclosed)
+            if not fresh:
+                return PreparedTableTurn((), 'Não sei de mais nada sobre esse assunto, Floriano. Podemos falar de outra coisa?', 'exhausted')
+            return PreparedTableTurn(fresh, ' '.join(item.text for item in fresh))
+
         # The date refers to game time. A persona cannot select another night.
         confirmation = any(token.startswith('confirm') for token in tokens) and bool(tokens & {'com', 'companhia', 'noite', 'ontem', 'alibi', 'juntos', 'juntas'})
         company_question = bool(tokens & {'noite', 'ontem', 'anteontem'} and tokens & {'com', 'companhia', 'juntos', 'juntas', 'dormiu', 'dormia'})
@@ -80,12 +92,12 @@ class GameTableService:
             statement = agent.my_alibi(day)
             if statement is None:
                 return PreparedTableTurn((), 'Essa noite ainda não foi resolvida. Pergunte por uma noite passada.')
-            return PreparedTableTurn((statement,), statement.text)
+            return deliver((statement,))
 
         if tokens & {'viu', 'presenciou', 'suspeita', 'suspeito', 'desconfia', 'lobisomem', 'fera', 'culpado', 'assassino'}:
             sightings = agent.my_observations()
             if sightings:
-                return PreparedTableTurn(sightings, ' '.join(item.text for item in sightings))
+                return deliver(sightings)
 
         if tokens & {'morreu', 'faleceu', 'morte', 'morto', 'morta', 'matou', 'assassinato'}:
             crimes = agent.public_deaths(text)
@@ -97,7 +109,7 @@ class GameTableService:
                         kind='public_fact', speaker_id=npc_id, recipient_id=recipient_id, subject_id=crime.victim_id,
                         day=crime.day, period='night', source_ids=(root,), root_id=root,
                         text=f"A morte de {names.get(crime.victim_id, crime.victim_id)} foi anunciada no jornal. É uma notícia triste para a cidade.", created_at=now))
-                return PreparedTableTurn(tuple(statements), ' '.join(item.text for item in statements))
+                return deliver(tuple(statements))
 
         if tokens & {'objeto', 'peca', 'pertence', 'dono', 'reconhece', 'vestigio'}:
             evidence_id = case.active_evidence_by_npc.get(npc_id)
@@ -106,11 +118,15 @@ class GameTableService:
             if testimony:
                 return PreparedTableTurn((), testimony.text)
 
-        statements = await prepare_knowledge_turn(self.knowledge, game_id, npc_id, recipient_id, question, now)
+        statements = await prepare_knowledge_turn(self.knowledge, game_id, npc_id, recipient_id, question, now, excluded_statement_ids=() if repeat_requested else disclosed)
         if statements:
-            return PreparedTableTurn(statements, ' '.join(item.text for item in statements))
+            if all(item.kind == 'public_fact' and not item.source_ids
+                   and item.text.startswith(('Não tenho nada concreto', 'Não tenho uma suspeita pessoal', 'Não conheço um relato'))
+                   for item in statements):
+                return PreparedTableTurn((), 'Não sei dizer sobre esse assunto, Floriano. Podemos conversar sobre outra coisa?', 'unknown')
+            return deliver(statements)
         if is_greeting(question):
             return PreparedTableTurn((), 'Bom dia, Floriano. O que deseja esclarecer?')
         if tokens & {'acredita', 'crenca'} and tokens & {'lobisomem', 'lobisomens'}:
             return PreparedTableTurn((), 'Tenho minhas dúvidas, detetive. Prefiro que investiguemos o que de fato aconteceu.')
-        return PreparedTableTurn((), 'Posso lhe contar meu álibi, o que observei ou os assuntos que conheço. Sobre qual pessoa ou noite deseja perguntar?')
+        return PreparedTableTurn((), 'Não sei dizer sobre esse assunto, Floriano. Podemos conversar sobre outra coisa?', 'unknown')

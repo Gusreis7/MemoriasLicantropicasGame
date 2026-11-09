@@ -156,12 +156,19 @@ def dialogue_transition(
     }
     if assessment.table_statements:
         from src.modules.table.rules import disclose_statements
+        from src.modules.agents.table_delivery import variants_for, render_delivery
+        from src.modules.characters.catalog import CHARACTERS
+        delivered = all(item.text in outgoing.content for item in assessment.table_statements)
+        if assessment.table_delivery_plan is not None:
+            names = {profile.id: profile.name for profile in CHARACTERS}
+            options = tuple(variants_for(item, names) for item in assessment.table_statements)
+            delivered = render_delivery(assessment.table_delivery_plan, options) == outgoing.content
         # Only internal rule-generated statements enter the authoritative table.
         # The model proposal schema has no field through which to provide these.
         if not outgoing.narrative_authorized or any(
             item.speaker_id != npc_id or item.recipient_id != incoming.sender_id
-            or item.text not in outgoing.content for item in assessment.table_statements
-        ):
+            for item in assessment.table_statements
+        ) or not delivered:
             raise ValueError('Declaração incompatível com a conversa canônica.')
         changes['table'] = disclose_statements(state.table, assessment.table_statements)
     events = [

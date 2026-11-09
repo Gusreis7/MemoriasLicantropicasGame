@@ -1,9 +1,9 @@
 """Authoritative game-table records; persona prose never changes these fields."""
 
-from typing import Literal
+from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import AwareDatetime
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
 from src.contracts.model import Contract
 from src.modules.world.model import LocationID
@@ -66,3 +66,15 @@ class TableState(Contract):
     version: Literal["2"] = "2"
     nights: tuple[NightRecord, ...] = ()
     statements: tuple[TableStatement, ...] = ()
+
+
+Index = Annotated[int, Field(strict=True, ge=0)]
+
+
+class TableDeliveryPlan(BaseModel):
+    """Compose a persona reply by selecting only the supplied equivalent phrases."""
+    model_config = ConfigDict(extra='forbid', strict=True, frozen=True)
+    opening: Index = Field(description='Index of an authorized opening.')
+    variants: tuple[Index, ...] = Field(strict=False, min_length=1, max_length=16,
+        description='One authorized variant index per fact, in the original order; omit nothing.')
+    closing: Index = Field(description='Index of an authorized closing.')
