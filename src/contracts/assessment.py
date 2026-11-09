@@ -6,7 +6,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from src.contracts.model import ConversationMessage
-from src.contracts.table import TableStatement
+from src.contracts.table import TableDeliveryPlan, TableStatement
 
 
 class AssessmentProposal(BaseModel):
@@ -50,6 +50,7 @@ class DialogueAssessment(AssessmentProposal):
     attempts: int = Field(default=0, ge=0, le=2)
     error_code: str | None = Field(default=None, max_length=80)
     table_statements: tuple[TableStatement, ...] = ()
+    table_delivery_plan: TableDeliveryPlan | None = None
 
 
 class PendingDialogueExchange(BaseModel):

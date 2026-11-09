@@ -30,7 +30,8 @@ async def table_api(api_client, storage, catalog, llm):
 
     async def delivery(messages, *, tools=(), tool_choice=None):
         llm.calls.append(messages)
-        return respond_to_tools({'tone': 'direct'}, tools, tool_choice, model='delivery-test')
+        payload = json.loads(messages[-1].content)
+        return respond_to_tools({'opening': 0, 'variants': [0] * len(payload['fatos_variantes']), 'closing': 0}, tools, tool_choice, model='delivery-test')
 
     llm.complete = delivery
     return api_client
@@ -126,11 +127,64 @@ async def test_api_stalled_delivery_cannot_block_canonical_alibi(table_api, stor
         await asyncio.Event().wait()
 
     llm.complete = stalled
-    calls_before = len(llm.calls)
     message = await asyncio.wait_for(ask(client, gid, cid, 'Onde passou a noite 0?'), timeout=.15)
-    assert len(llm.calls) == calls_before
     assert message['useful']
-    message = await ask(client, gid, cid, 'Onde passou a noite 0?')
+    message = await ask(client, gid, cid, 'Repita: onde passou a noite 0?')
     assert message['useful'] and 'Na noite 0' in message['content']
     reports = (await client.get(f'/api/v1/games/{gid}/investigation')).json()['case_reports']
     assert len(reports) == 1 and reports[0]['kind'] == 'alibi'
+
+
+async def test_api_native_rephrasing_keeps_canonical_table_records(table_api, storage, llm):
+    client = table_api
+    gid = (await client.post('/api/v1/games', json={})).json()['id']
+    cid = await near(client, storage, gid, 'capitu')
+
+    async def choose_variant(messages, *, tools=(), tool_choice=None):
+        payload = json.loads(messages[-1].content)
+        return respond_to_tools({'opening': 1, 'variants': [len(choices)-1 for choices in payload['fatos_variantes']], 'closing': 0}, tools, tool_choice, model='native-editor')
+
+    llm.complete = choose_variant
+    message = await ask(client, gid, cid, 'Onde passou a noite 0?')
+    assert message['content'].startswith('Pois bem, Floriano.')
+    assert message['useful']
+    # Stored statements remain untouched canonical facts, independent of delivery.
+    table = json.loads(await storage.client.get(f'{storage.prefix}:game:{{{gid}}}:table'))
+    statement = table['statements'][-1]
+    assert statement['kind'] == 'alibi' and statement['day'] == 0
+    assert statement['text'] != message['content']
+
+
+async def test_api_native_editor_cannot_submit_free_text_facts(table_api, storage, llm):
+    client = table_api
+    gid = (await client.post('/api/v1/games', json={})).json()['id']
+    cid = await near(client, storage, gid, 'capitu')
+
+    async def invented(*args, tools=(), tool_choice=None, **kwargs):
+        return respond_to_tools({'opening': 0, 'variants': [999], 'closing': 0, 'fala': 'Matei Bentinho na noite 99.'}, tools, tool_choice)
+
+    llm.complete = invented
+    message = await ask(client, gid, cid, 'Onde passou a noite 0?')
+    assert 'noite 99' not in message['content']
+    assert 'Na noite 0' in message['content'] and message['useful']
+
+
+def test_authored_alibi_variants_preserve_partial_coverage_and_company():
+    from types import SimpleNamespace
+    from src.modules.agents.table_delivery import variants_for
+    statement = SimpleNamespace(kind='alibi', text='CANONICAL', day=3,
+        location_id='cafe_largo', companion_ids=('capitu',), alibi_status='partial')
+    options = variants_for(statement, {'capitu': 'Capitu'})
+    assert len(options) == 3
+    assert all('parte da noite 3' in option and 'Capitu' in option and 'Café do Largo' in option
+        for option in options[1:])
+    statement.companion_ids = ()
+    assert variants_for(statement, {}) == ('CANONICAL',)
+
+
+def test_delivery_plan_cannot_omit_facts_or_pick_unauthorized_variants():
+    from src.modules.agents.table_delivery import TableDeliveryPlan, render_delivery
+    with pytest.raises(ValueError):
+        render_delivery(TableDeliveryPlan(opening=0, variants=(0,), closing=0), (('first',), ('second',)))
+    with pytest.raises(ValueError):
+        render_delivery(TableDeliveryPlan(opening=0, variants=(1,), closing=0), (('only authorized',),))

@@ -31,7 +31,7 @@ class PersonaTableAgent:
         context = await self.knowledge.context(self.game_id, self.npc_id, self.recipient_id)
         return tuple(context["vinculos_conhecidos"])
 
-    async def query(self, question, now):
+    async def query(self, question, now, *, excluded_statement_ids=()):
         text = normalize(question)
         tokens = set(word_tokens(text))
         profiles = await self.knowledge._characters.list()
@@ -43,8 +43,11 @@ class PersonaTableAgent:
 
         def statement(kind, body, *, subject=None, root=None, sources=(), day=0):
             root = root or uuid5(NAMESPACE_URL, f"{self.game_id}:{self.npc_id}:{kind}:{subject}:{body}")
+            # A correction can share its rumor root while citing a new source
+            # version. Keep that provenance root, but do not silence the update.
+            version = ':' + ':'.join(sorted(str(source) for source in sources)) if sources else ''
             return TableStatement(
-                id=uuid5(NAMESPACE_URL, f"{self.game_id}:disclosure:{self.npc_id}:{self.recipient_id}:{root}:{kind}"),
+                id=uuid5(NAMESPACE_URL, f"{self.game_id}:disclosure:{self.npc_id}:{self.recipient_id}:{root}:{kind}{version}"),
                 kind=kind, speaker_id=self.npc_id, recipient_id=self.recipient_id,
                 subject_id=subject, day=max(0, day or 0), source_ids=sources,
                 root_id=root, text=body, created_at=now,
@@ -98,12 +101,16 @@ class PersonaTableAgent:
             keywords = tokens - {"o", "a", "de", "que", "voce", "sabe", "sobre", "me", "conte", "fofoca", "fofocas"}
             public.sort(key=lambda entry: (len(keywords & set(word_tokens(normalize(entry.proposition)))), entry.origin == "authored", str(entry.id)), reverse=True)
             if public:
-                return tuple(statement("gossip", entry.proposition, root=entry.root_id,
+                candidates = tuple(statement("gossip", entry.proposition, root=entry.root_id,
                                        sources=(entry.id,), subject=sorted(targets)[0] if targets else None, day=entry.day)
-                             for entry in public[:2])
+                                   for entry in public)
+                fresh = tuple(item for item in candidates if item.id not in excluded_statement_ids)
+                # Return known candidates when exhausted so the caller can distinguish
+                # exhaustion from a topic for which this persona never knew a fact.
+                return fresh[:2] or candidates[:2]
             return (statement("public_fact", "Não conheço um relato sobre isso que possa compartilhar."),)
         return ()
 
 
-async def prepare_knowledge_turn(knowledge_service, game_id, npc_id, recipient_id, question, now):
-    return await PersonaTableAgent(knowledge_service, game_id, npc_id, recipient_id).query(question, now)
+async def prepare_knowledge_turn(knowledge_service, game_id, npc_id, recipient_id, question, now, *, excluded_statement_ids=()):
+    return await PersonaTableAgent(knowledge_service, game_id, npc_id, recipient_id).query(question, now, excluded_statement_ids=excluded_statement_ids)
