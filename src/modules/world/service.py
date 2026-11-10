@@ -235,7 +235,7 @@ class WorldService:
             return await self._snapshot(game, updated, case)
 
     async def assert_can_talk(self, game_id: UUID, npc_id: str) -> None:
-        """Não adquire reserva: o chamador mantém a reserva de ação durante o diálogo."""
+        """Não adquire reserva: o chamador mantém a reserva durante esta validação."""
         if self._day_policy:
             case = await self._day_policy.require_day_locked(game_id)
             if case.detained_npc_id == npc_id:

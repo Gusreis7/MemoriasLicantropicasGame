@@ -1,14 +1,66 @@
-# Memórias Licantropicas
+# Memórias Licantópicas
 
-Um jogo de investigação na Rua do Ouvidor: Floriano interroga personagens de Machado de Assis, reúne provas e tenta identificar o lobisomem antes que a cidade sucumba.
+Um jogo solo de investigação em que os outros participantes são personagens
+controlados por agentes de IA.
 
-Cada partida tem sete suspeitos, e o servidor sorteia qual deles será o lobisomem. Os personagens têm relações, segredos e informações que podem compartilhar com Floriano. As regras do jogo definem o que aconteceu durante a noite, quem estava acompanhado e quais relatos podem servir de prova. A IA dá voz aos personagens e participa das escolhas narrativas permitidas pela mesa.
+Comecei este projeto pensando no  party game **Lobisomem**, uma das variações de Cidade
+Dorme. Queria experimentar como seria investigar um caso em que, no lugar de
+outros jogadores, eu pudesse conversar com personagens que guardam informações,
+relações e segredos próprios. Aproveitei também a ambientação e algumas
+referências à obra de Machado de Assis.
 
-## Começar localmente
+O resultado é uma investigação conduzida por Floriano , um detetive  que precisa descobrir
+quem é a besta-fera antes que a cidade perca mais moradores. Os diálogos são
+parte importante da experiência, mas não decidem sozinhos o que é verdade: a
+mesa registra os acontecimentos, controla as provas e limita o que cada NPC
+pode saber ou revelar.
 
-Instale Git, Python 3, Make, Docker e Docker Compose. Na pasta do projeto, execute:
+## Como jogar
+
+Você controla Floriano e investiga sete suspeitos. A ideia não é conseguir uma
+confissão em uma única conversa, mas cruzar o que cada pessoa diz com os fatos
+da partida.
+
+1. Explore a cena do crime, examine o ambiente e recolha os objetos disponíveis.
+2. Converse com os moradores sobre a noite anterior, suas relações e o que viram.
+3. Confirme álibis com as pessoas citadas. Uma fofoca repetida não vira uma nova testemunha.
+4. Consulte o caderno e os relatos destacados em roxo e dourado para organizar as pistas.
+5. Vá à delegacia, selecione as evidências e apresente uma acusação quando achar que tem um caso.
+6. Se ainda faltar informação, continue investigando ou avance para a manhã seguinte.
+
+Use **A/D ou as setas** para andar e **E** para conversar ou examinar. Nas bordas
+da rua, escolha o destino com as setas e confirme com **Enter**; **Esc** fecha
+o menu. Também é possível viajar pelo mapa.
+
+O jogo inclui um **Tutorial** no cabeçalho, aberto automaticamente na primeira
+visita. Você pode consultá-lo de novo durante a partida. A investigação termina
+em derrota se a fera causar a morte de quatro dos sete suspeitos; a vítima
+inicial não entra nessa contagem.
+
+## Modelo de IA e limitações atuais
+
+Desenvolvi e experimentei o jogo utilizando **créditos da AWS**, com o
+**Qwen3-32B (`qwen.qwen3-32b`)** como modelo principal, acessado pelo
+**Amazon Bedrock Mantle** na região `us-east-1`.
+
+**Por enquanto, não há opção pronta de usar LLMs locais**, como Ollama ou LM
+Studio. Rodar o jogo no próprio computador significa executar a aplicação e
+seus serviços localmente, **não** executar a inferência do modelo na máquina.
+As conversas continuam dependendo de acesso ao Bedrock.
+
+Os créditos usados no desenvolvimento não acompanham o repositório. Quem
+reproduzir o projeto precisa de credenciais AWS próprias, permissão para usar
+o modelo e deve considerar possíveis cobranças por inferência. Sem essas
+credenciais, os serviços podem iniciar, mas a experiência de diálogo com os
+personagens fica indisponível.
+
+## Reproduzir na sua máquina
+
+Com Git, Python 3, Make, Docker e Docker Compose instalados:
 
 ```sh
+git clone https://github.com/Gusreis7/MemoriasLicantropicasGame.git
+cd MemoriasLicantropicasGame
 make setup
 ```
 
@@ -16,53 +68,47 @@ make setup
 | --- | --- |
 | Jogo | http://127.0.0.1:7077 |
 | Painel administrativo | http://127.0.0.1:7078 |
-| Documentação da API local | http://127.0.0.1:7079/docs |
+| API e documentação | http://127.0.0.1:7079/docs |
 
-O comando prepara o `.env`, gera uma senha administrativa caso ainda não exista e inicia os serviços. O usuário e a senha do painel ficam em `ADMIN_USERNAME` e `ADMIN_PASSWORD` nesse arquivo. Para conversar com os personagens, configure um perfil AWS ou um token Bedrock seguindo o [guia local](docs/deploy_local.md). O modelo padrão é `qwen.qwen3-32b`, via Bedrock Mantle.
+O `make setup` prepara o `.env`, gera a senha administrativa, quando necessário,
+e sobe os serviços. **Antes de iniciar uma partida completa**, configure no
+`.env` um perfil AWS ou um token de acesso ao Bedrock e execute `make up`.
+Os comandos, as opções de autenticação e a preservação das partidas estão no
+[guia de reprodução local](docs/deploy_local.md).
 
-```sh
-make status
-make logs
-make down
-make up
-```
+Para publicar uma instância própria na AWS, consulte o
+[guia de reprodução AWS](docs/reproducao_aws.md). Não é necessário provisionar
+uma EC2 apenas para testar o jogo no computador.
 
-`make down` preserva as partidas. `make setup` reconstrói a aplicação. `make destroy` apaga o Redis e todas as partidas.
+## Como organizei o projeto
 
-## Tutorial: sua primeira investigação
+O backend é desenvolvido em **Python 3.13**, com **FastAPI**, **Redis**,
+**LangGraph** e **LangChain Core**. O frontend utiliza **TypeScript**, **Phaser**
+e **Vite**. A versão publicada na AWS usa **Terraform**, **EC2**, **EBS**,
+**Caddy**, **GitHub Actions**, **ECR**, **S3** e **SSM**.
 
-1. Abra o jogo e inicie uma partida. Explore a rua e a cena do crime; examine e recolha os objetos disponíveis.
-2. Aproxime-se de um personagem e converse como Floriano. Pergunte, por exemplo: “O que você fez ontem à noite?”.
-3. Se o NPC disser que estava acompanhado, procure a outra pessoa e pergunte sobre a mesma noite. A confirmação recíproca transforma o relato em álibi confirmado. Um personagem sozinho não inventa companhia.
-4. Pergunte sobre objetos, relações e acontecimentos. Distingua uma observação própria de uma fofoca repetida: várias pessoas reproduzindo a mesma fonte não são testemunhas independentes.
-5. Consulte o caderno e os relatos destacados em roxo e dourado. Confira a noite, a fonte e o estado de confirmação antes de montar o caso.
-6. Na delegacia, selecione as provas e os relatos pertinentes e apresente a acusação. A avaliação considera o conteúdo estruturado e a cobertura dos álibis.
-7. Avance a investigação ou use o botão de pular o dia para chegar à manhã seguinte. O tempo traz novas consequências: quatro mortes do elenco atribuídas à fera encerram a partida em derrota. Brás Cubas, a vítima inicial, não entra nessa contagem.
+Separei as regras da investigação da geração de linguagem. A mesa determina
+posições, noites, encontros, álibis e consequências; os agentes recebem apenas
+as informações autorizadas para cada personagem. O servidor ainda valida as
+respostas antes de registrá-las. Quando uma geração falha, existem respostas
+determinísticas para os fluxos previstos pelas regras.
 
-Use as setas ou A/D para caminhar e E para conversar ou examinar uma cena próxima. Ao chegar à borda da rua, escolha o destino com as setas e confirme com Enter. Escape fecha o menu. O mapa também permite mudar de local.
+A explicação está em [NPCs e mestre da mesa](docs/orquestracao_agentes.md).
 
-## Acompanhar a aplicação
+## Desenvolvimento
 
-O painel administrativo reúne os indicadores de uso e permite consultar partidas, conversas, acontecimentos e consumo de IA. Ele mostra sessões de visita acumuladas, jogadores ativos, partidas iniciadas, vitórias, derrotas e partidas sem desfecho. Essa última categoria inclui tanto quem ainda está jogando quanto quem saiu antes do fim.
+Desenvolvi o projeto em sessões de programação guiada com **Codex**, partindo
+das mecânicas que queria testar. Usei especificações, planos de implementação,
+revisão de diffs, testes e muitas partidas para identificar inconsistências.
+Nem sempre um teste passando significava que a conversa ou a jogatina fazia
+sentido; precisei revisar ambos.
 
-As visitas são contadas por sessão do navegador, sem guardar IPs nas métricas. A sessão expira após 30 minutos sem atividade; o indicador de ativos considera os últimos 90 segundos. Essa contagem começa com a instalação da funcionalidade. As partidas que já estavam no Redis entram nos totais normalmente.
+Também utilizei geração de imagens para parte dos recursos visuais. Os sons
+vieram de fontes externas e estão identificados nos
+[créditos](docs/creditos_efeitos_open_source.md). Descrevi melhor o processo em
+[uso de IA e Codex](docs/uso_ia_e_codex.md).
 
-O painel é somente de leitura: consultar uma partida não avança o tempo nem muda seu resultado. Como ele revela o papel dos personagens, seu acesso fica separado do jogo. Na AWS, a entrada é feita por um [túnel SSM](docs/reproducao_aws.md#5-admin-e-preservação).
-
-## Como funciona
-
-- **API:** Python 3.13, FastAPI e serviços de regras.
-- **Estado:** Redis com persistência AOF; mesa, relações, memórias e rastros separados por partida.
-- **Agentes:** ferramentas vinculadas à identidade de cada NPC, mestre da sessão e circulação social com LangGraph.
-- **Modelos:** cliente Bedrock Mantle, saídas estruturadas e medição de uso. Fatos e permissões são definidos pelo servidor.
-- **Interface:** TypeScript, Phaser e Vite; proxies Nginx no deploy.
-- **Produção:** Terraform, EC2 com Elastic IP, registro A no Registro.br, HTTPS automático com Caddy, EBS, ECR, S3 e entrega por GitHub OIDC/SSM.
-
-A investigação usa formato 2. Dados antigos incompatíveis são recusados; não há migração ou adaptador. O namespace Redis padrão `ml:v1` é independente desse formato.
-
-As imagens recebem versões WebP sem perda durante o build. A cena carrega primeiro o local atual e busca os demais na primeira visita. O Nginx comprime os arquivos de texto e permite guardar imagens e scripts versionados no cache do navegador. Os detalhes estão no [guia local](docs/deploy_local.md#recursos-e-desempenho).
-
-## Desenvolvimento e validação
+Para executar as verificações de desenvolvimento:
 
 ```sh
 uv sync --locked
@@ -73,18 +119,15 @@ npm test
 npm run build
 ```
 
-A suíte comum não consome o modelo real. Os scripts `scripts/smoke_table_api.py` e `scripts/run_session_simulations.py` exercitam o servidor por HTTP; o segundo usa um LLM para interpretar Floriano e salva estatísticas por sessão. Veja os comandos, requisitos e limites em [testes e simulações](docs/testes.md).
+Esses testes não chamam o modelo real. Os testes completos e as simulações com
+inferência estão no [guia de testes](docs/testes.md).
 
 ## Documentação
 
-| Guia | Objetivo |
-| --- | --- |
-| [Deploy local](docs/deploy_local.md) | Instalar, configurar, desenvolver e operar |
-| [Solução AWS](docs/solucao_aws.md) | Entender a arquitetura e suas limitações |
-| [Reprodução na AWS](docs/reproducao_aws.md) | Provisionar e entregar uma instalação |
-| [Orquestração dos agentes](docs/orquestracao_agentes.md) | Entender NPCs, mestre, dados e permissões |
-| [Índice técnico](docs/README.md) | Consultar mecânicas, interface e referências especializadas |
-
-Recursos visuais e sonoros mantêm metadados, proveniência e atribuição junto aos arquivos. Documentos e relatórios antigos podem ser recuperados pelo histórico Git.
-
-
+- [Reprodução local](docs/deploy_local.md): instalação, Bedrock, dados e desenvolvimento.
+- [Reprodução na AWS](docs/reproducao_aws.md): infraestrutura, domínio e publicação.
+- [Arquitetura AWS](docs/solucao_aws.md): rede, serviços e persistência.
+- [NPCs e mestre da mesa](docs/orquestracao_agentes.md): orquestração e limites dos agentes.
+- [Testes](docs/testes.md): validações e simulações.
+- [Uso de IA e Codex](docs/uso_ia_e_codex.md): processo de desenvolvimento.
+- [Créditos dos efeitos](docs/creditos_efeitos_open_source.md): sons e licenças.

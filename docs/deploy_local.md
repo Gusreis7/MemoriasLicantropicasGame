@@ -1,70 +1,90 @@
-# Deploy local
+# Reprodução local
 
-## Requisitos e primeira execução
+É possível rodar o jogo, a API, o Redis e o painel administrativo na sua
+máquina. O que **não** roda localmente nesta versão é o modelo de linguagem:
+as conversas utilizam **Qwen3-32B** pelo **Amazon Bedrock Mantle**.
 
-Use Git, Python 3, Make, Docker Engine e Docker Compose. Para desenvolvimento fora dos containers, use também `uv`, Python 3.13 e Node.js 22.12 ou superior.
+Desenvolvi e testei o projeto usando créditos da AWS. Esses créditos não são
+fornecidos com o código. Para jogar com os NPCs, você precisa de uma identidade
+AWS com acesso ao Bedrock e ao modelo configurado. As chamadas podem gerar custo.
+**Não há integração pronta com Ollama, LM Studio ou outro servidor de LLM local.**
 
-Na raiz do checkout:
+## 1. Preparar a aplicação
+
+Instale Git, Python 3, Make, Docker e Docker Compose. Clone o repositório e
+execute, na raiz:
 
 ```sh
+git clone https://github.com/Gusreis7/MemoriasLicantropicasGame.git
+cd MemoriasLicantropicasGame
 make setup
 make status
 curl --fail http://127.0.0.1:7079/health
 ```
 
-O comando prepara o `.env` e gera uma senha administrativa se você ainda não tiver uma. Depois, constrói as imagens e inicia os serviços. Suas configurações existentes são preservadas. Quando terminar, abra:
+O `make setup` prepara o `.env`, gera uma senha administrativa se ainda não
+existir e inicia os serviços. Ele preserva as configurações anteriores.
+O `/health` confirma API e Redis; **não** testa a conexão com o Bedrock.
 
-| Serviço | Endereço |
+| Serviço | Endereço padrão |
 | --- | --- |
 | Jogo | http://127.0.0.1:7077 |
-| Administração | http://127.0.0.1:7078 |
-| API e documentação local | http://127.0.0.1:7079/docs |
+| Painel administrativo | http://127.0.0.1:7078 |
+| API / Swagger | http://127.0.0.1:7079/docs |
 
-O usuário e a senha do admin ficam em `ADMIN_USERNAME` e `ADMIN_PASSWORD` no `.env`. Não publique esse arquivo. O Redis não expõe porta no Compose normal.
+O Redis não publica uma porta no Compose de uso normal. As credenciais locais
+do painel ficam em `ADMIN_USERNAME` e `ADMIN_PASSWORD` no `.env`. Não versione
+esses valores.
 
-## Recursos e desempenho
+## 2. Configurar o Bedrock
 
-Ao construir a interface ou iniciar o Vite, o Sharp gera cópias WebP sem perda dos PNGs. Os atlas preservam dimensões e coordenadas das animações. Os retratos também recebem versões de 320, 640 e 960 pixels, escolhidas pelo navegador conforme o tamanho exibido e a densidade da tela. Os originais continuam no projeto, e as cópias menores ficam em `frontend/public/assets/optimized/`, fora do Git. O processo reaproveita conversões existentes e salva um resumo dos tamanhos em `report.json` nessa pasta.
+O modelo padrão é `qwen.qwen3-32b`, usando o endpoint Bedrock Mantle na região
+`us-east-1`. Escolha **uma** das formas de autenticação no `.env`:
 
-O nome de cada imagem otimizada depende do seu conteúdo. Assim, o navegador pode guardá-la por um ano e buscar outro arquivo quando a arte mudar. O mesmo vale para os scripts e estilos versionados. HTML, manifestos e imagens sem versão são revalidados; CSS, JavaScript e JSON também usam gzip. Essas configurações fazem parte da imagem web e chegam à AWS pelo deploy normal.
+**Perfil AWS:**
 
-A cena começa com Floriano, os personagens visíveis e o cenário da manhã. A ambientação e as demais iluminações entram conforme forem necessárias, em uma fila que evita preparar todas as texturas de uma vez. Chegar um novo NPC não interrompe a caminhada para carregar sua imagem. Na primeira visita a outro local, o indicador aguarda o cenário; os arquivos ficam disponíveis para as visitas seguintes. Recarregue a página após atualizar a aplicação para receber o novo código.
+```dotenv
+AWS_REGION=us-east-1
+AWS_PROFILE=seu-perfil
+```
 
-A API pública informa seu tempo de processamento no cabeçalho `Server-Timing`. Nas ferramentas de rede do navegador, ele ajuda a separar o tempo gasto na aplicação do tempo de conexão e transferência. A medição não grava identificadores de visitantes.
-
-## KPIs do administrador
-
-Os números no topo do painel consideram todas as partidas armazenadas, mesmo aquelas que não aparecem na página atual da lista. Você pode acompanhar quantas começaram, quantas terminaram em vitória ou derrota e quantas seguem sem desfecho. “Sem desfecho” inclui partidas em andamento e partidas interrompidas. Abrir o painel não avança fases nem executa ações no jogo. Os totais podem levar até 15 segundos para refletir uma mudança.
-
-Uma conexão representa uma sessão de visita ao jogo. Recarregar a página não cria uma nova visita enquanto a sessão estiver válida, e abas do mesmo navegador compartilham o cookie. Depois de 30 minutos sem atividade, o próximo acesso conta como outra sessão. Isso não é uma contagem de pessoas únicas.
-
-Enquanto a aba está visível, o jogo informa sua presença a cada 30 segundos. O cartão de ativos considera as sessões que enviaram essa informação nos últimos 90 segundos. O cookie é HttpOnly, e o Redis guarda apenas um hash do identificador, contadores e horários. As métricas não armazenam IPs, e o endpoint de presença fica fora do registro de acessos do Nginx.
-
-A contagem de visitas começa no primeiro acesso após instalar essa funcionalidade. Acessos anteriores não são estimados. Os números sobrevivem aos reinícios enquanto o volume Redis for preservado.
-
-Para consultar os indicadores pela API, use `GET /admin/api/v1/metrics` com uma sessão administrativa. A resposta não pode ser armazenada em cache e o endpoint não aceita escrita. A presença enviada pelo jogo usa `POST /api/v1/visits`, sem expor métricas públicas ou alterar partidas.
-
-## Trocar a senha do painel
-
-Para gerar outra senha local, execute na raiz do projeto:
+O perfil deve estar configurado no AWS CLI e autorizado a chamar o modelo.
+Caso use SSO, autentique-se antes de subir a aplicação:
 
 ```sh
-python3 scripts/configure_local.py --reset-admin-password
+aws sso login --profile seu-perfil
 make up
 ```
 
-Consulte `ADMIN_PASSWORD` no `.env` e entre novamente no painel. Essa troca não altera a senha da AWS nem apaga partidas. Para trocar a senha de produção, siga o [guia da AWS](reproducao_aws.md#5-admin-e-preservação).
+O launcher monta as configurações AWS somente para a API. Para perfis guardados
+fora de `~/.aws`, consulte a opção `AWS_CONFIG_DIR` usada pelo launcher.
 
-## Credenciais do modelo
+**Token Bedrock:**
 
-O modelo configurado por padrão é `qwen.qwen3-32b`, via Bedrock Mantle em `us-east-1`. Escolha uma das formas suportadas e confirme que sua identidade tem acesso ao serviço e ao modelo:
+```dotenv
+AWS_REGION=us-east-1
+AWS_PROFILE=
+AWS_BEARER_TOKEN_BEDROCK=seu-token
+```
 
-- Perfil AWS: configure `AWS_PROFILE` e `AWS_REGION` no `.env`. Se o perfil usa SSO, autentique no host com `aws sso login --profile NOME_DO_PERFIL` antes de iniciar. O launcher inclui `compose.aws-local.yaml`, monta a origem de credenciais em modo de leitura e prepara uma cópia privada para a API.
-- Bearer explícito: preencha `AWS_BEARER_TOKEN_BEDROCK` no `.env` e deixe `AWS_PROFILE` vazio.
+Salve o `.env` e execute `make up`. O token é um segredo; não o publique nem o
+adicione ao Git. Para uma instalação real, verifique também as permissões e a
+disponibilidade do modelo na sua conta.
 
-Depois de alterar configuração, execute `make up`; se alterar código ou dependências, use `make setup`. Nunca coloque credenciais no Git. O endpoint `/health` verifica a aplicação e o Redis, não comprova uma inferência bem-sucedida. Os diálogos canônicos têm fallback de tom, mas outras tarefas narrativas podem precisar do modelo.
+Abra o jogo e teste uma conversa com um NPC. Se ela falhar, consulte `make logs`.
+O endpoint `/health` pode continuar saudável mesmo sem credenciais de IA.
+A variável `BEDROCK_MODEL` seleciona o modelo do serviço configurado, mas não
+ativa inferência local nem troca automaticamente de provedor.
 
-## Operação e dados
+## 3. Jogar e preservar as partidas
+
+Abra http://127.0.0.1:7077. O tutorial aparece na primeira visita e pode ser
+reaberto no cabeçalho. Use **A/D ou setas** para andar, **E** para interagir,
+**Enter** para confirmar destinos e **Esc** para fechar o menu. O mapa permite
+trocar de lugar. Você investiga depoimentos e objetos, confirma álibis e leva
+as provas à delegacia para acusar um suspeito.
+
+Para acompanhar ou reiniciar os serviços:
 
 ```sh
 make logs
@@ -72,22 +92,40 @@ make down
 make up
 ```
 
-`make down` preserva o volume e as partidas. `make destroy` apaga definitivamente o volume Redis e todas as partidas; use somente quando quiser reiniciar os dados. O formato atual de investigação é 2 e recusa partidas antigas incompatíveis. Não há migração de dados legados.
+`make down` preserva o volume Redis e as partidas. `make setup` reconstrói os
+serviços depois de alterações de código ou dependências. **`make destroy`
+apaga o volume Redis e todas as partidas.** O formato atual também recusa
+partidas antigas incompatíveis; não há migração automática.
 
-Se o Redis não iniciar, consulte os logs antes de remover dados. `scripts/repair_redis_aof.sh` fornece um fluxo específico de diagnóstico e reparo com backup em `artifacts/redis-backups`; leia o script antes de usar `--repair` e pare os serviços conforme suas instruções. Esses backups não são resíduos descartáveis de build.
+Para trocar a senha administrativa local:
 
-## Desenvolvimento sem container da API
+```sh
+python3 scripts/configure_local.py --reset-admin-password
+make up
+```
 
-Instale as dependências e exponha somente o Redis de desenvolvimento. Se a API do Compose já usa 7079, pare-a antes de executar Uvicorn.
+Leia os novos dados no `.env`. O painel mostra visitas, jogadores ativos,
+partidas iniciadas, vitórias, derrotas e partidas sem desfecho, além de
+indicadores de consumo de IA. É somente de leitura, mas contém detalhes da
+investigação; não o exponha publicamente. Na AWS o acesso usa túnel SSM.
+As visitas são sessões do navegador que expiram após 30 minutos sem atividade;
+"jogadores ativos" considera presença nos últimos 90 segundos. Os totais podem
+levar até 15 segundos para atualizar.
+
+## 4. Desenvolver sem os containers da aplicação
+
+Para trabalhar diretamente no código, use Python 3.13, `uv` e Node.js 22.12 ou
+superior. Deixe o Redis em um container separado e rode a API no host. Pare a
+API do Compose se ela já estiver usando a porta `7079`.
 
 ```sh
 uv sync --locked
 python3 scripts/configure_local.py
 docker compose -f compose.yaml -f compose.debug.yaml up -d --wait redis
-REDIS_URL=redis://127.0.0.1:7080/0 AWS_PROFILE=terraform uv run uvicorn src.main:app --host 127.0.0.1 --port 7079 --reload --no-proxy-headers
+REDIS_URL=redis://127.0.0.1:7080/0 AWS_PROFILE=seu-perfil uv run uvicorn src.main:app --host 127.0.0.1 --port 7079 --reload --no-proxy-headers
 ```
 
-Substitua `terraform` pelo seu perfil. Em outro terminal:
+Em outro terminal:
 
 ```sh
 cd frontend
@@ -95,10 +133,23 @@ npm ci
 npm run dev
 ```
 
-O Vite serve em 7081 e encaminha a API para 7079. Para usar o admin nessa origem, inclua-a em `ADMIN_ALLOWED_ORIGINS`. As portas de jogo/admin do Compose continuam sendo as opções para executar o frontend já construído.
+Se estiver usando autenticação por token, omita `AWS_PROFILE=seu-perfil` do
+comando da API e configure `AWS_BEARER_TOKEN_BEDROCK` no `.env`.
 
-## Validação e diagnóstico
+O Vite usa a porta `7081` e encaminha chamadas para a API em `7079`. Para abrir
+o painel administrativo nessa origem, inclua-a em `ADMIN_ALLOWED_ORIGINS`.
 
-Execute as suítes e os smokes descritos em [testes](testes.md). Se uma porta estiver ocupada, confira `docker compose -f compose.yaml ps --all` e os processos locais. Se somente tarefas de modelo falharem, verifique o perfil/token, a região e os logs da API. Não é necessário apagar o Redis para corrigir credenciais.
+Os testes não precisam de credenciais de IA; veja o [guia de testes](testes.md).
+Se o Redis não subir por problema no AOF, consulte os logs e leia
+`scripts/repair_redis_aof.sh` antes de tentar reparar. O script prevê backup;
+não apague os dados para resolver um erro de inicialização.
 
-Para produção, siga [reprodução na AWS](reproducao_aws.md); o Compose local não substitui a configuração de produção.
+## Observações de desempenho
+
+A interface carrega os cenários conforme necessário. O build cria versões WebP
+e recursos otimizados em `frontend/public/assets/optimized/`; os originais
+continuam no projeto. Para investigar lentidão em uma conversa, compare o tempo
+da requisição no navegador com o cabeçalho `Server-Timing` da API.
+
+Os contadores de visitas usam sessões do navegador, sem armazenar IPs nas
+métricas. Os dados do painel permanecem enquanto o Redis for preservado.

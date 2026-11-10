@@ -182,11 +182,6 @@ def llm():
 
 
 @pytest.fixture
-def harness(catalog, storage, llm):
-    return HarnessService(catalog, storage.games, storage.memory, llm)
-
-
-@pytest.fixture
 async def api_client(monkeypatch, catalog, storage, llm):
     settings = Settings(_env_file=None, admin_password="test-admin-password")
     world_repository = RedisWorldRepository(storage.client, storage.prefix)

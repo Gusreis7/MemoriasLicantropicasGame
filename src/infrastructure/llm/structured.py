@@ -119,7 +119,7 @@ class MantleChatModel(BaseChatModel):
     ):
         """Composição pública provider-aware, usando somente ferramentas nativas.
 
-        BaseChatModel usa tool_choice='any'. Este provedor utiliza auto explícito:
+        BaseChatModel usa tool_choice='any'. Este provedor utiliza 'required':
         uma resposta sem chamada é rejeitada, nunca reinterpretada como JSON.
         """
         if method != "function_calling" or kwargs:

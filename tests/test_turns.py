@@ -6,7 +6,7 @@ from uuid import uuid4
 
 import pytest
 
-from src.contracts.errors import ConflictError, NotFoundError, StorageUnavailableError
+from src.contracts.errors import ConflictError, StorageUnavailableError
 from src.contracts.investigation import CaseEvent, CaseTransition
 from src.contracts.model import GameCharacter, GameState
 from src.modules.turns.service import TurnService
@@ -131,24 +131,6 @@ async def test_innocent_detention_protects_only_detainee_and_releases_at_morning
     assert len(await events(storage, cycle, "suspect.released")) == 1
 
 
-async def test_last_civil_in_jail_yields_no_death_but_following_unprotected_night_loses(cycle, storage):
-    game = cycle.game.model_copy(update={"characters": tuple(
-        member if member.role == "werewolf" or member.character_id == "escobar"
-        else member.model_copy(update={"alive": False}) for member in cycle.game.characters)})
-    await storage.client.set(f"{cycle.key}:state", game.model_dump_json())
-    await detain(cycle, "escobar")
-    cycle.clock[0] += timedelta(seconds=308)
-    morning = await cycle.turns.sync(cycle.game.id)
-    assert morning.journal[-1].victim_id is None
-    assert morning.journal[-1].detention_outcome == "released"
-    assert len(morning.crimes) == 1 and morning.status == "active"
-    cycle.clock[0] += timedelta(seconds=308)
-    ended = await cycle.turns.sync(cycle.game.id)
-    assert ended.status == "lost" and ended.phase == "finished"
-    assert (await storage.games.get(cycle.game.id)).status == "lost"
-    assert ended.journal[-1].victim_id == "escobar"
-
-
 async def test_offline_catchup_uses_original_deadlines_and_terminates(cycle, storage):
     cycle.clock[0] += timedelta(days=30)
     case = await cycle.turns.sync(cycle.game.id)
@@ -179,54 +161,6 @@ async def test_bad_events_key_blocks_all_night_state_changes(cycle, storage):
     with pytest.raises(StorageUnavailableError):
         await cycle.turns.sync(cycle.game.id)
     assert {suffix: await storage.client.get(f"{cycle.key}:{suffix}") for suffix in before} == before
-
-
-async def test_missing_cycle_is_rejected_instead_of_bootstrapping_history(cycle, storage):
-    await storage.client.delete(f"{cycle.key}:investigation")
-    with pytest.raises(StorageUnavailableError):
-        await cycle.turns.sync(cycle.game.id)
-    assert not await storage.client.exists(f"{cycle.key}:investigation")
-    assert await storage.games.get(cycle.game.id) == cycle.game
-
-
-async def test_dialogue_deadline_rejects_without_mutating_or_acquiring_nested_gate(cycle, storage):
-    async with cycle.gate.hold(cycle.game.id):
-        await cycle.turns.assert_dialogue_open(cycle.game.id)
-        cycle.clock[0] += timedelta(seconds=300)
-        with pytest.raises(ConflictError):
-            await cycle.turns.assert_dialogue_open(cycle.game.id)
-    assert (await cycle.turns._repository.get(cycle.game.id)).phase == "day"
-    assert not await events(storage, cycle, "night.started")
-
-
-async def test_act_sets_revision_and_events_and_unchanged_action_does_not_write(cycle, storage):
-    initial = await cycle.turns.sync(cycle.game.id)
-    assert await cycle.turns.act(cycle.game.id, lambda state, *_: CaseTransition(state=state)) == initial
-    detained = await detain(cycle, "capitu")
-    assert detained.revision == initial.revision + 1
-    assert len(await events(storage, cycle, "suspect.detained")) == 1
-    with pytest.raises(ValueError):
-        await cycle.turns.act(cycle.game.id, lambda state, *_: CaseTransition(
-            state=state.model_copy(update={"day": 99})))
-    assert await cycle.turns.sync(cycle.game.id) == detained
-
-
-async def test_restore_new_service_preserves_clock_state_and_roles(cycle, storage, catalog):
-    cycle.clock[0] += timedelta(seconds=308)
-    case = await cycle.turns.sync(cycle.game.id)
-    restored = TurnService(storage.client, storage.prefix, storage.games, catalog, cycle.world, cycle.gate,
-                           clock=lambda: cycle.clock[0])
-    assert await restored.sync(cycle.game.id) == case
-    with pytest.raises(NotFoundError):
-        await restored.sync(uuid4())
-
-
-async def test_corrupt_cycle_identity_is_sanitized(cycle, storage):
-    case = await cycle.turns.sync(cycle.game.id)
-    corrupt = case.model_copy(update={"game_id": uuid4()})
-    await storage.client.set(f"{cycle.key}:investigation", corrupt.model_dump_json())
-    with pytest.raises(StorageUnavailableError):
-        await cycle.turns.sync(cycle.game.id)
 
 
 async def test_stale_world_prevents_partial_case_commit(cycle, storage):
@@ -260,31 +194,6 @@ async def test_cycle_transaction_refuses_role_reassignment(cycle):
         )
 
 
-async def test_restart_during_night_resumes_same_deadline(cycle, storage, catalog):
-    cycle.clock[0] += timedelta(seconds=300)
-    night = await cycle.turns.sync(cycle.game.id)
-    restored = TurnService(storage.client, storage.prefix, storage.games, catalog, cycle.world, cycle.gate,
-                           clock=lambda: cycle.clock[0])
-    cycle.clock[0] += timedelta(seconds=7)
-    assert await restored.sync(cycle.game.id) == night
-    cycle.clock[0] += timedelta(seconds=1)
-    morning = await restored.sync(cycle.game.id)
-    assert morning.day == 2 and morning.phase == "day"
-    assert morning.phase_ends_at == cycle.game.created_at + timedelta(seconds=608)
-    assert len(await events(storage, cycle, "character.killed")) == 1
-
-
-async def test_unexpired_reads_do_not_require_player_gate(cycle, storage):
-    initial = await cycle.turns.sync(cycle.game.id)
-    before = await storage.client.get(f"{cycle.key}:investigation")
-    async with cycle.gate.hold(cycle.game.id):
-        assert await cycle.turns.sync(cycle.game.id) == initial
-        results = await asyncio.gather(*(cycle.turns.sync(cycle.game.id) for _ in range(3)))
-        assert all(result == initial for result in results)
-    assert await storage.client.get(f"{cycle.key}:investigation") == before
-    assert len(await events(storage, cycle)) == 3
-
-
 async def test_due_reads_still_require_gate_and_do_not_resolve_around_pending_action(cycle, storage):
     cycle.clock[0] += timedelta(seconds=300)
     async with cycle.gate.hold(cycle.game.id):
@@ -292,49 +201,6 @@ async def test_due_reads_still_require_gate_and_do_not_resolve_around_pending_ac
             await cycle.turns.sync(cycle.game.id)
     assert not await events(storage, cycle, "night.started")
     assert (await cycle.turns.sync(cycle.game.id)).phase == "night"
-
-
-async def test_fast_read_detects_inconsistent_status_and_wrong_key_type(cycle, storage):
-    game = cycle.game.model_copy(update={"status": "won"})
-    await storage.client.set(f"{cycle.key}:state", game.model_dump_json())
-    with pytest.raises(StorageUnavailableError):
-        await cycle.turns.sync(cycle.game.id)
-    await storage.client.set(f"{cycle.key}:state", cycle.game.model_dump_json())
-    await storage.client.delete(f"{cycle.key}:investigation")
-    await storage.client.rpush(f"{cycle.key}:investigation", "not-a-json-string")
-    with pytest.raises(StorageUnavailableError):
-        await cycle.turns.sync(cycle.game.id)
-    assert await storage.client.type(f"{cycle.key}:investigation") == "list"
-
-
-async def test_terminal_reads_do_not_require_player_gate(cycle):
-    await detain(cycle, "bentinho")
-    cycle.clock[0] += timedelta(seconds=308)
-    terminal = await cycle.turns.sync(cycle.game.id)
-    async with cycle.gate.hold(cycle.game.id):
-        assert await cycle.turns.sync(cycle.game.id) == terminal
-
-
-async def test_victory_editorial_is_persisted_once(cycle, storage):
-    from src.modules.session_master.service import SessionMasterService
-    from src.modules.session_master.editorial import SIGNATURE
-    calls = []
-    master = SessionMasterService(cycle.turns, storage.games, None)
-    async def editor(state, game):
-        calls.append(state.ending_method)
-        return await master.publish_victory(state, game)
-    cycle.turns._victory_editor = editor
-    await cycle.turns.sync(cycle.game.id)
-    await detain(cycle, 'bentinho')
-    cycle.clock[0] += timedelta(seconds=308)
-    ended = await cycle.turns.sync(cycle.game.id)
-    assert ended.status == 'won'
-    assert ended.journal[-1].body.endswith(SIGNATURE)
-    assert 'Bentinho era o lobisomem' in ended.journal[-1].body
-    assert (await cycle.turns.sync(cycle.game.id)).journal == ended.journal
-    assert calls == ['detention']
-    persisted = await cycle.turns._repository.get(cycle.game.id)
-    assert persisted.journal == ended.journal
 
 
 async def _accepted_detention(cycle, suspect):

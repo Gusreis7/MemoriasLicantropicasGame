@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from contextlib import asynccontextmanager
 from uuid import UUID, uuid4
 
 from src.contracts.errors import InteractionUnavailableError, AccessDeniedError, ConflictError, NotFoundError
@@ -79,15 +80,21 @@ class ConversationService:
                                   created_at=conversation.created_at)
 
     async def send(self, game_id: UUID, conversation_id: UUID, content: str) -> MessageReply:
-        async with self._player_gate.hold(game_id):
-            return await self._send(game_id, conversation_id, content)
-
-    async def _send(self, game_id: UUID, conversation_id: UUID, content: str) -> MessageReply:
         # O par é recuperado no servidor; cliente nunca escolhe remetente ou papel.
         async with self._gate.hold(game_id, conversation_id):
             conversation = await self.get(game_id, conversation_id)
-            await self._world.assert_can_talk(game_id, conversation.npc_id)
-            reply = await self._harness.respond(game_id, conversation.npc_id, conversation_id, PLAYER_ID, content)
+
+            @asynccontextmanager
+            async def action_scope():
+                # Each graph node acquires and releases its own reservation.
+                # No context manager crosses LangGraph task boundaries.
+                async with self._player_gate.hold(game_id):
+                    await self.get(game_id, conversation_id)
+                    await self._world.assert_can_talk(game_id, conversation.npc_id)
+                    yield
+
+            reply = await self._harness.respond(game_id, conversation.npc_id, conversation_id,
+                PLAYER_ID, content, action_scope=action_scope)
             return MessageReply(conversation_id=conversation_id, message=public_message(reply.message))
 
     async def history(self, game_id: UUID, conversation_id: UUID, limit: int = 50) -> ConversationHistory:

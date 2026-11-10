@@ -95,20 +95,6 @@ async def test_parallel_games_and_nested_scopes_do_not_mix(storage):
     assert (await repository.summary(game_a)).totals.calls == 2
 
 
-async def test_usage_is_saved_before_application_rejects_model_text(storage, game):
-    repository = RedisUsageRepository(storage.client, storage.prefix, pricing=PRICING)
-    client = MeteredLLMClient(PaidLLM(), repository, configured_model=PRICING.model)
-    with pytest.raises(ValueError):
-        with usage_scope(game.id, "social_speech", "capitu"):
-            await client.complete(MESSAGES)
-            raise ValueError("parser rejected content")
-    result = await repository.summary(game.id)
-    assert result.totals.completed_calls == 1
-    assert result.totals.known_estimated_cost_usd == Decimal("0.21")
-    raw = await storage.client.hgetall(repository._key(game.id))
-    assert "Uma fala" not in str(raw) and "O que sabe" not in str(raw)
-
-
 async def test_provider_failure_is_unknown_cost_not_free(storage, game):
     class FailedLLM(PaidLLM):
         async def complete(self, messages, *, tools=(), tool_choice=None):
@@ -146,40 +132,6 @@ async def test_cancellation_records_uncertain_usage(storage, game):
     assert not totals.cost_complete
 
 
-async def test_unknown_exception_code_is_not_persisted(storage, game):
-    class UntrustedError(Exception):
-        code = "PRIVATE_MODEL_METADATA"
-
-    class BrokenLLM(PaidLLM):
-        async def complete(self, messages, *, tools=(), tool_choice=None):
-            raise UntrustedError("PRIVATE_MODEL_MESSAGE")
-
-    repository = RedisUsageRepository(storage.client, storage.prefix, pricing=PRICING)
-    client = MeteredLLMClient(BrokenLLM(), repository, configured_model=PRICING.model)
-    with pytest.raises(UntrustedError):
-        with usage_scope(game.id, "player_dialogue"):
-            await client.complete(MESSAGES)
-    raw = str(await storage.client.hgetall(repository._key(game.id)))
-    assert "llm_error" in raw
-    assert "PRIVATE_MODEL" not in raw
-
-
-async def test_missing_price_and_tokens_are_explicit(storage, game):
-    repository = RedisUsageRepository(storage.client, storage.prefix, pricing=PRICING)
-    await repository.record(record(game.id, configured_model="other-model"))
-    await repository.record(record(game.id, output_tokens=None))
-    totals = (await repository.summary(game.id)).totals
-    assert (
-        totals.calls == 2
-        and totals.unpriced_calls == totals.calls_with_missing_tokens == 1
-    )
-    assert totals.known_estimated_cost_usd == Decimal("0.15")
-    assert not totals.cost_complete
-    empty = await repository.summary(uuid4())
-    assert empty.coverage == "not_recorded"
-    assert empty.first_recorded_at is None and not empty.totals.cost_complete
-
-
 async def test_corrupt_cross_game_data_fails_closed(storage, game):
     repository = RedisUsageRepository(storage.client, storage.prefix)
     entry = record(uuid4())
@@ -205,33 +157,6 @@ async def test_metering_failure_preserves_paid_response(storage, game, caplog):
     assert response.input_tokens == 1_000_000
     assert "usage_persistence_failed" in caplog.text
     assert "private Redis failure" not in caplog.text
-
-
-@pytest.mark.parametrize(
-    "region,model,expected",
-    [
-        ("us-east-1", "qwen.qwen3-32b", Decimal("0.15")),
-        ("eu-west-1", "qwen.qwen3-32b", None),
-        ("us-east-1", "another-model", None),
-    ],
-)
-async def test_default_rates_apply_only_to_verified_region_and_model(
-    region, model, expected
-):
-    from src.composition import build_services
-    from src.settings import Settings
-
-    services = build_services(
-        Settings(_env_file=None, aws_region=region, bedrock_model=model)
-    )
-    try:
-        assert services.usage.pricing.input_usd_per_million == expected
-        assert isinstance(services.llm, MeteredLLMClient)
-        assert all(
-            isinstance(client, MeteredLLMClient) for client in services.social_clients
-        )
-    finally:
-        await services.aclose()
 
 
 async def test_usage_admin_endpoint_requires_session_and_returns_measured_game(

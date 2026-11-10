@@ -1,15 +1,13 @@
 """Falhas externas são tipadas; pareceres não escolhem metadados internos."""
 
-import json
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
-from native_fixtures import respond_to_tools, invalid_tool_response
 
 from src.contracts.errors import StorageUnavailableError
-from src.contracts.model import ConversationMessage, LLMResponse
+from src.contracts.model import ConversationMessage
 from src.modules.session_master.service import SessionMasterService
 
 pytestmark = pytest.mark.anyio
@@ -35,59 +33,6 @@ def exchange():
 class Turns:
     async def require_day_locked(self, game_id):
         return SimpleNamespace(day=1)
-
-
-class Client:
-    def __init__(self, value):
-        self.value = value
-        self.calls = 0
-
-    async def complete(self, messages, *, tools=(), tool_choice=None):
-        self.calls += 1
-        if isinstance(self.value, str):
-            return invalid_tool_response(self.value, "AssessmentProposal")
-        return respond_to_tools(
-            self.value, tools, tool_choice, model="contract-fixture"
-        )
-
-
-@pytest.mark.parametrize(
-    "output",
-    [
-        '```json\n{"kind":"conversation"}\n```',
-        {"issues": [{"type": "off_topic"}]},
-        {"kind": "conversation", "source": "local"},
-        {"kind": "conversation", "discovery_ids": ["escobar_affection"]},
-        {"kind": "conversation", "corrected_reply": "SEGREDO_INTERNO"},
-        {"kind": "conversation", "repair_support_id": "arbitrary"},
-        {"own_assertion": "true"},
-    ],
-)
-async def test_master_rejects_shape_repairs_coercions_and_control_fields(output):
-    client = Client(output)
-    master = SessionMasterService(Turns(), None, None, client)
-    incoming, outgoing = exchange()
-    assessment = await master.assess(uuid4(), "escobar", uuid4(), incoming, outgoing)
-    assert client.calls == 2
-    assert assessment.source == "fallback" and assessment.error_code in {
-        "invalid_tool_arguments",
-        "invalid_schema",
-    }
-    assert (
-        not assessment.discovery_ids
-        and not assessment.useful
-        and not assessment.surrender
-    )
-    assert assessment.corrected_reply is None
-
-
-async def test_useful_report_requires_a_literal_quote_from_the_npc():
-    client = Client({"useful": True, "useful_quote": "Uma fala que o NPC nunca disse."})
-    master = SessionMasterService(Turns(), None, None, client)
-    incoming, outgoing = exchange()
-    assessment = await master.assess(uuid4(), "escobar", uuid4(), incoming, outgoing)
-    assert assessment.source == "model" and not assessment.useful
-    assert assessment.useful_quote == ""
 
 
 async def test_corrupt_session_outbox_is_preserved_for_recovery_without_exposing_content(

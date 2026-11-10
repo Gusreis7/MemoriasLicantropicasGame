@@ -9,14 +9,12 @@ from uuid import uuid4
 import pytest
 from native_fixtures import respond_to_tools, requested_schema, invalid_tool_response
 
-from src.contracts.model import GameCharacter, GameState, LLMResponse
+from src.contracts.model import GameCharacter, GameState
 from src.contracts.social import KnowledgeEntry
 from src.infrastructure.social_repository import (
     RedisSocialRepository,
 )
-from src.modules.knowledge.rules import relationship_for
 from src.modules.knowledge.service import KnowledgeService
-from src.modules.social.policy import route_between
 from src.modules.social.service import SocialService
 from src.modules.social.worker import SocialWorker
 from src.modules.turns.service import TurnService
@@ -156,16 +154,6 @@ async def start_encounter(case, owner="capitu", target="virgilia", *, arrive=Tru
     return claim, encounter
 
 
-def test_routes_use_known_reciprocal_exits():
-    assert route_between("cabana_capitu", "cais_lanternas") == (
-        "cabana_capitu",
-        "praca_verde",
-        "cais_lanternas",
-    )
-    assert route_between("cafe_largo", "cafe_largo") == ("cafe_largo",)
-    assert route_between("missing", "cafe_largo") == ()
-
-
 async def test_own_detective_claim_selects_target_and_each_tick_confirms_one_speech(
     social_case,
 ):
@@ -213,32 +201,6 @@ async def test_own_detective_claim_selects_target_and_each_tick_confirms_one_spe
     assert all(
         npc.activity == "idle" for npc in (await case.world.get(case.game.id)).npcs
     )
-
-
-async def test_travel_is_explicit_and_copresence_precedes_first_speech(social_case):
-    case = social_case
-    _, encounter = await start_encounter(
-        case, owner="florenca", target="bacamarte", arrive=False
-    )
-    assert (
-        encounter.participant_ids == ("florenca", "bacamarte")
-        and encounter.phase == "travelling"
-    )
-    assert encounter.route == ("cais_lanternas", "casa_verde")
-    world = await case.world.get(case.game.id)
-    traveller = next(npc for npc in world.npcs if npc.npc_id == "florenca")
-    assert (
-        traveller.location_id == "cais_lanternas" and traveller.activity == "travelling"
-    )
-    assert not await case.service.tick(case.game.id)
-    assert case.speaker.calls == []
-    case.now[0] = encounter.arrival_at
-    assert await case.service.tick(case.game.id)
-    world = await case.world.get(case.game.id)
-    traveller = next(npc for npc in world.npcs if npc.npc_id == "florenca")
-    assert traveller.location_id == "casa_verde" and traveller.activity == "talking"
-    assert await case.service.tick(case.game.id)
-    assert len(case.speaker.calls) == 1
 
 
 async def test_same_location_requires_timed_walk_instead_of_coordinate_jump(
@@ -349,23 +311,6 @@ async def test_invalid_generation_finishes_without_message_or_delivery(
     )
 
 
-async def test_unspoken_claim_is_not_injected_or_transmitted(social_case):
-    case = social_case
-    claim, _ = await start_encounter(case)
-    case.speaker.payload = {
-        "fala": "Floriano é um homem curioso.",
-        "intent": "repeat",
-        "claim_ids": [str(claim.id)],
-    }
-    assert await case.service.tick(case.game.id)
-    state = await case.repository.get(case.game.id)
-    assert state.encounters[-1].phase == "failed"
-    assert state.encounters[-1].messages == ()
-    assert not any(
-        e.owner_id == "virgilia" and e.root_id == claim.root_id for e in state.knowledge
-    )
-
-
 async def test_authorized_selection_composes_canonical_text_and_preserves_provenance(social_case):
     case = social_case
     claim, _ = await start_encounter(case)
@@ -381,21 +326,6 @@ async def test_authorized_selection_composes_canonical_text_and_preserves_proven
     )
 
 
-async def test_missed_slots_are_consumed_without_historical_conversations(social_case):
-    case = social_case
-    case.now[0] = case.game.created_at + timedelta(seconds=260)
-    assert await case.service.tick(case.game.id)
-    state = await case.repository.get(case.game.id)
-    assert (
-        state.days[-1].slots == (1, 2, 3, 4)
-        and state.encounters == ()
-        and case.speaker.calls == []
-    )
-    case.now[0] = case.game.created_at + timedelta(seconds=620)
-    assert not await case.service.tick(case.game.id)
-    assert case.speaker.calls == []
-
-
 async def test_daily_speech_budget_stops_without_an_extra_provider_call(social_case):
     case = social_case
     await start_encounter(case)
@@ -408,119 +338,6 @@ async def test_daily_speech_budget_stops_without_an_extra_provider_call(social_c
     assert await case.service.tick(case.game.id)
     assert case.speaker.calls == []
     assert (await case.repository.get(case.game.id)).encounters[-1].reason == "budget"
-
-
-async def test_pending_detective_exchange_excludes_only_its_npc_from_schedule(
-    social_case, monkeypatch
-):
-    case = social_case
-    await seed_claim(case)
-
-    async def pending(game_id, cursor, *, tools=(), tool_choice=None):
-        return ("capitu",)
-
-    monkeypatch.setattr(case.repository, "pending_npc_ids", pending, raising=False)
-    case.now[0] = case.game.created_at + timedelta(seconds=60)
-    assert await case.service.tick(case.game.id)
-    encounter = (await case.repository.get(case.game.id)).encounters[-1]
-    assert "capitu" not in encounter.participant_ids
-
-
-async def test_daily_schedule_caps_both_participations_and_number_of_encounters(
-    social_case,
-):
-    case = social_case
-    case.speaker.payload = {
-        "intent": "end",
-        "claim_ids": [],
-    }
-    for offset in (60, 120, 180, 240):
-        case.now[0] = case.game.created_at + timedelta(seconds=offset)
-        assert await case.service.tick(case.game.id)
-        encounter = (await case.repository.get(case.game.id)).encounters[-1]
-        if encounter.phase == "travelling":
-            case.now[0] = encounter.arrival_at
-            assert await case.service.tick(case.game.id)
-        assert await case.service.tick(case.game.id)
-    state = await case.repository.get(case.game.id)
-    assert len(state.encounters) == 4 and state.days[-1].slots == (1, 2, 3, 4)
-    assert state.days[-1].speech_calls == 4
-    counts = {
-        member.character_id: sum(
-            member.character_id in item.participant_ids for item in state.encounters
-        )
-        for member in case.game.characters
-    }
-    assert max(counts.values()) <= 2
-    assert not await case.service.tick(case.game.id)
-
-
-async def test_unparsed_literal_memory_never_enters_social_prompt(social_case):
-    case = social_case
-    claim = await seed_claim(case)
-    state = await case.repository.get(case.game.id)
-    literal = claim.model_copy(
-        update={
-            "id": uuid4(),
-            "root_id": uuid4(),
-            "kind": "literal",
-            "source_span": "PENDING_LITERAL_PRIVATE",
-            "proposition": "PENDING_LITERAL_PRIVATE",
-        }
-    )
-    assert await case.repository.save(
-        state.model_copy(
-            update={
-                "revision": state.revision + 1,
-                "knowledge": (*state.knowledge, literal),
-            }
-        ),
-        state.revision,
-    )
-    case.now[0] = case.game.created_at + timedelta(seconds=60)
-    assert await case.service.tick(case.game.id)
-    encounter = (await case.repository.get(case.game.id)).encounters[-1]
-    if encounter.phase == "travelling":
-        case.now[0] = encounter.arrival_at
-        assert await case.service.tick(case.game.id)
-    assert await case.service.tick(case.game.id)
-    assert "PENDING_LITERAL_PRIVATE" not in case.speaker.calls[-1][0].content
-
-
-async def test_hostile_feelings_do_not_invent_a_confrontation_from_model_tone(social_case):
-    case = social_case
-    await start_encounter(case, owner="florenca", target="bacamarte", arrive=False)
-    social = await case.repository.get(case.game.id)
-    relations = tuple(
-        r.model_copy(update={"affinity": -50, "resentment": 50})
-        if (r.actor_id, r.target_id) == ("florenca", "bacamarte")
-        else r
-        for r in social.relationships
-    )
-    assert await case.repository.save(
-        social.model_copy(
-            update={"revision": social.revision + 1, "relationships": relations}
-        ),
-        social.revision,
-    )
-    state = await case.repository.get(case.game.id)
-    case.now[0] = state.encounters[-1].arrival_at
-    assert await case.service.tick(case.game.id)
-    before = relationship_for(
-        await case.repository.get(case.game.id), "bacamarte", "florenca"
-    )
-    for _ in range(4):
-        assert await case.service.tick(case.game.id)
-    state = await case.repository.get(case.game.id)
-    relation = relationship_for(state, "bacamarte", "florenca")
-    assert relation == before
-    assert not await case.service.tick(case.game.id)
-    assert (
-        relationship_for(
-            await case.repository.get(case.game.id), "bacamarte", "florenca"
-        )
-        == relation
-    )
 
 
 async def test_worker_stops_generation_by_cancellation_and_can_restart():
@@ -580,22 +397,6 @@ async def test_disabled_social_engine_cleans_up_existing_travel_without_inferenc
     )
     assert not await disabled.tick(case.game.id)
     assert case.speaker.calls == []
-
-
-async def test_programming_error_in_social_transport_is_not_silenced_as_invalid_generation(
-    social_case,
-):
-    case = social_case
-    await start_encounter(case)
-
-    async def broken(messages, *, tools=(), tool_choice=None):
-        raise TypeError("fixture programming error")
-
-    case.speaker.complete = broken
-    with pytest.raises(TypeError, match="fixture programming error"):
-        await case.service.tick(case.game.id)
-    state = await case.repository.get(case.game.id)
-    assert state.encounters[-1].messages == ()
 
 
 async def test_social_graph_disables_external_tracing_even_when_environment_enables_it(

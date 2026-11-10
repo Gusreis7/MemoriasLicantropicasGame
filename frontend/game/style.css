@@ -12,7 +12,8 @@ button:focus-visible,a:focus-visible,textarea:focus-visible,[tabindex]:focus-vis
 [hidden]{display:none!important}
 button,a{-webkit-tap-highlight-color:transparent}
 .site-shell{max-width:1480px;padding:0 56px;margin:auto}
-.masthead{height:122px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #b2bd9529;gap:28px}
+.masthead{min-height:122px;padding:18px 0;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #b2bd9529;gap:28px}
+.header-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .brand{color:var(--paper);text-decoration:none;display:flex;align-items:center;gap:15px;font-size:14px;letter-spacing:.07em;line-height:1.4}
 .brand strong{font-size:22px;letter-spacing:.02em;font-weight:normal}
 .brand-mark{display:inline-block;flex-shrink:0;width:44px;height:44px;font-size:0;line-height:0;background:#d6c597;box-shadow:4px 0 0 #214637;border-radius:50%}
@@ -158,7 +159,7 @@ kbd{font:10px/1.2 Arial,sans-serif;min-width:21px;padding:4px 5px;border:1px sol
 .persona-frame{width:150px;height:170px}
 }
 @media(max-width:760px){.site-shell{padding:0 19px}
-.masthead{height:92px;gap:15px}
+.masthead{min-height:92px;gap:15px}
 .brand{font-size:11px;gap:10px}
 .brand strong{font-size:18px}
 .brand-mark{width:32px;height:32px;font-size:0;box-shadow:3px 0 0 #214637}
@@ -505,3 +506,18 @@ kbd{font:10px/1.2 Arial,sans-serif;min-width:21px;padding:4px 5px;border:1px sol
 .victory-paper .victory-ending{font-style:italic}
 .journal-motto{font-family:'Clarim Baskerville',Georgia,serif}
 @media(max-width:600px){.newspaper-masthead h2,.victory-paper .newspaper-masthead h2{font-size:clamp(23px,6.3vw,34px)}.newspaper-masthead h2:before,.newspaper-masthead h2:after{margin:0 7px;font-size:9px}.journal-modal h3,.victory-paper h3{font-size:22px}#journal-body,#victory-body{font-size:14px}}
+
+.tutorial-modal{width:min(680px,100%);max-height:calc(100dvh - 32px);padding:clamp(18px,4vw,30px);font:14px/1.65 Arial,sans-serif}
+.tutorial-modal .eyebrow{color:#826132}
+.tutorial-modal h2,.tutorial-modal h3{font-family:Georgia,'Times New Roman',serif}
+.tutorial-modal h3{font-size:20px;margin:20px 0 12px}
+.tutorial-steps{padding-left:24px;margin:20px 0}
+.tutorial-steps li{padding-left:6px;margin:12px 0}
+.tutorial-steps li::marker{color:#826132;font-weight:bold}
+.tutorial-controls{display:grid;gap:10px;margin:0}
+.tutorial-controls>div{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.tutorial-controls dt{min-width:190px;font-weight:bold}
+.tutorial-controls dd{margin:0;flex:1;min-width:180px}
+.tutorial-modal kbd{color:var(--ink);background:#dcd6bd;border-color:#9a967a}
+.tutorial-time{padding-top:12px;border-top:1px solid #b9a477;color:#626648;font-size:12px}
+.tutorial-modal>.button{width:100%;margin-top:8px}

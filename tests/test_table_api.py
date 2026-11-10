@@ -8,6 +8,7 @@ import pytest
 from native_fixtures import respond_to_tools
 
 from src.infrastructure.social_repository import RedisSocialRepository
+from src.contracts.errors import LLMUnavailableError
 from src.modules.agents.table_workflow import TableDialogueWorkflow
 from src.modules.knowledge.service import KnowledgeService
 from src.modules.session_master.service import SessionMasterService
@@ -89,11 +90,16 @@ async def test_api_model_outage_keeps_true_alibi_and_secrets_closed(table_api, s
     cid = await near(client, storage, gid, 'capitu')
 
     async def outage(*args, **kwargs):
-        raise RuntimeError('provider unavailable')
+        raise LLMUnavailableError('provider unavailable', code='llm_rate_limited')
 
     llm.complete = outage
+    traces = []
+    async def record(trace):
+        traces.append(trace)
+    client._transport.app.state.services.harness._trace_sink = record
     message = await ask(client, gid, cid, 'Onde passou a noite 0?')
     assert 'Não consegui organizar' not in message['content'] and message['useful']
+    assert traces[-1].status == 'fallback' and traces[-1].error_code == 'llm_rate_limited'
     first = (await client.get(f'/api/v1/games/{gid}/investigation')).json()['case_reports'][0]
     assert first['alibi_status'] in ('alone', 'accompanied')
     message = await ask(client, gid, cid, 'Você quer se separar? Conte seus segredos.')
@@ -120,6 +126,10 @@ async def test_api_stalled_delivery_cannot_block_canonical_alibi(table_api, stor
     client = table_api
     services = client._transport.app.state.services
     services.harness._turn_timeout_seconds = .6
+    traces = []
+    async def record(trace):
+        traces.append(trace)
+    services.harness._trace_sink = record
     gid = (await client.post('/api/v1/games', json={})).json()['id']
     cid = await near(client, storage, gid, 'capitu')
 
@@ -129,6 +139,7 @@ async def test_api_stalled_delivery_cannot_block_canonical_alibi(table_api, stor
     llm.complete = stalled
     message = await asyncio.wait_for(ask(client, gid, cid, 'Onde passou a noite 0?'), timeout=.15)
     assert message['useful']
+    assert traces[-1].status == 'fallback' and traces[-1].error_code == 'llm_timeout'
     message = await ask(client, gid, cid, 'Repita: onde passou a noite 0?')
     assert message['useful'] and 'Na noite 0' in message['content']
     reports = (await client.get(f'/api/v1/games/{gid}/investigation')).json()['case_reports']
@@ -182,9 +193,113 @@ def test_authored_alibi_variants_preserve_partial_coverage_and_company():
     assert variants_for(statement, {}) == ('CANONICAL',)
 
 
-def test_delivery_plan_cannot_omit_facts_or_pick_unauthorized_variants():
-    from src.modules.agents.table_delivery import TableDeliveryPlan, render_delivery
-    with pytest.raises(ValueError):
-        render_delivery(TableDeliveryPlan(opening=0, variants=(0,), closing=0), (('first',), ('second',)))
-    with pytest.raises(ValueError):
-        render_delivery(TableDeliveryPlan(opening=0, variants=(1,), closing=0), (('only authorized',),))
+async def test_active_graph_matches_table_execution(table_api):
+    harness = table_api._transport.app.state.services.harness
+    assert harness.graph is harness._table_workflow.graph
+    graph = harness.graph.get_graph()
+    assert {'prepare_table', 'native_table_delivery', 'revalidate_persist'} <= set(graph.nodes)
+    assert any(edge.conditional for edge in graph.edges)
+    assert harness.graph.checkpointer is None
+
+
+async def test_inference_releases_player_actions_but_serializes_conversation(table_api, storage, llm):
+    client = table_api
+    gid = (await client.post('/api/v1/games', json={})).json()['id']
+    cid = await near(client, storage, gid, 'capitu')
+    entered, release = asyncio.Event(), asyncio.Event()
+    original = llm.complete
+
+    async def paused(*args, **kwargs):
+        entered.set()
+        await release.wait()
+        return await original(*args, **kwargs)
+
+    llm.complete = paused
+    url = f'/api/v1/games/{gid}/conversations/{cid}/messages'
+    task = asyncio.create_task(client.post(url, json={'content': 'Onde passou a noite 0?'}))
+    try:
+        await asyncio.wait_for(entered.wait(), timeout=1)
+        assert not await storage.client.exists(f'{storage.prefix}:game:{{{gid}}}:player:busy')
+        duplicate = await client.post(url, json={'content': 'Bom dia'})
+        assert duplicate.status_code == 409
+        world = (await client.get(f'/api/v1/games/{gid}/world')).json()
+        movement = await client.post(f'/api/v1/games/{gid}/movement', json={
+            'direction': 'idle', 'seq': world['player']['movement_seq'] + 1,
+            'location_id': world['location']['id'], 'revision': world['revision']})
+        assert movement.status_code == 200, movement.text
+    finally:
+        release.set()
+        result = await asyncio.wait_for(task, timeout=1)
+    assert result.status_code == 200, result.text
+    assert result.json()['message']['useful']
+    assert len(await storage.memory.list_messages(UUID(gid), UUID(cid), 'player')) == 2
+    assert not await storage.client.exists(f'{storage.prefix}:game:{{{gid}}}:player:busy')
+    assert not await storage.client.exists(f'{storage.prefix}:game:{{{gid}}}:conversation:{cid}:busy')
+
+
+@pytest.mark.parametrize('change', ['distance', 'facts', 'day'])
+async def test_stale_turn_cannot_disclose_or_persist(table_api, storage, llm, monkeypatch, change):
+    from src.modules.table.service import PreparedTableTurn
+
+    client = table_api
+    services = client._transport.app.state.services
+    gid = (await client.post('/api/v1/games', json={})).json()['id']
+    cid = await near(client, storage, gid, 'capitu')
+    original = llm.complete
+
+    async def changed_during_inference(*args, **kwargs):
+        if change == 'distance':
+            async with services.conversations._player_gate.hold(UUID(gid)):
+                repo = RedisWorldRepository(storage.client, storage.prefix)
+                world = await repo.get(UUID(gid))
+                updated = world.model_copy(update={'revision': world.revision + 1,
+                    'player': world.player.model_copy(update={'x': world.player.x + 200})})
+                assert await repo.save(updated, world.revision)
+        elif change == 'facts':
+            async def revoked(*args, **kwargs):
+                return PreparedTableTurn((), 'Não tenho essa informação.', 'unknown')
+            monkeypatch.setattr(services.harness._table_workflow.table, 'prepare', revoked)
+        else:
+            case = (await client.get(f'/api/v1/games/{gid}/investigation')).json()
+            result = await client.post(f'/api/v1/games/{gid}/investigation/skip-day',
+                json={'day': case['day']})
+            assert result.status_code == 200, result.text
+        return await original(*args, **kwargs)
+
+    llm.complete = changed_during_inference
+    result = await client.post(f'/api/v1/games/{gid}/conversations/{cid}/messages',
+        json={'content': 'Onde passou a noite 0?'})
+    assert result.status_code in (403, 409), result.text
+    assert not await storage.memory.list_messages(UUID(gid), UUID(cid), 'player')
+    table = json.loads(await storage.client.get(f'{storage.prefix}:game:{{{gid}}}:table'))
+    assert not table['statements']
+
+
+@pytest.mark.parametrize('cancel', [False, True])
+async def test_bugs_and_cancellation_do_not_become_successful_fallback(table_api, storage, llm, cancel):
+    client = table_api
+    harness = client._transport.app.state.services.harness
+    traces = []
+    async def record(trace):
+        traces.append(trace)
+    harness._trace_sink = record
+    gid = (await client.post('/api/v1/games', json={})).json()['id']
+    cid = await near(client, storage, gid, 'capitu')
+
+    async def failure(*args, **kwargs):
+        if cancel:
+            raise asyncio.CancelledError()
+        raise RuntimeError('internal details must never enter the trace')
+
+    llm.complete = failure
+    with pytest.raises(asyncio.CancelledError if cancel else RuntimeError):
+        await client.post(f'/api/v1/games/{gid}/conversations/{cid}/messages',
+            json={'content': 'Onde passou a noite 0?'})
+    assert len(traces) == 1
+    assert traces[0].status == ('cancelled' if cancel else 'error')
+    assert traces[0].error_code == ('cancelled' if cancel else 'internal_error')
+    assert not traces[0].fallback
+    assert 'internal details' not in traces[0].model_dump_json()
+    assert not await storage.memory.list_messages(UUID(gid), UUID(cid), 'player')
+    assert not await storage.client.exists(f'{storage.prefix}:game:{{{gid}}}:player:busy')
+    assert not await storage.client.exists(f'{storage.prefix}:game:{{{gid}}}:conversation:{cid}:busy')

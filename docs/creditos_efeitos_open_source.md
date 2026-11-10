@@ -18,4 +18,4 @@ As cópias integrais das licenças Kenney estão em `frontend/public/assets/audi
 
 ## Agradecimentos
 
-Nosso agradecimento a isaiah658, syncopika, Kenney Vleugels, NaturesTemper e qubodup por disponibilizarem sons que ajudam a dar vida à Rua do Ouvidor. Agradecemos também às comunidades OpenGameArt e Freesound por preservarem e tornarem esses recursos acessíveis.
+Agradeço a isaiah658, syncopika, Kenney Vleugels, NaturesTemper e qubodup por disponibilizarem sons que ajudam a dar vida à Rua do Ouvidor, e às comunidades OpenGameArt e Freesound por manterem esses recursos acessíveis.

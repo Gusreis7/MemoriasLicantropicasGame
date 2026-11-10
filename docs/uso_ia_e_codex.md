@@ -1,49 +1,58 @@
-# Uso de IA e programação guiada com Codex
+# Como usei IA no projeto
 
-Este documento separa os usos de IA no produto dos usos de IA no desenvolvimento. A IA não é uma fonte de verdade para as regras da investigação.
+## Nos personagens
 
-## IA em execução no jogo
+Usei IA para dar voz aos NPCs e compor trechos narrativos. Nas conversas da
+mesa, o modelo escolhe entre formulações permitidas; ele também participa dos
+encontros entre personagens, da assembleia e dos editoriais.
 
-O servidor usa o modelo configurado em `BEDROCK_MODEL`; o padrão atual é `qwen.qwen3-32b`, acessado pelo Bedrock Mantle. O modelo é usado para dar voz aos NPCs, escolher tons de entrega permitidos, circulação social, assembleia e textos editoriais. Credenciais entram por perfil AWS, credenciais padrão do ambiente ou bearer configurado; elas não são enviadas ao cliente do jogo.
+Desenvolvi e testei essa parte usando **créditos da AWS**. O modelo principal é
+o **Qwen3-32B (`qwen.qwen3-32b`)**, acessado pelo **Amazon Bedrock Mantle**,
+com `BEDROCK_MODEL` disponível para selecionar um modelo nesse serviço.
+**Não implementei, por enquanto, uma opção de inferência com LLMs locais**:
+Ollama e LM Studio não fazem parte do fluxo de execução atual. Para reproduzir
+as conversas é preciso acesso próprio ao serviço, sujeito a cobrança.
 
-O motor decide os fatos: sorteio, mortes, turnos, posições, presenças noturnas, álibis, observações, permissões de conhecimento, validade de provas e resultado de acusações. O modelo não recebe acesso direto ao Redis nem pode trocar a identidade da persona. Falha, atraso ou saída inválida em diálogos da mesa preservam a resposta factual canônica com tom direto. Veja [orquestração dos agentes](orquestracao_agentes.md).
+Mantive as regras da investigação no servidor: sorteio, mortes, posições,
+encontros, álibis, permissões e resultados de acusações. Assim, uma fala gerada
+não cria uma prova nem muda o que aconteceu na partida. O modelo consulta apenas
+as informações liberadas para cada personagem. O funcionamento está descrito em
+[NPCs e mestre da mesa](orquestracao_agentes.md).
 
-Uso e custo conhecidos são medidos pelo cliente da aplicação e ficam disponíveis no painel administrativo. Uma estimativa não substitui a fatura do provedor. Os testes comuns usam clientes controlados e bloqueiam HTTP externo; as simulações por API chamam o ambiente configurado de propósito, conforme [testes](testes.md).
+As credenciais ficam no servidor, não no navegador. O painel permite acompanhar
+o consumo e as estimativas de custo, que não substituem a cobrança registrada
+na AWS. Os testes automáticos usam modelos controlados; avaliar a qualidade das
+falas do Qwen3-32B exige uma execução separada e pode consumir créditos.
 
-## IA na produção visual
+## Nas imagens
 
-Parte dos sprites, cenários, retratos e variações foi produzida com `image_gen` integrado ao ambiente de desenvolvimento. Os prompts, arquivos de origem, hashes, referências de estilo e revisões ficam nos manifestos em `frontend/public/assets/`. As imagens não definem papéis secretos, pistas ou resultados da partida.
+Gerei parte dos cenários, retratos e sprites com a ferramenta `image_gen`.
+As referências, os prompts e as revisões ficam nos manifestos em
+`frontend/public/assets/`. Os sons vieram de outras fontes, reunidas nos
+[créditos](creditos_efeitos_open_source.md).
 
-Os sons distribuídos não são gerados por IA. Seus créditos e licenças estão em [créditos de efeitos open source](creditos_efeitos_open_source.md).
+## Na programação com Codex
 
-## Codex para programação guiada
+Desenvolvi o jogo ao longo de sessões de programação guiada com Codex. Comecei
+pelas mecânicas e pelo comportamento que queria ver no jogo. A partir disso,
+usei a ferramenta para investigar o código, discutir alternativas, preparar
+planos e implementar as mudanças.
 
-Codex foi usado como parceiro de programação no checkout local. O usuário define objetivo, limites e autorização; o agente inspeciona o código, propõe e implementa mudanças dentro desse escopo, executa verificações e apresenta as evidências antes da integração. O humano permanece responsável por revisar o resultado e decidir sobre publicação, credenciais e alterações externas.
+Trabalhei com **desenvolvimento assistido por IA, orientado por especificações**,
+inspirado em [Spec-Driven Development (SDD)](https://github.com/github/spec-kit/blob/main/spec-driven.md).
+Antes das mudanças maiores, detalhei regras, limites e critérios de aceite.
+Essas definições orientaram a implementação e foram sendo refinadas conforme
+eu testava o jogo e encontrava problemas.
 
-O processo usado neste projeto segue este ciclo:
+Não adotei um framework específico de SDD. Usei as conversas e os planos de
+execução para organizar o trabalho. Nas etapas maiores, também usei subagentes
+com tarefas e responsabilidades delimitadas, seguidos de integração e revisão.
 
-1. Descrever a mudança e seu critério de aceite em linguagem direta.
-2. Mapear código, documentação, scripts e testes afetados antes de editar.
-3. Aplicar mudanças pequenas e rastreáveis; preservar alterações de terceiros no checkout.
-4. Executar a menor verificação relevante, depois a suíte adicional justificada pelo risco.
-5. Conferir o diff e links/formatos, registrar o resultado no Git e integrar apenas após os checks passarem.
+Meu fluxo foi definir o resultado esperado, investigar os arquivos envolvidos,
+revisar o plano, implementar e conferir o resultado com testes e uso da aplicação.
+Questões como álibis inconsistentes, atraso na movimentação e falhas no deploy
+voltaram para esse ciclo até receberem os ajustes necessários.
 
-Esse fluxo é compatível com o [guia oficial do Codex CLI](https://learn.chatgpt.com/docs/cli): trabalhar no repositório local, escolher permissões, revisar mudanças e usar os comandos de desenvolvimento já disponíveis no ambiente.
-
-## Teste de programação guiada
-
-O teste abaixo verifica a colaboração Codex + repositório; não avalia automaticamente inteligência do modelo nem substitui a revisão humana.
-
-| Critério | Como verificar | Resultado desta documentação |
-| --- | --- | --- |
-| Escopo explícito | Pedido define o documento e seu conteúdo | Criado este documento, sem mudar a lógica do jogo |
-| Referências verificáveis | Conferir caminhos, código e fontes citadas | Links locais validados; fonte oficial do Codex registrada acima |
-| Mudança rastreável | Inspecionar `git diff` e o commit | Alterações limitadas à documentação e ao índice |
-| Regressão evitada | Rodar a checagem proporcional | Validação de links locais e `git diff --check` aprovados |
-| Decisão humana preservada | Nenhuma publicação ou alteração de conta sem instrução | Nenhum push, deploy ou alteração de credencial executado |
-
-Para repetir uma tarefa guiada, abra o projeto em Codex, descreva o resultado esperado e os limites, peça a inspeção inicial e exija os comandos de validação no retorno. Antes de aceitar, leia o diff, rode os testes necessários e mantenha um checkpoint Git. O [guia oficial do Codex CLI](https://learn.chatgpt.com/docs/cli) recomenda checkpoints antes e depois da tarefa para facilitar a revisão e reversão.
-
-## Limites de responsabilidade
-
-Saídas de modelos podem estar erradas, incompletas ou inadequadas ao contexto. Nenhuma sugestão do Codex altera automaticamente uma conta AWS, publica código, expõe segredo ou valida uma mecânica de jogo sem os controles e testes do repositório. As permissões do ambiente e as aprovações explícitas continuam delimitando o que a ferramenta pode executar.
+O projeto também foi uma forma de experimentar o Codex na programação guiada.
+Usei o diff, os testes e a execução do jogo para avaliar as mudanças, mantendo o
+histórico no Git para comparar resultados e reverter quando necessário.

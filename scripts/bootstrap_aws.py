@@ -79,7 +79,19 @@ def digest(value):
 
 def local_state():
     path = TF / 'terraform.tfstate'
-    return json.loads(path.read_text()) if path.exists() else None
+    if not path.exists():
+        return None
+    content = path.read_text()
+    # A migração para S3 pode deixar o arquivo local vazio.
+    if not content.strip():
+        return None
+    try:
+        state = json.loads(content)
+    except json.JSONDecodeError:
+        raise BootstrapError('State local contém JSON inválido em infra/terraform/bootstrap/terraform.tfstate. Preserve o arquivo e confira o state S3 antes de continuar.') from None
+    if not isinstance(state, dict):
+        raise BootstrapError('State local em infra/terraform/bootstrap/terraform.tfstate não é um objeto JSON. Preserve o arquivo e revise a origem.')
+    return state
 
 
 def populated(state):
@@ -146,7 +158,12 @@ class Bootstrap:
             obj = optional(s3.get_object, {'NoSuchKey'}, Bucket=bucket, Key=STATE_KEY,
                            ExpectedBucketOwner=account)
             if obj:
-                remote = json.loads(obj['Body'].read())
+                try:
+                    remote = json.loads(obj['Body'].read())
+                except json.JSONDecodeError:
+                    raise BootstrapError(f'State S3 contém JSON inválido em s3://{bucket}/{STATE_KEY}. Preserve os states e recupere a versão correta antes de continuar.') from None
+                if not isinstance(remote, dict):
+                    raise BootstrapError(f'State S3 em s3://{bucket}/{STATE_KEY} não é um objeto JSON. Preserve os states e revise a origem.')
         local = local_state()
         check_states(local, remote)
         for saved in (local, remote):
@@ -197,7 +214,7 @@ class Bootstrap:
 
     def backend(self, state, *, migrate=False):
         path = TF / 'backend.tf'
-        expected = 'terraform { backend "s3" {} }\n'
+        expected = 'terraform {\n  backend "s3" {}\n}\n'
         if path.exists() and re.sub(r'\s+', '', path.read_text()) != re.sub(r'\s+', '', expected):
             raise BootstrapError('backend.tf existente não corresponde ao backend S3 esperado; revise-o manualmente.')
         path.write_text(expected)

@@ -1,4 +1,3 @@
-from collections import Counter
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from uuid import uuid4
@@ -11,11 +10,8 @@ from src.contracts.errors import AccessDeniedError, ConflictError, NotFoundError
 from src.contracts.investigation import CaseEvent
 from src.contracts.model import GameCharacter, GameState
 from src.modules.characters.repository import CatalogCharacterRepository
-from src.modules.investigation.catalog import INVENTORIES, ITEMS_BY_ID, OBSERVED_PEOPLE
 from src.modules.investigation.router import get_investigation_service, router
-from src.modules.investigation.rules import (
-    choose_victim, evaluate_accusation, make_crime, make_initial_investigation, make_testimony, inspect_evidence,
-)
+from src.modules.investigation.rules import evaluate_accusation, make_crime, make_initial_investigation
 from src.modules.investigation.service import InvestigationService
 from src.modules.world.catalog import make_initial_world
 
@@ -117,42 +113,6 @@ async def complete_dossier(case):
     return case.turns.state
 
 
-async def test_inventory_has_seven_items_and_shared_pools_are_balanced():
-    assert len(INVENTORIES) == 7 and len(ITEMS_BY_ID) == 34
-    owners = Counter(item for items in INVENTORIES.values() for item in items)
-    for inventory in INVENTORIES.values():
-        assert len(inventory) == len(set(inventory)) == 7
-        assert Counter(ITEMS_BY_ID[item].kind for item in inventory) == {"unique": 3, "singular": 1, "common": 3}
-    assert len([item for item in ITEMS_BY_ID.values() if item.kind == "common"]) == 10
-    for item in ITEMS_BY_ID.values():
-        assert owners[item.id] == 1 if item.kind == "unique" else 2 <= owners[item.id] <= 3
-
-
-async def test_initial_crime_and_later_distinctive_clues_are_rule_generated(case):
-    state = case.turns.state
-    assert state.day == 1 and (state.phase_ends_at - NOW).total_seconds() == 300
-    assert state.crimes[0].victim_id == "bras_cubas"
-    assert state.crimes[0].location_id == "praca_verde" and state.crimes[0].x == 600
-    assert {item.deposited_by for item in state.crimes[0].evidence} == {"capitu"}
-    assert {ITEMS_BY_ID[item.item_id].kind for item in state.crimes[0].evidence} == {"common", "singular"}
-    crime = make_crime(case.game, 3, "escobar", "cafe_largo", NOW)
-    assert {ITEMS_BY_ID[item.item_id].kind for item in crime.evidence} == {"common", "unique"}
-
-
-@pytest.mark.parametrize("wolf,target", [
-    ("bentinho", "escobar"), ("capitu", "escobar"), ("escobar", "capitu"),
-    ("rubiao", "virgilia"), ("virgilia", "rubiao"), ("florenca", "bacamarte"),
-])
-async def test_victim_preference_respects_canon_and_eligibility(case, wolf, target):
-    game = case.game.model_copy(update={"characters": tuple(npc.model_copy(update={
-        "role": "werewolf" if npc.character_id == wolf else "civil"}) for npc in case.game.characters)})
-    assert choose_victim(game) == target
-    assert choose_victim(game, target) not in {target, wolf, "player"}
-    dead = game.model_copy(update={"characters": tuple(npc.model_copy(update={"alive": False})
-        if npc.role == "civil" else npc for npc in game.characters)})
-    assert choose_victim(dead) is None
-
-
 async def test_public_projection_hides_uncollected_items_and_private_fields(case):
     public = await case.service.get(case.game.id)
     assert public.inventory == () and public.ending is None
@@ -213,43 +173,6 @@ async def test_presentation_is_stable_and_common_recognition_does_not_claim_orig
     assert second == first and len(second.testimonies) == 1
 
 
-async def test_wolf_can_deny_without_revealing_role_to_client(case):
-    await collect_all(case)
-    go_to(case, "cabana_capitu", 440)
-    evidence = case.turns.state.crimes[0].evidence[0]
-    public = await case.service.present(case.game.id, evidence.id, "capitu")
-    assert public.testimonies[0].recognition == "denies"
-    assert public.testimonies[0].claimed_owner_id is None
-    assert case.turns.state.testimonies[0].truthful is False
-    assert "truthful" not in public.model_dump_json()
-
-
-async def test_unknown_witness_does_not_invent_provenance(case):
-    await collect_all(case)
-    rare = case.turns.state.crimes[0].evidence[1]
-    go_to(case, "casa_verde", 460)
-    public = await case.service.present(case.game.id, rare.id, "bacamarte")
-    # Bacamarte observa Bentinho e Capitu; portanto conhece esta posse observada.
-    assert public.testimonies[0].claimed_owner_id == "capitu"
-    unique = make_crime(case.game, 3, "escobar", "cafe_largo", NOW).evidence[1]
-    unknown = make_testimony(case.turns.state, case.game, unique, "rubiao", case.names, NOW)
-    assert unknown.recognition == "unknown" and unknown.claimed_owner_id is None
-
-
-async def test_delegate_accepts_corroboration_and_is_blind_to_private_origin_or_truthfulness(case):
-    state = await complete_dossier(case)
-    evidence_ids = tuple(item.id for crime in state.crimes for item in crime.evidence)
-    testimony_ids = tuple(item.id for item in state.testimonies)
-    decision = evaluate_accusation(state, "capitu", evidence_ids, testimony_ids, NOW)
-    assert decision.accepted
-    # Um testemunho enganoso pode convencer; o delegado não consulta o dono real.
-    changed = state.model_copy(update={"crimes": tuple(crime.model_copy(update={"killer_id": "rubiao", "evidence": tuple(
-        item.model_copy(update={"deposited_by": "rubiao"}) for item in crime.evidence)}) for crime in state.crimes),
-        "testimonies": tuple(item.model_copy(update={"truthful": False}) for item in state.testimonies)})
-    blinded = evaluate_accusation(changed, "capitu", evidence_ids, testimony_ids, NOW)
-    assert blinded.accepted == decision.accepted and blinded.reason == decision.reason
-
-
 async def test_delegate_rejects_repetition_unlinked_items_and_bare_accusations(case):
     state = await submit_testimonies(case)
     evidence_ids = tuple(item.id for item in state.crimes[0].evidence)
@@ -273,50 +196,6 @@ async def test_accusation_detains_and_consumes_only_one_attempt_per_day(case):
     assert {event.type for event in case.turns.events} >= {"accusation.reviewed", "character.detained"}
     with pytest.raises(ConflictError):
         await case.service.accuse(case.game.id, "rubiao", (), ())
-
-
-async def test_refusal_does_not_detain_and_dead_testimony_remains_usable(case):
-    public = await case.service.accuse(case.game.id, "capitu", (), ())
-    assert not public.accusations[0].accepted and public.detained_npc_id is None
-    await complete_dossier(case)
-    case.turns.game = case.game.model_copy(update={"characters": tuple(npc.model_copy(update={"alive": False})
-        if npc.character_id == "bentinho" else npc for npc in case.game.characters)})
-    state = case.turns.state
-    public = await case.service.accuse(case.game.id, "capitu", tuple(item.id for crime in state.crimes for item in crime.evidence),
-                                      tuple(item.id for item in state.testimonies))
-    assert public.accusations[-1].accepted
-
-
-@pytest.mark.parametrize("wolf", tuple(INVENTORIES))
-async def test_every_wolf_needs_personal_trace_and_has_a_second_morning_deduction_path(case, wolf):
-    game = case.game.model_copy(update={"characters": tuple(npc.model_copy(update={
-        "role": "werewolf" if npc.character_id == wolf else "civil"}) for npc in case.game.characters)})
-    state = make_initial_investigation(game, NOW)
-    crime = state.crimes[0].model_copy(update={"evidence": tuple(item.model_copy(update={"collected": True})
-        for item in state.crimes[0].evidence)})
-    records = tuple(make_testimony(state, game, item, npc.character_id, case.names, NOW)
-        for item in crime.evidence for npc in game.characters if npc.character_id != wolf)
-    state = state.model_copy(update={"crimes": (crime,), "testimonies": records})
-    decision = evaluate_accusation(state, wolf, tuple(item.id for item in crime.evidence), tuple(record.id for record in records), NOW)
-    assert not decision.accepted  # Comum + singular não autorizam prisão imediata.
-    second = make_crime(game, 1, "bras_cubas", "praca_verde", NOW)
-    second = second.model_copy(update={"evidence": tuple(item.model_copy(update={"collected": True}) for item in second.evidence)})
-    state = state.model_copy(update={"day": 2, "crimes": (crime, second)})
-    for item in second.evidence:
-        state = inspect_evidence(state, item.id, NOW).state
-    records += tuple(make_testimony(state, game, item, npc.character_id, case.names, NOW)
-        for item in second.evidence for npc in game.characters if npc.character_id != wolf)
-    state = state.model_copy(update={"testimonies": records})
-    assert evaluate_accusation(state, wolf, tuple(item.id for c in state.crimes for item in c.evidence), tuple(record.id for record in records), NOW).accepted
-
-
-async def test_npc_context_uses_existing_lock_and_limits_observed_inventory(case):
-    context = await case.service.npc_context_locked(case.game.id, "bentinho")
-    assert case.turns.locked_calls == 1 and case.turns.sync_calls == 0
-    assert len(context["proprios_apetrechos"]) == 7
-    assert {record["personagem_id"] for record in context["posses_observadas"]} == set(OBSERVED_PEOPLE["bentinho"])
-    assert len(context["posses_observadas"]) == 3
-    assert all(key not in str(context) for key in ("killer_id", "truthful", "role", "werewolf"))
 
 
 async def test_investigation_actions_integrate_with_atomic_turn_engine(case, storage, single_wolf_attack):

@@ -232,3 +232,49 @@ test('envelope de fala é normalizado e tentativas de revelar instruções são 
   await page.locator('#close-dialogue').click();
   await expect(page.locator('#dialogue-overlay')).toBeHidden();
 });
+
+test('tutorial abre antes e durante o caso, com teclado e tela pequena', async ({page}) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  let gamesCreated = 0;
+  page.on('request', request => {
+    if (request.method() === 'POST' && new URL(request.url()).pathname === '/api/v1/games') gamesCreated++;
+  });
+  await page.goto('/');
+  await page.evaluate(() => localStorage.removeItem('memorias-licantropicas:tutorial-seen'));
+  await page.reload();
+  const trigger = page.getByRole('button', {name: 'Tutorial', exact: true});
+  const tutorial = page.getByRole('dialog', {name: 'Como jogar'});
+  await expect(tutorial).toBeVisible();
+  await expect(tutorial).toContainText('Se a fera matar quatro deles, você perde');
+  await expect(page.getByRole('button', {name: 'Fechar tutorial'})).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(page.getByRole('button', {name: 'Entendi', exact: true})).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('button', {name: 'Fechar tutorial'})).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(tutorial).toBeHidden();
+  await expect(trigger).toBeFocused();
+  expect(gamesCreated).toBe(0);
+  await page.reload();
+  await expect(tutorial).toBeHidden();
+
+  await page.setViewportSize({width: 390, height: 780});
+  await trigger.click();
+  await expect(tutorial).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
+  await page.getByRole('button', {name: 'Entendi', exact: true}).click();
+  await page.locator('#start').click();
+  await expect(page.locator('#scene-loading')).toBeHidden({timeout: 30000});
+  await page.locator('#read-journal').click();
+  const gameID = await page.evaluate(() => localStorage.getItem('memorias-licantropicas:game'));
+  await trigger.click();
+  await expect(tutorial).toBeVisible();
+  await expect(tutorial).toContainText('o tempo continua passando');
+  await page.getByRole('button', {name: 'Fechar tutorial'}).click();
+  await expect(tutorial).toBeHidden();
+  await expect(page.locator('#investigation')).toBeVisible();
+  expect(await page.evaluate(() => localStorage.getItem('memorias-licantropicas:game'))).toBe(gameID);
+  expect(gamesCreated).toBe(1);
+  expect(errors).toEqual([]);
+});

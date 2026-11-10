@@ -24,7 +24,7 @@ app.innerHTML = assetMarkup(`
     <header class="masthead">
       <a class="brand" href="/" aria-label="Memórias Licantropicas, início"><span class="brand-mark" aria-hidden="true">☾</span><span>Memórias<br><strong>Licantropicas</strong></span></a>
       <div class="edition">RIO DE JANEIRO, 1890<span>Um caso do detetive Floriano</span></div>
-      <button class="button ghost small" id="new-case" type="button">Nova investigação <span aria-hidden="true">↗</span></button>
+      <div class="header-actions"><button class="button ghost small" id="open-tutorial" type="button" aria-haspopup="dialog" aria-controls="tutorial-overlay">Tutorial</button><button class="button ghost small" id="new-case" type="button">Nova investigação <span aria-hidden="true">↗</span></button></div>
     </header>
 
     <main>
@@ -41,6 +41,24 @@ app.innerHTML = assetMarkup(`
       </section>
     </main>
     <footer class="site-footer"><span>MEMÓRIAS LICANTROPICAS</span><span>Nem toda história é contada por inteiro.</span><span>UMA INVESTIGAÇÃO EM PIXELS</span></footer>
+  </div>
+
+  <div id="tutorial-overlay" class="overlay" hidden>
+    <section class="case-modal tutorial-modal" role="dialog" aria-modal="true" aria-labelledby="tutorial-title" aria-describedby="tutorial-objective">
+      <header class="modal-heading"><div><p class="eyebrow">O PRIMEIRO CASO DE FLORIANO</p><h2 id="tutorial-title">Como jogar</h2></div><button id="close-tutorial" class="icon-button" type="button" aria-label="Fechar tutorial">×</button></header>
+      <p id="tutorial-objective"><strong>Seu objetivo:</strong> descobrir qual dos sete suspeitos é o lobisomem e reunir provas para detê-lo. Se a fera matar quatro deles, você perde. Brás Cubas, a vítima inicial, não entra nessa conta.</p>
+      <ol class="tutorial-steps">
+        <li><strong>Explore a cidade.</strong> Procure vestígios nas cenas do crime, recolha os objetos e examine-os no caderno.</li>
+        <li><strong>Ouça os moradores.</strong> Pergunte sobre a noite anterior e mostre os objetos encontrados. Se alguém disser que estava acompanhado, procure a outra pessoa para confirmar o álibi.</li>
+        <li><strong>Compare as versões.</strong> Consulte o caderno para ligar pistas e relatos. Uma fofoca repetida não vale como várias testemunhas; os relatos úteis aparecem em roxo e dourado.</li>
+        <li><strong>Apresente seu caso.</strong> Em “Chamar o delegado”, escolha o suspeito, as provas e os relatos, confira o dossiê e apresente a acusação. A assembleia também pode decidir uma expulsão.</li>
+      </ol>
+      <h3>Controles</h3>
+      <dl class="tutorial-controls"><div><dt><kbd>←</kbd> <kbd>→</kbd> ou <kbd>A</kbd> <kbd>D</kbd></dt><dd>Caminhar</dd></div><div><dt><kbd>E</kbd></dt><dd>Conversar ou procurar vestígios por perto</dd></div><div><dt><kbd>M</kbd> / <kbd>C</kbd></dt><dd>Abrir o mapa / caderno</dd></div><div><dt>Na borda da rua</dt><dd>Setas escolhem o destino; <kbd>Enter</kbd> confirma</dd></div></dl>
+      <p>No celular, use os botões de caminhada, de interação e do mapa. O Clarim do Rio conta o que aconteceu à noite; “Pular o dia” leva à manhã seguinte.</p>
+      <p class="tutorial-time">Durante uma partida, o tempo continua passando enquanto você lê. Feche este guia com <kbd>Esc</kbd> ou pelo botão abaixo.</p>
+      <button id="read-tutorial" class="button primary" type="button">Entendi</button>
+    </section>
   </div>
 
   <div id="map-overlay" class="overlay" hidden><section class="map-modal" role="dialog" aria-modal="true" aria-labelledby="map-title"><header class="modal-heading"><div><p class="eyebrow">ESCOLHA SEU PRÓXIMO DESTINO</p><h2 id="map-title">Os caminhos da cidade</h2></div><button class="icon-button" id="close-map" aria-label="Fechar mapa" type="button">×</button></header><div class="city-map"><img loading="lazy" decoding="async" src="/assets/map/city.png" alt="Mapa ilustrado do bairro, entre a praça, a cabana, a Casa Verde, o café e o cais."/><div id="map-destinations"></div></div><div id="map-residents" class="map-residents" aria-live="polite"></div><p class="map-caption">Cada encontro pode mudar o rumo desta história.</p><p id="map-status" class="status" role="status" aria-live="polite"></p></section></div>
@@ -88,6 +106,7 @@ let defeatEditionID:string|null=null;
 let victoryEditionID:string|null=null;
 let defeatPhotoAbort:AbortController|null=null;
 const STORAGE_KEY = 'memorias-licantropicas:game';
+const TUTORIAL_KEY = 'memorias-licantropicas:tutorial-seen';
 const PERSONAL_ITEM_ICONS = new Set<string>([
   'rosario_seminario', 'carta_santiago', 'pente_olho_cobre', 'sinete_lua', 'caderneta_seminario',
   'abotoadeira_esmeralda', 'abotoadeira_sol', 'medalhao_quincas', 'camafeu_vn', 'frasco_violeta',
@@ -114,7 +133,7 @@ let manifest: CharacterManifest;
 let controller: MovementController | null = null;
 let scene: CityScene | null = null;
 let game: ReturnType<typeof makeGame> | null = null;
-let modal: 'map' | 'dialogue' | 'exit' | 'journal' | 'notebook' | 'delegate' | 'phase' | 'custody' | 'assembly' | null = null;
+let modal: 'tutorial' | 'map' | 'dialogue' | 'exit' | 'journal' | 'notebook' | 'delegate' | 'phase' | 'custody' | 'assembly' | null = null;
 let exitSide: ExitSide | null = null;
 let exitBoundary = new ExitBoundary();
 let busy = false;
@@ -161,6 +180,10 @@ function toast(message: string) {
 }
 
 function setModal(next: typeof modal) {
+  const previous = modal;
+  if (previous === 'tutorial' && next === null) {
+    try { localStorage.setItem(TUTORIAL_KEY, '1'); } catch { /* O guia funciona mesmo sem armazenamento local. */ }
+  }
   if(next!=='phase') {defeatPhotoAbort?.abort();defeatPhotoAbort=null;if(modal==='phase')gameAudio.stopCinematicEffects();}
   if (next !== modal && (next === 'journal' || next === 'notebook')) gameAudio.effect('paper');
   else if (next === null && (modal === 'journal' || modal === 'notebook')) gameAudio.effect('close');
@@ -169,11 +192,23 @@ function setModal(next: typeof modal) {
     void api.closeConversation(world.game_id, conversation.id).catch(() => { /* Reserva expira automaticamente. */ });
   }
   modal = next;
-  for (const name of ['map', 'dialogue', 'exit', 'journal', 'notebook', 'delegate', 'phase', 'custody', 'assembly']) $(`#${name}-overlay`).hidden = next !== name;
+  for (const name of ['tutorial', 'map', 'dialogue', 'exit', 'journal', 'notebook', 'delegate', 'phase', 'custody', 'assembly']) $(`#${name}-overlay`).hidden = next !== name;
   scene?.setInputEnabled(next === null && !caseClock.blocked() && !activeAssembly());
   $('#approach').hidden = true; $('#inspect-crime').hidden = true;
   lastNearest = '';
-  if (next === null) $('#game-canvas').focus({preventScroll: true});
+  if (next === null) $(previous === 'tutorial' ? '#open-tutorial' : '#game-canvas').focus({preventScroll: true});
+}
+
+async function openTutorial() {
+  if (modal || busy || starting || transitioning) return;
+  if (world) {
+    if (caseClock.blocked() || !await settleMovement()) return;
+    if (modal || caseClock.blocked()) return;
+  }
+  setModal('tutorial');
+  $('#tutorial-overlay').scrollTop = 0;
+  $('.tutorial-modal').scrollTop = 0;
+  $('#close-tutorial').focus({preventScroll: true});
 }
 
 async function settleMovement() {
@@ -1300,6 +1335,10 @@ $('#new-case').addEventListener('click', async () => {
   if (!await settleMovement()) return; casePoller.stop(); setModal(null); $('#investigation').hidden = true; $('#introduction').hidden = false;
   $('#continue').hidden = !savedGame(); document.body.classList.remove('case-active');
 });
+$('#open-tutorial').addEventListener('click', () => {void openTutorial();});
+for (const id of ['close-tutorial', 'read-tutorial']) $(`#${id}`).addEventListener('click', () => {
+  if (modal === 'tutorial' && !busy) setModal(null);
+});
 $('#open-map').addEventListener('click', () => {void openMap();});
 $('#close-map').addEventListener('click', () => {if (!busy) setModal(null);});
 $('#close-exit').addEventListener('click', () => {if (!busy) setModal(null);});
@@ -1385,3 +1424,7 @@ function renderAudioControls() {
 audioMute.addEventListener('click', () => {gameAudio.unlock(); gameAudio.setMuted(!gameAudio.muted); renderAudioControls();});
 audioVolume.addEventListener('input', () => {gameAudio.unlock(); gameAudio.setVolume(Number(audioVolume.value) / 100); renderAudioControls();});
 renderAudioControls();
+
+let tutorialSeen = false;
+try { tutorialSeen = localStorage.getItem(TUTORIAL_KEY) === '1'; } catch { /* Primeira visita sem armazenamento disponível. */ }
+if (!tutorialSeen) void openTutorial();

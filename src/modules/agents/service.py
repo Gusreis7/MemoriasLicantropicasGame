@@ -1,6 +1,7 @@
 """Fachada do diálogo: dependências explícitas e workflow LangGraph por invocação."""
 
 from collections.abc import Awaitable, Callable
+from contextlib import AbstractAsyncContextManager, nullcontext
 from uuid import UUID
 
 from src.contracts.llm import LLMClient
@@ -77,7 +78,7 @@ class HarnessService:
     @property
     def graph(self):
         """Grafo compilado inspecionável; nenhum histórico é guardado nele."""
-        return self._workflow.graph
+        return (self._table_workflow or self._workflow).graph
 
     async def respond(
         self,
@@ -86,11 +87,19 @@ class HarnessService:
         conversation_id: UUID,
         speaker_id: str,
         text: str,
+        *,
+        action_scope: Callable[[], AbstractAsyncContextManager[None]] | None = None,
     ) -> HarnessReply:
-        workflow = self._table_workflow or self._workflow
-        return await workflow.respond(
-            game_id, npc_id, conversation_id, speaker_id, text
-        )
+        if self._table_workflow is not None:
+            return await self._table_workflow.respond(
+                game_id, npc_id, conversation_id, speaker_id, text,
+                action_scope=action_scope,
+            )
+        # The legacy workflow still requires a reservation for its entire turn.
+        async with (action_scope or nullcontext)():
+            return await self._workflow.respond(
+                game_id, npc_id, conversation_id, speaker_id, text
+            )
 
     # Leitores de histórico e projeções sociais usam as mesmas funções puras.
     _private_context = staticmethod(private_context)

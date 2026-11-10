@@ -1,56 +1,80 @@
-# Orquestração de NPCs e mestre da mesa
+# NPCs e mestre da mesa
 
-O servidor decide fatos, permissões e consequências. Cada NPC tem uma identidade vinculada à partida e consulta somente sua visão autorizada. O LLM seleciona formas de expressão e opções previamente permitidas; não cria encontros, álibis ou provas por texto livre.
+Queria que conversar com os suspeitos fosse uma parte real da investigação, sem
+deixar o modelo decidir quais fatos aconteceram. Por isso, separei a **mesa**,
+que mantém as regras e o estado da partida, dos **agentes**, que recebem apenas
+o conhecimento permitido a cada personagem.
 
-## Caminho de uma conversa
+A versão atual usa **Qwen3-32B pelo Amazon Bedrock Mantle** para os diálogos.
+Não há um provedor de LLM local pronto para substituí-lo. Sem acesso ao Bedrock,
+a aplicação pode iniciar, mas não oferece a experiência completa de conversa.
 
-1. A API valida partida, interlocutor, posição e disponibilidade. As reservas Redis de conversa e de ação do jogador impedem operações incompatíveis ao mesmo tempo.
-2. O `HarnessService`, composto em `src/composition.py`, usa `TableDialogueWorkflow` nas conversas de produção.
-3. `GameTableService.prepare` interpreta a consulta e consulta a mesa e o conhecimento autorizado. O ator e o destinatário vêm do servidor.
-4. O tom da fala vem de uma escolha local por personagem e é combinado com a resposta canônica. Essa escolha cosmética não faz uma chamada de IA nem mantém o jogador esperando por ela.
-5. O mestre da sessão persiste as declarações verificadas e o par de mensagens por um outbox idempotente. A admissibilidade e a força do relato seguem regras de tipo, fonte e cobertura.
+## O caminho de uma conversa
 
-Circulação social, assembleia e editoriais continuam tendo seus próprios usos de IA. Separar esses fluxos evita que uma escolha de apresentação atrase uma resposta que a mesa já pode fornecer pelas regras.
+Quando Floriano pergunta algo, o servidor confere a partida, a proximidade e a
+disponibilidade do personagem. Depois, busca as informações permitidas para
+responder. O personagem admite quando não sabe e avisa quando já contou tudo
+sobre um assunto. Um pedido para repetir pode retomar o relato, sem criar outra prova.
 
-## Identidade e acesso
+O modelo recebe formulações autorizadas e escolhe como combiná-las. A saída é um
+`TableDeliveryPlan`, validado por Pydantic e pelo parser de ferramentas do
+LangChain. Não há campo para o modelo inventar texto factual. Se ele atrasar,
+ficar indisponível ou escolher uma opção inválida, o servidor usa a resposta das
+regras. Erros inesperados e cancelamentos encerram a troca.
 
-`BoundGameAgent` fixa `(game_id, npc_id)` e permite consultar presenças noturnas, observações próprias e fatos públicos. `PersonaTableAgent` acrescenta relações e conhecimento compartilhável. São agentes lógicos com ferramentas e escopo por personagem, não processos autônomos com acesso irrestrito ao Redis.
+A conversa usa um grafo LangGraph com três etapas:
+`prepare_table → native_table_delivery → revalidate_persist`.
+`HarnessService.graph` expõe o grafo em uso. Não há memória paralela no grafo:
+Redis guarda os dados, e um outbox permite concluir uma gravação interrompida
+sem duplicar mensagens ou provas.
 
-O modelo não recebe credenciais, chave Redis ou liberdade para substituir a identidade consultada. Um NPC não acessa o segredo de outro por conhecer seu nome. A consulta aplica as permissões antes de montar a resposta.
+Enquanto o modelo responde, a reserva de ações do jogador fica livre. A mesma
+conversa não aceita outra mensagem simultânea. Antes de salvar, o servidor
+confere novamente o NPC, o dia e os fatos permitidos. Uma resposta desatualizada
+é descartada. A tentativa de apresentação tem prazo limitado; no padrão atual,
+são até seis segundos. Os rastros distinguem as causas de falha sem guardar
+prompts, falas ou segredos, e o rastreamento externo do LangSmith fica desativado.
 
-## Noites e álibis
+## Álibis e testemunhas
 
-A mesa cria `NightRecord`, encontros compartilhados e presenças individuais. As duas pessoas de um encontro apontam para o mesmo registro, local e período. A fera e autores de crimes daquela noite ficam sem companhia; civis também podem passar a noite sozinhos. Não há álibis falsos nesta implementação.
+Duas pessoas que passaram a noite juntas compartilham o mesmo registro de local
+e período. O relato da primeira aguarda confirmação; ao ouvir a outra, Floriano
+obtém a confirmação recíproca. Não há álibis falsos nesta versão.
 
-Quando Floriano ouve uma pessoa acompanhada, a declaração aguarda confirmação. Ao ouvir a outra pessoa sobre o mesmo encontro, ambas as declarações passam a confirmadas. Estar sozinho, ter cobertura parcial e não haver informação disponível são estados diferentes. Repetir uma pergunta não cria novas fontes ou pistas duplicadas.
+A fera passa a noite sozinha, mas civis também podem ficar sozinhos. Falta de
+companhia, cobertura parcial e ausência de informação são situações diferentes.
+Uma observação de alguém na rua não equivale a presenciar o ataque. O início da
+partida garante uma observação por um sobrevivente, sem revelar o papel secreto
+como se fosse um fato conhecido por ele.
 
-O cenário inicial garante uma observação por um sobrevivente com visibilidade compatível. Ver alguém não equivale a passar a noite com ele nem a testemunhar um ataque. Perguntas sobre noites futuras pedem outra data e não geram prova. Os invariantes são implementados em `src/modules/table/rules.py`.
+O delegado avalia as provas selecionadas, suas fontes e a noite a que se referem.
+Um álibi confirmado cobre aquele período, não todas as noites. Os relatos úteis
+aparecem em roxo e dourado, com seu estado de confirmação.
 
-## Fofocas, segredos e relações
+## Fofocas e segredos
 
-`KnowledgeService` mantém tópicos autorais, relatos recebidos, raízes e fontes em `SocialState`. As permissões `can_share` e `can_confide_personal` limitam o que pode sair da visão de uma persona. Relações influenciam as opções liberadas; ressentimento não concede acesso a fatos privados de terceiros.
+Relações, confiança e ressentimento influenciam o que cada personagem pode
+compartilhar. Isso permite suspeitas e acusações pessoais sem dar acesso aos
+segredos dos outros. A fala de Floriano continua atribuída a ele; não se torna
+verdade só porque foi repetida por um NPC.
 
-O texto livre de Floriano é uma citação atribuída ao jogador com baixa confiança, não um fato novo da mesa. A fala renderizada do NPC também não é reextraída por um LLM para virar conhecimento canônico. A ajuda reconhecida pelas regras, como apresentar um objeto elegível, pode melhorar confiança e afinidade uma vez por NPC por dia; elogios livres não concedem esse efeito.
+O conhecimento preserva sua origem. Várias pessoas repetindo uma fofoca não
+viram testemunhas independentes. Informações novas podem reabrir um assunto
+esgotado, mantendo a mesma origem quando forem apenas uma correção.
 
-O `SocialWorker` agenda encontros em janelas de 60, 120, 180 e 240 segundos, com até quatro encontros por dia, reservas e limites de consumo. O fluxo social com LangGraph oferece ao LLM apenas IDs de alegações permitidas e as opções de repetir ou encerrar. O servidor compõe as proposições e preserva a origem ao retransmitir: a mesma fofoca repetida por várias pessoas não vira várias fontes independentes.
+Cada personagem é um agente lógico com identidade fixa e consultas limitadas.
+Não é um processo com acesso livre ao banco. Os encontros entre NPCs têm um
+fluxo LangGraph próprio, com agenda e limites de consumo; a IA só escolhe entre
+alegações já autorizadas ou encerra a conversa.
 
-## Mestre, delegado e persistência
+## O mestre da mesa e o jornal
 
-O mestre coordena a aplicação das declarações e a narrativa das consequências já autorizadas. Ele não pode conceder um álibi porque uma frase parece convincente. O delegado considera as declarações estruturadas selecionadas para o caso, destinadas ao jogador, e suas fontes. Um álibi confirmado vale para a noite coberta; não elimina evidências relativas a outras noites. A interface apresenta os relatos úteis com o tratamento visual roxo e dourado e seu estado de confirmação.
+O mestre aplica relatos verificados e prepara a narrativa das consequências.
+Depois de uma prisão, ele pode gerar o editorial em segundo plano durante a
+animação de suspense. O texto só aparece quando as regras confirmam o resultado
+e os fatos ainda correspondem àquela prisão. Se a geração falhar ou não terminar,
+o jornal usa a edição prevista pelas regras sem esperar pelo modelo.
 
-Depois que uma prisão é gravada, o mestre pode preparar o editorial em segundo plano durante o suspense da animação. Ele usa a informação privada que a mesa já possui, sem esperar um sinal do navegador. O texto preparado fica separado da resposta pública e só pode ser aproveitado quando o motor confirmar o resultado e os fatos ainda corresponderem à mesma prisão. Se a geração atrasar, falhar ou for interrompida por um reinício, o jogo publica a edição canônica de fallback e segue sem esperar pelo modelo.
-
-| Estado | Responsabilidade |
-| --- | --- |
-| `<prefix>:game:{id}:investigation` | Agregado autoritativo, incluindo `table` |
-| `<prefix>:game:{id}:table` | Projeção de inspeção gravada na mesma transação |
-| `<prefix>:game:{id}:social` | Relações, conhecimentos, proveniência e encontros sociais |
-| Memórias, outbox e rastros | Histórico de falas, entrega idempotente e observabilidade |
-
-Investigação e mesa usam formato 2. Registros antigos incompatíveis são recusados; não existe adaptador. O namespace padrão `ml:v1` não é o número do formato de investigação.
-
-## Código e verificação
-
-Os pontos de entrada são `src/modules/table/`, `src/modules/agents/`, `src/modules/knowledge/`, `src/modules/social/` e `src/modules/session_master/`. A composição e os clientes medidos ficam em `src/composition.py`; uso e falhas podem ser acompanhados no admin.
-
-Consulte [testes e simulações](testes.md) para verificar confirmação recíproca, isolamento, proveniência, concorrência e comportamento pela API real. O workflow antigo de diálogo continua coberto por testes específicos; ele não substitui o caminho da mesa na composição de produção.
+Para acompanhar o código, comece em `src/composition.py` e nos módulos `agents`,
+`table`, `knowledge`, `social` e `session_master`. Os comandos de verificação estão
+em [testes](testes.md).
